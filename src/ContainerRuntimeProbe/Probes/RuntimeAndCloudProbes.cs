@@ -126,7 +126,10 @@ internal sealed class RuntimeApiProbe : IProbe
                 var (oc, body, status, msg) = await HttpProbe.GetAsync(client, endpoint, ct: context.CancellationToken).ConfigureAwait(false);
                 evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:outcome", oc.ToString()));
                 if (status.HasValue) evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:status", status.Value.ToString()));
-                if (!string.IsNullOrWhiteSpace(body)) evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:body", body.Length > 512 ? body[..512] : body));
+                if (oc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(body))
+                {
+                    AddRuntimeMetadataEvidence(evidence, endpoint, body);
+                }
                 if (!string.IsNullOrWhiteSpace(msg)) evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:message", msg));
             }
 
@@ -174,6 +177,119 @@ internal sealed class RuntimeApiProbe : IProbe
             }
         }
     }
+
+    private void AddRuntimeMetadataEvidence(List<EvidenceItem> evidence, string endpoint, string body)
+    {
+        try
+        {
+            switch (endpoint)
+            {
+                case "/version":
+                    AddDockerVersionEvidence(evidence, body);
+                    break;
+                case "/info":
+                    AddDockerInfoEvidence(evidence, body);
+                    break;
+                case "/libpod/version":
+                    AddPodmanVersionEvidence(evidence, body);
+                    break;
+                case "/libpod/info":
+                    AddPodmanInfoEvidence(evidence, body);
+                    break;
+                default:
+                    if (endpoint.EndsWith("_ping", StringComparison.OrdinalIgnoreCase))
+                    {
+                        evidence.Add(new EvidenceItem(Id, "runtime.api.endpoint", endpoint));
+                    }
+                    break;
+            }
+        }
+        catch
+        {
+            // Ignore malformed runtime metadata bodies; outcome evidence is still retained.
+        }
+    }
+
+    private void AddDockerVersionEvidence(List<EvidenceItem> evidence, string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        AddEvidenceIfPresent(evidence, "runtime.engine.version", GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+    }
+
+    private void AddDockerInfoEvidence(List<EvidenceItem> evidence, string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        AddEvidenceIfPresent(evidence, "docker.info.operating_system", GetString(doc.RootElement, "OperatingSystem"));
+        AddEvidenceIfPresent(evidence, "docker.info.os_type", GetString(doc.RootElement, "OSType"));
+        AddEvidenceIfPresent(evidence, "docker.info.architecture", GetString(doc.RootElement, "Architecture"));
+        AddEvidenceIfPresent(evidence, "docker.info.kernel_version", GetString(doc.RootElement, "KernelVersion"));
+        AddEvidenceIfPresent(evidence, "docker.info.ncpu", GetString(doc.RootElement, "NCPU"));
+        AddEvidenceIfPresent(evidence, "docker.info.mem_total", GetString(doc.RootElement, "MemTotal"));
+        AddEvidenceIfPresent(evidence, "docker.info.server_version", GetString(doc.RootElement, "ServerVersion"));
+        AddEvidenceIfPresent(evidence, "docker.info.cgroup_driver", GetString(doc.RootElement, "CgroupDriver"));
+        AddEvidenceIfPresent(evidence, "docker.info.cgroup_version", GetString(doc.RootElement, "CgroupVersion"));
+        AddEvidenceIfPresent(evidence, "docker.info.default_runtime", GetString(doc.RootElement, "DefaultRuntime"));
+        if (doc.RootElement.TryGetProperty("SecurityOptions", out var securityOptions) && securityOptions.ValueKind == JsonValueKind.Array)
+        {
+            evidence.Add(new EvidenceItem(Id, "docker.info.security_options_count", securityOptions.GetArrayLength().ToString()));
+        }
+        evidence.Add(new EvidenceItem(Id, "runtime.architecture", GetString(doc.RootElement, "Architecture") ?? string.Empty));
+    }
+
+    private void AddPodmanVersionEvidence(List<EvidenceItem> evidence, string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        AddEvidenceIfPresent(evidence, "runtime.engine.version", GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+    }
+
+    private void AddPodmanInfoEvidence(List<EvidenceItem> evidence, string body)
+    {
+        using var doc = JsonDocument.Parse(body);
+        if (!doc.RootElement.TryGetProperty("host", out var host) || host.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        AddEvidenceIfPresent(evidence, "podman.info.architecture", GetString(host, "arch"));
+        AddEvidenceIfPresent(evidence, "podman.info.kernel", GetString(host, "kernel"));
+        AddEvidenceIfPresent(evidence, "podman.info.mem_total", GetString(host, "memTotal"));
+        AddEvidenceIfPresent(evidence, "podman.info.cpus", GetString(host, "cpus"));
+        AddEvidenceIfPresent(evidence, "runtime.architecture", GetString(host, "arch"));
+
+        if (host.TryGetProperty("distribution", out var distribution) && distribution.ValueKind == JsonValueKind.Object)
+        {
+            var distro = $"{GetString(distribution, "distribution")} {GetString(distribution, "version")}".Trim();
+            AddEvidenceIfPresent(evidence, "podman.info.distribution", string.IsNullOrWhiteSpace(distro) ? null : distro);
+        }
+    }
+
+    private static string? GetString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => bool.TrueString,
+            JsonValueKind.False => bool.FalseString,
+            _ => null
+        };
+    }
+
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+        }
+    }
+
 }
 
 internal sealed class KubernetesProbe : IProbe
@@ -235,10 +351,81 @@ internal sealed class KubernetesProbe : IProbe
             var podResult = await HttpProbe.GetAsync(client, $"/api/v1/namespaces/{ns}/pods/{pod}", ct: context.CancellationToken).ConfigureAwait(false);
             evidence.Add(new EvidenceItem(Id, "api.pod.outcome", podResult.outcome.ToString()));
             if (podResult.status.HasValue) evidence.Add(new EvidenceItem(Id, "api.pod.status", podResult.status.Value.ToString()));
+            if (podResult.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(podResult.body))
+            {
+                await ProbeNodeInfoAsync(client, evidence, podResult.body!, context.CancellationToken).ConfigureAwait(false);
+            }
         }
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    private async Task ProbeNodeInfoAsync(HttpClient client, List<EvidenceItem> evidence, string podJson, CancellationToken ct)
+    {
+        using var podDoc = JsonDocument.Parse(podJson);
+        if (!podDoc.RootElement.TryGetProperty("spec", out var spec) ||
+            spec.ValueKind != JsonValueKind.Object ||
+            !spec.TryGetProperty("nodeName", out var nodeNameElement) ||
+            nodeNameElement.ValueKind != JsonValueKind.String)
+        {
+            return;
+        }
+
+        var nodeName = nodeNameElement.GetString();
+        if (string.IsNullOrWhiteSpace(nodeName))
+        {
+            return;
+        }
+
+        var nodeResult = await HttpProbe.GetAsync(client, $"/api/v1/nodes/{Uri.EscapeDataString(nodeName)}", ct: ct).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "api.node.outcome", nodeResult.outcome.ToString()));
+        if (nodeResult.status.HasValue) evidence.Add(new EvidenceItem(Id, "api.node.status", nodeResult.status.Value.ToString()));
+        if (nodeResult.outcome != ProbeOutcome.Success || string.IsNullOrWhiteSpace(nodeResult.body))
+        {
+            return;
+        }
+
+        using var nodeDoc = JsonDocument.Parse(nodeResult.body);
+        if (!nodeDoc.RootElement.TryGetProperty("status", out var status) ||
+            status.ValueKind != JsonValueKind.Object ||
+            !status.TryGetProperty("nodeInfo", out var nodeInfo) ||
+            nodeInfo.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.osImage", GetString(nodeInfo, "osImage"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kernelVersion", GetString(nodeInfo, "kernelVersion"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.operatingSystem", GetString(nodeInfo, "operatingSystem"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.architecture", GetString(nodeInfo, "architecture"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.containerRuntimeVersion", GetString(nodeInfo, "containerRuntimeVersion"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kubeletVersion", GetString(nodeInfo, "kubeletVersion"));
+    }
+
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+        }
+    }
+
+    private static string? GetString(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var value))
+        {
+            return null;
+        }
+
+        return value.ValueKind switch
+        {
+            JsonValueKind.String => value.GetString(),
+            JsonValueKind.Number => value.GetRawText(),
+            JsonValueKind.True => bool.TrueString,
+            JsonValueKind.False => bool.FalseString,
+            _ => null
+        };
     }
 }
 
@@ -277,6 +464,10 @@ internal sealed class CloudMetadataProbe : IProbe
                     var headers = new Dictionary<string, string> { ["X-aws-ec2-metadata-token"] = tok };
                     var idDoc = await HttpProbe.GetAsync(aws, "/latest/dynamic/instance-identity/document", headers, context.CancellationToken).ConfigureAwait(false);
                     evidence.Add(new EvidenceItem(Id, "aws.imds.identity.outcome", idDoc.outcome.ToString()));
+                    if (idDoc.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(idDoc.body))
+                    {
+                        AddAwsEvidence(evidence, idDoc.body!);
+                    }
                 }
             }
             catch { }
@@ -287,13 +478,37 @@ internal sealed class CloudMetadataProbe : IProbe
         {
             var azr = await HttpProbe.GetAsync(az, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, context.CancellationToken).ConfigureAwait(false);
             evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", azr.outcome.ToString()));
+            if (azr.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(azr.body))
+            {
+                AddAzureEvidence(evidence, azr.body!);
+            }
         }
 
         // GCP metadata
         using (var gcp = new HttpClient { BaseAddress = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal"), Timeout = context.Timeout })
         {
-            var gr = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/project/project-id", new() { ["Metadata-Flavor"] = "Google" }, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gr.outcome.ToString()));
+            var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
+            var machineType = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/machine-type", headers, context.CancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
+            if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
+            {
+                AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+            }
+
+            var zone = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/zone", headers, context.CancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
+            if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
+            {
+                var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
+                AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
+                var lastDash = zoneValue.LastIndexOf('-');
+                AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
+                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+            }
+
+            var gcpOutcome = machineType.outcome == ProbeOutcome.Success || zone.outcome == ProbeOutcome.Success ? ProbeOutcome.Success : zone.outcome;
+            evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gcpOutcome.ToString()));
         }
 
         // OCI metadata
@@ -301,6 +516,10 @@ internal sealed class CloudMetadataProbe : IProbe
         {
             var or = await HttpProbe.GetAsync(oci, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, context.CancellationToken).ConfigureAwait(false);
             evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", or.outcome.ToString()));
+            if (or.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(or.body))
+            {
+                AddOciEvidence(evidence, or.body!);
+            }
         }
 
         // Cloud Run/AppService/ACA/Nomad markers
@@ -312,5 +531,57 @@ internal sealed class CloudMetadataProbe : IProbe
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    private void AddAwsEvidence(List<EvidenceItem> evidence, string body)
+    {
+        var parsed = HostParsing.ParseAwsIdentity(body, Id);
+        if (parsed is null)
+        {
+            return;
+        }
+
+        AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
+        AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
+        AddEvidenceIfPresent(evidence, "cloud.architecture", parsed.RawArchitecture);
+        evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
+    }
+
+    private void AddAzureEvidence(List<EvidenceItem> evidence, string body)
+    {
+        var parsed = HostParsing.ParseAzureMetadata(body, Id);
+        if (parsed is null)
+        {
+            return;
+        }
+
+        AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
+        AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
+        AddEvidenceIfPresent(evidence, "cloud.os_type", parsed.OsType);
+        evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
+    }
+
+    private void AddOciEvidence(List<EvidenceItem> evidence, string body)
+    {
+        var parsed = HostParsing.ParseOciMetadata(body, Id);
+        if (parsed is null)
+        {
+            return;
+        }
+
+        AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
+        AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
+        evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
+    }
+
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+        }
     }
 }

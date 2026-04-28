@@ -1,7 +1,9 @@
 using System.Net;
 using System.Text;
+using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
+using ContainerRuntimeProbe.Rendering;
 
 namespace ContainerRuntimeProbe.IntegrationTests;
 
@@ -300,6 +302,74 @@ public sealed class FakeEndpointIntegrationTests
         Assert.Equal(ProbeOutcome.Unavailable, result.Outcome);
     }
 
+    [Fact]
+    public async Task Engine_FakeDockerInfoEvidence_MapsHostModel()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+        [
+            new FixedProbe("proc-files",
+            [
+                new EvidenceItem("proc-files", "os.id", "debian"),
+                new EvidenceItem("proc-files", "os.pretty_name", "Debian GNU/Linux 12 (bookworm)"),
+                new EvidenceItem("proc-files", "kernel.release", "6.17.0-1011-azure"),
+                new EvidenceItem("proc-files", "kernel.flavor", "Azure"),
+                new EvidenceItem("proc-files", "cpu.logical_processors", "4"),
+                new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+                new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) CPU"),
+                new EvidenceItem("proc-files", "cpu.flags.hash", "sha256:abc"),
+                new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184")
+            ]),
+            new FixedProbe("runtime-api",
+            [
+                new EvidenceItem("runtime-api", "docker.info.operating_system", "Ubuntu 24.04.4 LTS"),
+                new EvidenceItem("runtime-api", "docker.info.kernel_version", "6.17.0-1011-azure"),
+                new EvidenceItem("runtime-api", "docker.info.architecture", "x86_64"),
+                new EvidenceItem("runtime-api", "docker.info.ncpu", "4"),
+                new EvidenceItem("runtime-api", "docker.info.mem_total", "17179869184"),
+                new EvidenceItem("runtime-api", "runtime.engine.version", "28.1.1"),
+                new EvidenceItem("runtime-api", "runtime.architecture", "x86_64"),
+                new EvidenceItem("runtime-api", "/var/run/docker.sock:/_ping:outcome", "Success")
+            ])
+        ]);
+
+        var report = await engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
+
+        Assert.Equal(RuntimeReportedHostSource.DockerInfo, report.Host.RuntimeReportedHostOs.Source);
+        Assert.Equal("Ubuntu 24.04.4 LTS", report.Host.RuntimeReportedHostOs.Name);
+        Assert.Equal(4, report.Host.Hardware.Cpu.LogicalProcessorCount);
+        Assert.Equal(17179869184L, report.Host.Hardware.Memory.MemTotalBytes);
+        Assert.Contains("## Host OS / Node", ReportRenderer.ToMarkdown(report));
+    }
+
+    [Fact]
+    public async Task Engine_FakeKubernetesNodeInfo_MapsHostModel()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+        [
+            new FixedProbe("proc-files",
+            [
+                new EvidenceItem("proc-files", "kernel.release", "6.6.10-generic"),
+                new EvidenceItem("proc-files", "memory.mem_total_bytes", "8589934592")
+            ]),
+            new FixedProbe("kubernetes",
+            [
+                new EvidenceItem("kubernetes", "api.version.outcome", "Success"),
+                new EvidenceItem("kubernetes", "kubernetes.nodeInfo.osImage", "Ubuntu 24.04.4 LTS"),
+                new EvidenceItem("kubernetes", "kubernetes.nodeInfo.kernelVersion", "6.6.10-generic"),
+                new EvidenceItem("kubernetes", "kubernetes.nodeInfo.operatingSystem", "linux"),
+                new EvidenceItem("kubernetes", "kubernetes.nodeInfo.architecture", "amd64"),
+                new EvidenceItem("kubernetes", "kubernetes.nodeInfo.containerRuntimeVersion", "containerd://2.0.1")
+            ])
+        ]);
+
+        var report = await engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
+
+        Assert.Equal(RuntimeReportedHostSource.KubernetesNodeInfo, report.Host.RuntimeReportedHostOs.Source);
+        Assert.Equal("Ubuntu 24.04.4 LTS", report.Host.RuntimeReportedHostOs.Name);
+        Assert.Equal("6.6.10-generic", report.Host.RuntimeReportedHostOs.KernelVersion);
+        Assert.Equal(ArchitectureKind.X64, report.Host.RuntimeReportedHostOs.Architecture);
+    }
+
     private static int GetFreePort()
     {
         var l = new System.Net.Sockets.TcpListener(IPAddress.Loopback, 0);
@@ -307,5 +377,13 @@ public sealed class FakeEndpointIntegrationTests
         var p = ((IPEndPoint)l.LocalEndpoint).Port;
         l.Stop();
         return p;
+    }
+
+    private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe
+    {
+        public string Id => id;
+
+        public Task<ProbeResult> ExecuteAsync(ProbeContext context)
+            => Task.FromResult(new ProbeResult(id, ProbeOutcome.Success, evidence));
     }
 }

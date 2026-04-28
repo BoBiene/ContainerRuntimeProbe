@@ -22,6 +22,7 @@ public sealed class EngineAndRendererTests
         var markdown = ReportRenderer.ToMarkdown(report);
 
         Assert.Contains("# Container Runtime Report", markdown);
+        Assert.Contains("## Host OS / Node", markdown);
     }
 
     [Fact]
@@ -32,5 +33,6 @@ public sealed class EngineAndRendererTests
         var json = ReportRenderer.ToJson(report);
 
         Assert.Contains("isContainerized", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
     }
 }
