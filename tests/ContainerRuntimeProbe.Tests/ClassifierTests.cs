@@ -384,9 +384,9 @@ public sealed class ClassifierTests
 
         Assert.Equal("Linux", report.Host.Family.Value);
         Assert.Equal("Appliance", report.Host.Type.Value);
-        Assert.True(report.Host.Type.Confidence >= Confidence.High);
+        Assert.Equal(Confidence.High, report.Host.Type.Confidence);
         Assert.Equal("OnPrem", report.Environment.Type.Value);
-        Assert.True(report.Environment.Type.Confidence >= Confidence.Medium);
+        Assert.Equal(Confidence.Medium, report.Environment.Type.Confidence);
     }
 
     [Fact]

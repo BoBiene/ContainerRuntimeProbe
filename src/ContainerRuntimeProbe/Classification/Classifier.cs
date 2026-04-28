@@ -33,7 +33,8 @@ internal static class Classifier
                 return null;
             }
 
-            var token = value.Trim().Split(['.', '-', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+            var segments = value.Trim().Split(['.', '-', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var token = segments.FirstOrDefault();
             return int.TryParse(token, out var major) ? major : null;
         }
 
@@ -45,6 +46,7 @@ internal static class Classifier
                && string.Equals(item.Value, "Success", StringComparison.Ordinal);
 
         static bool IsConsumerCpu(string? cpuModel)
+            // Keep this list conservative and update it as new consumer/workstation families become common.
             => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core i", "intel core", "apple m");
 
         static bool IsHomeDns(string? dnsDomain)
@@ -80,7 +82,10 @@ internal static class Classifier
         var containerReasons = new List<ClassificationReason>();
         if (e.Any(x => x.Key == "/.dockerenv" && x.Value == bool.TrueString)) { containerScore += 4; containerReasons.Add(new("/.dockerenv exists", new[] { "/.dockerenv" })); }
         if (e.Any(x => x.Key == "/run/.containerenv" && x.Value == bool.TrueString)) { containerScore += 4; containerReasons.Add(new("/run/.containerenv exists", new[] { "/run/.containerenv" })); }
-        if (e.Any(x => (x.Key.StartsWith("/proc/self/cgroup:signal") || x.Key.StartsWith("/proc/1/cgroup:signal")) && x.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true)) { containerScore += 3; containerReasons.Add(new("Cgroup contains docker path", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
+        var hasDockerCgroupSignal = e.Any(x =>
+            (x.Key.StartsWith("/proc/self/cgroup:signal") || x.Key.StartsWith("/proc/1/cgroup:signal"))
+            && x.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true);
+        if (hasDockerCgroupSignal) { containerScore += 3; containerReasons.Add(new("Cgroup contains docker path", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
         if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && string.Equals(x.Value, "overlay", StringComparison.OrdinalIgnoreCase))) { containerScore += 3; containerReasons.Add(new("Overlay mount detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
         var containerEvidenceAvailable =
             probes.Any(probe => probe.ProbeId == "marker-files")
