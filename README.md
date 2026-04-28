@@ -2,24 +2,66 @@
 
 .NET 8 runtime probe library + CLI for container/runtime/orchestrator/cloud evidence.
 
-## Build / Test / Pack
+## Quick start without compiling
+
+### Run the published preview container
+Use the published GHCR image if you just want to run the probe immediately:
+
 ```bash
-dotnet build ContainerRuntimeProbe.sln -c Release
-dotnet test ContainerRuntimeProbe.sln -c Release
-dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts/packages
+docker run --rm --pull=always ghcr.io/bobiene/containerruntimeprobe:preview --format json
 ```
 
-## Install and run tool locally
+With Docker socket mounted for runtime API enrichment:
+
 ```bash
-dotnet tool install --global --prerelease --add-source ./artifacts/packages ContainerRuntimeProbe.Tool
+docker run --rm --pull=always \
+  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  ghcr.io/bobiene/containerruntimeprobe:preview \
+  --format markdown
+```
+
+Notes:
+- `preview` tracks the latest preview image built from the main/develop preview workflow.
+- For stable releases, prefer a version tag or `:latest` when available.
+- `--pull=always` ensures you do not accidentally run an old cached image.
+
+### Download a prebuilt binary from GitHub Releases
+If you do not want Docker and do not want to build locally, download a release asset from the repository's **Releases** page:
+
+- `container-runtime-probe-linux-x64`
+- `container-runtime-probe-linux-arm64`
+- `container-runtime-probe-osx-x64`
+- `container-runtime-probe-osx-arm64`
+- `container-runtime-probe-win-x64.exe`
+
+Example on Linux/macOS:
+
+```bash
+chmod +x ./container-runtime-probe-linux-x64
+./container-runtime-probe-linux-x64 --format json
+```
+
+### Optional: install from a downloaded .NET tool package
+If you have a downloaded `ContainerRuntimeProbe.Tool.*.nupkg` package (for example from a release artifact or package feed), you can install it without compiling source:
+
+```bash
+mkdir -p ./crp-packages
+cp ./ContainerRuntimeProbe.Tool.*.nupkg ./crp-packages/
+dotnet tool install --global --prerelease --add-source ./crp-packages ContainerRuntimeProbe.Tool
+container-runtime-probe --format json
+```
+
+## Common commands
+```bash
 container-runtime-probe --help
 container-runtime-probe --format json
 container-runtime-probe --format markdown --output report.md
 container-runtime-probe --list-probes
+container-runtime-probe --fingerprint safe
 ```
 
 ## Host OS / Node reporting
-Reports now separate five host-oriented views:
+Reports separate five host-oriented views:
 - **Container image OS** from `/etc/os-release` or `/usr/lib/os-release`
 - **Visible kernel** from `/proc/version` and `/proc/sys/kernel/*`
 - **Runtime-reported host OS** from Docker `/info`, Podman `/libpod/info`, Kubernetes `status.nodeInfo`, and safe cloud metadata fields
@@ -27,6 +69,13 @@ Reports now separate five host-oriented views:
 - **Host fingerprint** using `CRP-HOST-FP-v1` (`sha256:` over sorted normalized `key=value` lines)
 
 Important: container image OS is not host OS. The visible kernel is an observed signal, while host OS confidence increases only when a runtime API, Kubernetes NodeInfo, or cloud metadata corroborates it.
+
+## Contributor build / test / pack
+```bash
+dotnet build ContainerRuntimeProbe.sln -c Release
+dotnet test ContainerRuntimeProbe.sln -c Release
+dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts/packages
+```
 
 ### Fingerprint modes
 ```bash
@@ -38,6 +87,8 @@ container-runtime-probe --fingerprint none
 Default mode is `safe`. The fingerprint is for diagnostics and correlation only; it is not a security identity.
 
 ## Docker harness (verified in CI)
+This section is for contributors validating the local Docker harness, not the simplest end-user path.
+
 ```bash
 docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
 docker run --rm container-runtime-probe:test
