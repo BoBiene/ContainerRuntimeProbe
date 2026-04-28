@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ContainerRuntimeProbe</AssemblyName>
+    <RootNamespace>ContainerRuntimeProbe</RootNamespace>
+    <PackageId>ContainerRuntimeProbe</PackageId>
+    <Version>0.1.0-preview.1</Version>
+    <Description>Vendor-neutral runtime probing library for containerized environments.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Authors>ContainerRuntimeProbe Contributors</Authors>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

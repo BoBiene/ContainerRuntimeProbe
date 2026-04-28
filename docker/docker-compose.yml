@@ -1,0 +1,5 @@
+services:
+  probe:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
