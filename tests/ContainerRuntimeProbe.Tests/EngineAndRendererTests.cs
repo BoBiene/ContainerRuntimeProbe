@@ -31,6 +31,6 @@ public sealed class EngineAndRendererTests
         var report = await engine.RunAsync(TimeSpan.FromMilliseconds(200), includeSensitive: false);
         var json = ReportRenderer.ToJson(report);
 
-        Assert.Contains("containerization", json, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("isContainerized", json, StringComparison.OrdinalIgnoreCase);
     }
 }

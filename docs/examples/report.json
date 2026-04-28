@@ -1,0 +1,6 @@
+{
+  "classification": {
+    "isContainerized": { "value": "True", "confidence": "High" },
+    "containerRuntime": { "value": "Docker", "confidence": "Medium" }
+  }
+}

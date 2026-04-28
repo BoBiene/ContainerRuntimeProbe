@@ -1,28 +1,47 @@
 # ContainerRuntimeProbe
 
-ContainerRuntimeProbe is a vendor-neutral .NET 8 library and CLI tool that inspects container-runtime signals and emits a structured **Container Runtime Report**.
+Vendor-neutral .NET 8 runtime probe library + CLI for container/runtime/orchestrator/cloud evidence.
 
-## Packages
-- `ContainerRuntimeProbe`
-- `ContainerRuntimeProbe.Tool`
-
-## Quickstart (tool)
+## Build / Test / Pack
 ```bash
-dotnet tool install --global ContainerRuntimeProbe.Tool
-container-runtime-probe --format markdown
-container-runtime-probe --format json --timeout 00:00:02
+dotnet build ContainerRuntimeProbe.sln -c Release
+dotnet test ContainerRuntimeProbe.sln -c Release
+dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts/packages
 ```
 
-## Quickstart (library)
+## Install and run tool locally
+```bash
+dotnet tool install --global --add-source ./artifacts/packages ContainerRuntimeProbe.Tool
+container-runtime-probe --help
+container-runtime-probe --format json
+container-runtime-probe --format markdown --output report.md
+container-runtime-probe --list-probes
+```
+
+## Docker harness
+```bash
+docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+docker run --rm container-runtime-probe:test
+docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro container-runtime-probe:test
+```
+
+## Library usage
 ```csharp
 var engine = new RuntimeProbeEngine();
 var report = await engine.RunAsync(TimeSpan.FromSeconds(2), includeSensitive: false);
 ```
 
-## Security notes
-- Allowlisted environment variable collection.
-- Sensitive values are redacted by default.
-- Probe failures are reported, not fatal.
+## Security defaults
+- allowlisted env vars only
+- secret-pattern redaction by default
+- metadata probing only for fixed allowlisted endpoints
+- no credential endpoint access
+- explicit warning when docker socket is visible
 
-## Limitations
-Classification is heuristic and confidence-weighted; the tool avoids absolute claims unless strong evidence exists.
+## Included probe families (v1)
+- Safe local: markers, mountinfo, routes, DNS, hostnames, os-release, proc version/status, namespaces
+- Runtime API: Docker-compatible and Podman/Libpod Unix socket endpoints
+- Kubernetes: env + serviceaccount + optional API reads (`/version`, pod lookup)
+- Cloud/platform: ECS metadata, AWS/Azure/GCP/OCI metadata, Cloud Run/App Service/ACA/Nomad env markers
+
+See examples under `docs/examples/`.

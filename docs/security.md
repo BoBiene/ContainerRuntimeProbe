@@ -1,7 +1,7 @@
 # Security
 
-Defaults are safe:
-- no credential endpoint probing,
-- no full env dump,
-- sensitive markers redacted by default,
-- bounded local file reads.
+- No credential endpoints are queried.
+- Sensitive env-like keys are redacted unless `--include-sensitive true`.
+- Probe networking is allowlisted to known metadata routes/endpoints.
+- Docker/Podman socket visibility is reported as a security warning.
+- Probe failures return typed outcomes (`Unavailable`, `AccessDenied`, `Timeout`, `NotSupported`, `Error`) instead of crashing.

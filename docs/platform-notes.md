@@ -1,4 +1,7 @@
 # Platform Notes
 
-Current implementation provides Linux-first local probes and classifier scaffolding for:
-Docker, Podman, Kubernetes, ECS, Azure markers, Cloud Run/Knative markers, Nomad markers, and unknown environments.
+- Linux-first probing using `/proc` and `/etc` signals.
+- Docker vs Podman is derived from socket endpoint behavior and returned payloads.
+- Kubernetes API calls may return 401/403 depending on RBAC and are recorded as evidence.
+- Cloud metadata is best-effort and safe-path only.
+- Siemens Industrial Edge is intentionally conservative and only classified when Siemens-specific signals exist.

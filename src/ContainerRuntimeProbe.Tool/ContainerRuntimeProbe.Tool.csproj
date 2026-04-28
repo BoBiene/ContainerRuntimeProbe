@@ -10,8 +10,6 @@
     <Description>CLI tool for generating Container Runtime Reports.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>ContainerRuntimeProbe Contributors</Authors>
-    <PublishTrimmed>true</PublishTrimmed>
-    <IsAotCompatible>true</IsAotCompatible>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ContainerRuntimeProbe\ContainerRuntimeProbe.csproj" />

@@ -1,20 +1,19 @@
 namespace ContainerRuntimeProbe.Abstractions;
 
-public enum EvidenceSensitivity
-{
-    Public,
-    Sensitive
-}
+public enum EvidenceSensitivity { Public, Sensitive }
+public enum Confidence { Unknown, Low, Medium, High }
+public enum ProbeOutcome { Success, Unavailable, AccessDenied, Timeout, NotSupported, Error }
 
-public enum Confidence
-{
-    Unknown,
-    Low,
-    Medium,
-    High
-}
-
-public sealed record ProbeContext(TimeSpan Timeout, bool IncludeSensitive, IReadOnlySet<string>? EnabledProbes, CancellationToken CancellationToken);
+public sealed record ProbeContext(
+    TimeSpan Timeout,
+    bool IncludeSensitive,
+    IReadOnlySet<string>? EnabledProbes,
+    Uri? KubernetesApiBase,
+    Uri? AwsImdsBase,
+    Uri? AzureImdsBase,
+    Uri? GcpMetadataBase,
+    Uri? OciMetadataBase,
+    CancellationToken CancellationToken);
 
 public interface IProbe
 {
