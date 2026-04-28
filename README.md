@@ -1,183 +1,247 @@
-# ContainerRuntimeProbe
+# Container Runtime Probe
 
-.NET 8 runtime probe library + CLI for container/runtime/orchestrator/cloud evidence.
+Container Runtime Probe collects runtime evidence from inside containers and helps classify the visible environment: Docker, Docker Compose, Portainer stacks, Kubernetes, WSL2, Linux hosts, NAS/appliance hosts, cloud environments, and other edge cases.
 
-## Quick start without compiling
+The main goal is to build a broad sample collection of real-world container environments. Each report helps improve detection quality and documents how containers look from the inside on different platforms.
 
-### Run the published preview container
-Use the published GHCR image if you just want to run the probe immediately:
+## What this project is
 
-```bash
-docker run --rm --pull=always ghcr.io/bobiene/containerruntimeprobe:preview --format json
-```
+Container Runtime Probe is both:
 
-With Docker socket mounted for runtime API enrichment:
+- a diagnostic tool that inspects the environment visible from inside a container
+- a sample collection project that improves by gathering reports from many different runtimes and hosts
 
-```bash
-docker run --rm --pull=always \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  ghcr.io/bobiene/containerruntimeprobe:preview \
-  --format markdown
-```
+The project is most useful when people run it in environments that behave differently: local developer machines, NAS devices, appliance hosts, cloud VMs, managed Kubernetes clusters, homelabs, CI runners, and older systems.
 
-Notes:
-- `preview` tracks the latest preview image built from the main/develop preview workflow.
-- For stable releases, prefer a version tag or `:latest` when available.
-- `--pull=always` ensures you do not accidentally run an old cached image.
+## Why sample collection matters
 
-### Download a prebuilt binary from GitHub Releases
-If you do not want Docker and do not want to build locally, download a release asset from the repository's **Releases** page:
+Container environments often look similar at first glance but differ in important ways:
 
-- `container-runtime-probe-linux-x64`
-- `container-runtime-probe-linux-arm64`
-- `container-runtime-probe-osx-x64`
-- `container-runtime-probe-osx-arm64`
-- `container-runtime-probe-win-x64.exe`
+- Docker on native Linux does not look the same as Docker Desktop on Windows with WSL2
+- Docker Compose and Portainer stacks add orchestration hints that standalone containers do not
+- Kubernetes distributions expose different signals depending on cluster type and permissions
+- NAS, appliance, and vendor kernels can look very different from standard Linux hosts
 
-Example on Linux/macOS:
+Broad real-world samples help improve classification rules, reduce false assumptions, and document edge cases that do not appear in clean lab environments.
 
-```bash
-chmod +x ./container-runtime-probe-linux-x64
-./container-runtime-probe-linux-x64 --format json
-```
+## What is collected
 
-### Optional: install from a downloaded .NET tool package
-If you have a downloaded `ContainerRuntimeProbe.Tool.*.nupkg` package (for example from a release artifact or package feed), you can install it without compiling source:
+The probe collects runtime evidence that helps classify the container environment, including:
 
-```bash
-mkdir -p ./crp-packages
-cp ./ContainerRuntimeProbe.Tool.*.nupkg ./crp-packages/
-dotnet tool install --global --prerelease --add-source ./crp-packages ContainerRuntimeProbe.Tool
-container-runtime-probe --format json
-container-runtime-probe sample
-```
+- runtime and orchestrator signals
+- kernel and distribution markers visible from inside the container
+- cgroup, namespace, mount, and networking hints
+- safe cloud or platform metadata outcomes when available
+- redacted summary data that can be shared for issue-based sample submission
 
-## Common commands
-```bash
-container-runtime-probe --help
-container-runtime-probe --format json
-container-runtime-probe sample
-container-runtime-probe --format markdown --output report.md
-container-runtime-probe --list-probes
-container-runtime-probe --fingerprint safe
-```
+Reports help improve detection of:
 
-## Host OS / Node reporting
-Reports separate five host-oriented views:
-- **Container image OS** from `/etc/os-release` or `/usr/lib/os-release`
-- **Visible kernel** from `/proc/version` and `/proc/sys/kernel/*`
-- **Runtime-reported host OS** from Docker `/info`, Podman `/libpod/info`, Kubernetes `status.nodeInfo`, and safe cloud metadata fields
-- **Host hardware signals** from `/proc/cpuinfo`, `/proc/meminfo`, cgroup limits, and safe runtime/cloud summaries
-- **Host fingerprint** using `CRP-HOST-FP-v1` (`sha256:` over sorted normalized `key=value` lines)
+- Container runtime: Docker, containerd, Podman, unknown
+- Orchestrator: Kubernetes, Docker Compose, standalone Docker
+- Kernel substrate: WSL2, standard Linux, appliance/vendor Linux
+- Host type: cloud, on-prem, NAS/appliance, developer workstation
+- Special cases: old kernels, kernel/userspace mismatch, limited cgroup visibility
 
-Important: container image OS is not host OS. The visible kernel is an observed signal, while host OS confidence increases only when a runtime API, Kubernetes NodeInfo, or cloud metadata corroborates it.
+## Privacy and redaction
 
-## Contributor build / test / pack
-```bash
-dotnet build ContainerRuntimeProbe.sln -c Release
-dotnet test ContainerRuntimeProbe.sln -c Release
-dotnet pack ContainerRuntimeProbe.sln -c Release --no-build -o artifacts/packages
-```
+The tool should redact sensitive values such as hostnames where possible. Review the generated issue body before submitting. Do not submit private secrets, tokens, internal URLs, or customer-identifying information.
 
-### Fingerprint modes
-```bash
-container-runtime-probe --fingerprint safe
-container-runtime-probe --fingerprint extended
-container-runtime-probe --fingerprint none
-```
+If you share a full JSON report, inspect it first and remove anything you do not want to publish.
 
-Default mode is `safe`. The fingerprint is for diagnostics and correlation only; it is not a security identity.
+## Quick submit samples
 
-## Docker harness (verified in CI)
-This section is for contributors validating the local Docker harness, not the simplest end-user path.
+The default issue target is this repository: `BoBiene/ContainerRuntimeProbe`. You only need `--repo` if you want to submit somewhere else.
+
+### Docker
+
+Run the probe:
 
 ```bash
-docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
-docker run --rm container-runtime-probe:test
-docker run --rm container-runtime-probe:test sample
-docker run --rm container-runtime-probe:test json > my-report.json
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro container-runtime-probe:test
+docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview
 ```
 
-Expected output excerpts:
-- markdown starts with `# Container Runtime Report`
-- markdown includes `## Host OS / Node`
-- json contains `"Classification"`, `"Host"`, and `"Probes"`
-- socket run contains `DOCKER_SOCKET_MOUNTED` warning when socket is reachable
-
-If Docker is unavailable locally, use GitHub Actions workflow `docker-harness` and compare with samples under `docs/examples/`.
-
-## Trim/AOT checks
-```bash
-# Trimmed publish (supported)
-dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj -c Release -r linux-x64 -p:PublishTrimmed=true --self-contained true
-
-# Native AOT attempt (best-effort, environment dependent)
-dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj -c Release -r linux-x64 -p:PublishAot=true --self-contained true
-```
-
-## Security defaults
-- allowlisted env vars only
-- secret-pattern redaction by default
-- hostname redaction by default unless `--include-sensitive true`
-- metadata probing only for fixed allowlisted endpoints
-- no credential endpoint access
-- host fingerprint excludes hostname, container ID, pod name, instance IDs, project IDs, tenant IDs, MAC/IP data, CPU serials, and raw overlay paths
-- explicit warning when docker socket is visible
-
-## Included probe families (v1)
-- Safe local: markers, mountinfo, routes, DNS, hostnames, os-release, kernel, CPU, memory, namespaces
-- Security sandbox: Seccomp, NoNewPrivs, capabilities (CapEff/CapBnd/CapPrm), AppArmor profile, SELinux context
-- Runtime API: Docker-compatible and Podman/Libpod Unix socket endpoints; Docker Compose label inspection
-- Kubernetes: env + serviceaccount + `/version`, pod lookup, optional node lookup for `status.nodeInfo`
-- Cloud/platform: ECS metadata, AWS/Azure/GCP/OCI metadata, Cloud Run/App Service/ACA/Nomad/IoTEdge env markers
-
-## Example reports
-- in-container run (no socket): `docs/examples/report-from-container.md`, `docs/examples/report-from-container.json`
-- docker-socket run: `docs/examples/report-with-docker-socket.md`, `docs/examples/report-with-docker-socket.json`
-
-## Versioning
-Current preview: `0.1.0-preview.2`. See `CHANGELOG.md`.
-
-
-## Help improve detection
-
-ContainerRuntimeProbe improves through real-world samples. If you can share a compact redacted runtime sample, run:
+Generate only the prefilled GitHub issue URL:
 
 ```bash
-container-runtime-probe sample
+docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
 ```
 
-Or from Docker:
+Open the generated URL on Linux:
 
 ```bash
-docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample
+docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs xdg-open
 ```
 
-For best results, also attach the full redacted report:
-
-```bash
-docker run --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json
-```
-
-Review `my-report.json`, then attach it to the GitHub issue.
-
-To open the prefilled issue directly on Linux:
-
-```bash
-docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | xargs xdg-open
-```
-
-On Windows PowerShell:
+Open the generated URL on Windows PowerShell:
 
 ```powershell
-docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | ForEach-Object { Start-Process $_ }
+docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | ForEach-Object { Start-Process $_ }
 ```
 
-On macOS:
+Open the generated URL on macOS:
 
 ```bash
-docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | xargs open
+docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs open
 ```
 
-The URL contains a dense redacted `crp1;...` sample line and a short summary. The compact sample is useful for triage and clustering, while the full report is more useful for improving detection rules. You can optionally paste or attach the full report after reviewing it. GitHub login is required to submit the issue, but no GitHub token is needed to generate the URL. `--repo` is optional and only needed for custom forks or alternate repositories.
+### Docker Compose / Portainer Stack
+
+Use this stack to collect both a machine-readable report and a quick-submit issue URL:
+
+```yaml
+services:
+  container-runtime-probe-json:
+    image: ghcr.io/bobiene/containerruntimeprobe:preview
+    container_name: container-runtime-probe-json
+    command: ["--format", "json"]
+    pull_policy: always
+    restart: "no"
+
+  container-runtime-probe-submit:
+    image: ghcr.io/bobiene/containerruntimeprobe:preview
+    container_name: container-runtime-probe-submit
+    command: ["--url-only"]
+    pull_policy: always
+    restart: "no"
+```
+
+For Portainer, deploy this as a stack.
+- Open **container-runtime-probe-submit** logs → copy the generated GitHub issue URL and submit the report.
+- Open **container-runtime-probe-json** logs → view the full JSON report for debugging or CI usage.
+
+### Kubernetes
+
+Use this Job to print the runtime report:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: container-runtime-probe
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: container-runtime-probe
+          image: ghcr.io/bobiene/containerruntimeprobe:preview
+```
+
+URL-only variant:
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: container-runtime-probe-url
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: container-runtime-probe
+          image: ghcr.io/bobiene/containerruntimeprobe:preview
+          args: ["--url-only"]
+```
+
+Apply and inspect logs:
+
+```bash
+kubectl apply -f probe-job.yaml
+kubectl logs job/container-runtime-probe
+```
+
+### Other runtimes
+
+If you use another OCI-compatible runtime, run the same image there and submit the generated URL or full JSON report.
+
+Examples:
+
+```bash
+podman run --rm ghcr.io/bobiene/containerruntimeprobe:preview
+nerdctl run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
+```
+
+Reports are especially valuable from Podman, containerd-based systems, Docker-in-Docker setups, LXC/LXD environments, CI runners, and vendor-managed appliance platforms.
+
+## Supported / interesting environments
+
+Reports are useful from many environments, especially:
+
+- Docker
+  - Native Linux Docker
+  - Docker Desktop on Windows / WSL2
+  - Docker Desktop on macOS
+  - Docker on NAS or appliance systems
+- Docker Compose / Portainer Stack
+  - Compose on Linux servers
+  - Compose on NAS systems
+  - Portainer-managed stacks
+  - Homelab environments
+- Kubernetes
+  - Managed Kubernetes
+  - Local Kubernetes
+  - k3s / microk8s / kind / minikube
+  - Edge Kubernetes
+- Other runtimes / environments
+  - Podman
+  - containerd
+  - Docker-in-Docker
+  - LXC/LXD
+  - Synology / QNAP / Unraid
+  - Proxmox-hosted containers or VMs
+  - Cloud VMs running containers
+  - CI runners
+
+## Especially useful sample targets
+
+We are especially interested in reports from:
+
+- Docker Desktop on Windows with WSL2
+- Docker Desktop on macOS
+- Native Linux Docker hosts
+- Docker Compose setups
+- Portainer stacks
+- Synology NAS
+- QNAP NAS
+- Unraid
+- Proxmox VMs / containers
+- k3s / microk8s / minikube / kind
+- Managed Kubernetes clusters
+- GitHub Actions / CI runners
+- Cloud VMs with Docker installed
+
+## How classification works
+
+Classification uses the evidence visible from inside the container. The goal is to classify the environment conservatively, not to guess an exact host OS in every case.
+
+Examples:
+
+- `microsoft-standard-WSL2` in `/proc/version` usually means Docker is running on Windows via WSL2.
+- A modern distribution kernel usually indicates a standard Linux host.
+- A very old/custom kernel combined with a modern container image can indicate a NAS or appliance host.
+
+Signals are combined across kernel markers, runtime APIs, orchestrator hints, and safe metadata. Results are best-effort and improve as more real-world samples are submitted.
+
+## Submit a report via GitHub Issue
+
+The fastest path is to run the container with `--url-only`, open the generated URL, review the prefilled issue body, and submit it.
+
+If possible, also keep the full JSON output for debugging or attach a reviewed redacted report to the issue. Real samples are useful even when classification is incomplete or partially wrong.
+
+## Development
+
+Build and test from the repository root:
+
+```bash
+dotnet build ContainerRuntimeProbe.sln -c Release
+dotnet test ContainerRuntimeProbe.sln -c Release --no-build
+```
+
+Useful commands:
+
+```bash
+dotnet pack ContainerRuntimeProbe.sln -c Release --no-build -o artifacts/packages
+docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+docker run --rm container-runtime-probe:test
+```
