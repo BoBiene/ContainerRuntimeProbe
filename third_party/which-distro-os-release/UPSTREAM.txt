@@ -1,5 +1,0 @@
-Source: https://github.com/which-distro/os-release
-Import-Mode: sparse vendor copy
-Imported-Directories: ubuntu, debian, pop, linuxmint, kali, arch, manjaro, fedora, rocky, almalinux, amzn, azurelinux, mariner, opensuse-leap, opensuse-tumbleweed, ol, wolfi, flatcar, alpine, openwrt
-Imported-On: 2026-04-28
-Purpose: reference os-release fixtures for detection-map tests
