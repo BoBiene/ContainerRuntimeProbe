@@ -44,6 +44,8 @@ Reports help improve detection of:
 
 ## Privacy and redaction
 
+Generated issue content applies built-in redaction for known sensitive fields, but manual review is still required.
+
 The tool should redact sensitive values such as hostnames where possible. Review the generated issue body before submitting. Do not submit private secrets, tokens, internal URLs, or customer-identifying information.
 
 If you share a full JSON report, inspect it first and remove anything you do not want to publish.
@@ -220,6 +222,8 @@ Examples:
 - `microsoft-standard-WSL2` in `/proc/version` usually means Docker is running on Windows via WSL2.
 - A modern distribution kernel usually indicates a standard Linux host.
 - A very old/custom kernel combined with a modern container image can indicate a NAS or appliance host.
+
+These are heuristics rather than guarantees because vendors can customize kernels, container platforms can mask details, and visibility varies by environment.
 
 Signals are combined across kernel markers, runtime APIs, orchestrator hints, and safe metadata. Results are best-effort and improve as more real-world samples are submitted.
 
