@@ -1,8 +1,278 @@
-/root/.nuget/packages/microsoft.build.tasks.git/8.0.0/build/Microsoft.Build.Tasks.Git.targets(25,5): warning : Repository '/workspace/ContainerRuntimeProbe' has no remote. [/workspace/ContainerRuntimeProbe/src/ContainerRuntimeProbe/ContainerRuntimeProbe.csproj]
-/root/.nuget/packages/microsoft.sourcelink.common/8.0.0/build/Microsoft.SourceLink.Common.targets(53,5): warning : Source control information is not available - the generated source link is empty. [/workspace/ContainerRuntimeProbe/src/ContainerRuntimeProbe/ContainerRuntimeProbe.csproj]
-/root/.nuget/packages/microsoft.build.tasks.git/8.0.0/build/Microsoft.Build.Tasks.Git.targets(25,5): warning : Repository '/workspace/ContainerRuntimeProbe' has no remote. [/workspace/ContainerRuntimeProbe/src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj]
-/root/.nuget/packages/microsoft.sourcelink.common/8.0.0/build/Microsoft.SourceLink.Common.targets(53,5): warning : Source control information is not available - the generated source link is empty. [/workspace/ContainerRuntimeProbe/src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj]
 {
+  "GeneratedAt": "2026-04-28T09:32:03.3177888+00:00",
+  "Duration": "00:00:00.4804075",
+  "Probes": [
+    {
+      "ProbeId": "marker-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "marker-files",
+          "Key": "/.dockerenv",
+          "Value": "True",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "marker-files",
+          "Key": "/run/.containerenv",
+          "Value": "False",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0070446"
+    },
+    {
+      "ProbeId": "environment",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "environment",
+          "Key": "HOSTNAME",
+          "Value": "96548146ac99",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0345779"
+    },
+    {
+      "ProbeId": "proc-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "proc-files",
+          "Key": "/etc/hostname",
+          "Value": "96548146ac99",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/sys/kernel/hostname",
+          "Value": "96548146ac99",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.id",
+          "Value": "ubuntu",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version",
+          "Value": "24.04",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/version",
+          "Value": "Linux version 6.12.47 (@124b6677fa5a) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04.2) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP Mon Oct 27 10:01:15 UTC 2025",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.pid",
+          "Value": "pid:[4026532176]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.mnt",
+          "Value": "mnt:[4026532177]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.net",
+          "Value": "net:[4026531840]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.uts",
+          "Value": "uts:[4026532147]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.ipc",
+          "Value": "ipc:[4026532146]",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0760361"
+    },
+    {
+      "ProbeId": "security-sandbox",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "proc.self.status.outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapPrm",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapEff",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapBnd",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.NoNewPrivs",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.Seccomp",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "selinux.mount.present",
+          "Value": "False",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0150000"
+    },
+    {
+      "ProbeId": "runtime-api",
+      "Outcome": "Unavailable",
+      "Evidence": [],
+      "Message": "No docker/podman socket found",
+      "Duration": "00:00:00.0018766"
+    },
+    {
+      "ProbeId": "kubernetes",
+      "Outcome": "Unavailable",
+      "Evidence": [],
+      "Message": "Kubernetes env/token missing",
+      "Duration": "00:00:00.0003726"
+    },
+    {
+      "ProbeId": "cloud-metadata",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "azure.imds.outcome",
+          "Value": "AccessDenied",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.outcome",
+          "Value": "AccessDenied",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "oci.metadata.outcome",
+          "Value": "AccessDenied",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.2993539"
+    }
+  ],
+  "SecurityWarnings": [],
+  "Classification": {
+    "IsContainerized": {
+      "Value": "True",
+      "Confidence": "Medium",
+      "Reasons": [
+        {
+          "Message": "/.dockerenv exists",
+          "EvidenceKeys": [
+            "/.dockerenv"
+          ]
+        },
+        {
+          "Message": "Namespace info visible",
+          "EvidenceKeys": [
+            "ns.pid",
+            "ns.mnt"
+          ]
+        }
+      ]
+    },
+    "ContainerRuntime": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No runtime evidence",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "RuntimeApi": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Runtime API probe outcomes",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "Orchestrator": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No orchestrator markers",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "CloudProvider": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Cloud metadata/env markers",
+          "EvidenceKeys": [
+            "cloud-metadata"
+          ]
+        }
+      ]
+    },
+    "PlatformVendor": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No vendor-specific proofs",
+          "EvidenceKeys": []
+        }
+      ]
+    }
+  }
+}
+
   "GeneratedAt": "2026-04-28T09:32:03.3177888+00:00",
   "Duration": "00:00:00.4804075",
   "Probes": [

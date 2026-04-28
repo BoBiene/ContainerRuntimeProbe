@@ -21,6 +21,7 @@ public sealed class RuntimeProbeEngine
             new MarkerFileProbe(),
             new EnvironmentProbe(),
             new ProcFilesProbe(),
+            new SecuritySandboxProbe(),
             new RuntimeApiProbe(),
             new KubernetesProbe(),
             new CloudMetadataProbe()

@@ -36,4 +36,20 @@ internal static class Parsing
         var signals = new[] { "overlay", "kubelet", "containerd", "podman", "/run/secrets/kubernetes.io" };
         return text.Split('\n').Where(l => signals.Any(s => l.Contains(s, StringComparison.OrdinalIgnoreCase))).Take(30);
     }
+
+    /// <summary>
+    /// Parses cgroup file (v1 or v2) and returns recognizable container signals such as
+    /// docker container IDs, kubepods paths, and Podman container markers.
+    /// </summary>
+    public static IEnumerable<string> ParseCgroupSignals(string text)
+    {
+        // cgroup v2: single line "0::/<path>"
+        // cgroup v1: multiple lines like "12:memory:/docker/<id>" or "1:name=systemd:/kubepods/..."
+        var containerSignals = new[] { "/docker/", "/kubepods/", "/lxc/", "podman", "libpod", "/containerd/", "/actions_job/" };
+        foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(50))
+        {
+            if (containerSignals.Any(s => line.Contains(s, StringComparison.OrdinalIgnoreCase)))
+                yield return line.Trim();
+        }
+    }
 }
