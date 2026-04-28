@@ -1,4 +1,5 @@
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Classification;
@@ -23,6 +24,7 @@ internal static class Classifier
         if (e.Any(x => x.Key == "/run/.containerenv" && x.Value == bool.TrueString)) { containerScore += 4; containerReasons.Add(new("/run/.containerenv exists", new[] { "/run/.containerenv" })); }
         if (e.Any(x => x.Key.StartsWith("ns.") && x.Value != "unavailable")) { containerScore += 1; containerReasons.Add(new("Namespace info visible", new[] { "ns.pid", "ns.mnt" })); }
         if (e.Any(x => x.Key.StartsWith("/proc/self/cgroup:signal") || x.Key.StartsWith("/proc/1/cgroup:signal"))) { containerScore += 3; containerReasons.Add(new("Cgroup container signals detected", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
+        if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && string.Equals(x.Value, "overlay", StringComparison.OrdinalIgnoreCase))) { containerScore += 3; containerReasons.Add(new("Overlay mount detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
         if (HasEnvKey(e, "KUBERNETES_SERVICE_HOST") || e.Any(x => x.Key == "env.KUBERNETES_SERVICE_HOST")) { containerScore += 3; containerReasons.Add(new("Kubernetes env marker", new[] { "env.KUBERNETES_SERVICE_HOST" })); }
         if (e.Any(x => x.Key == "socket.present")) { containerScore += 2; containerReasons.Add(new("Container runtime socket present", new[] { "runtime-api" })); }
 
@@ -129,11 +131,18 @@ internal static class Classifier
             }
         }
 
-        var vendor = ieScore >= 4
-            ? Make("Siemens Industrial Edge", ieScore, ieReasons.ToArray())
-            : iotedgeScore > 0
-                ? Make("IoTEdge", iotedgeScore, iotedgeReasons.ToArray())
-                : Make("Unknown", 0, new ClassificationReason("No vendor-specific proofs", Array.Empty<string>()));
+        var wsl2VendorDetected =
+            e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase))
+            || e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value))
+            || e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value));
+
+        var vendor = wsl2VendorDetected
+            ? Make("Microsoft", 8, new ClassificationReason("WSL2 kernel fingerprint detected", new[] { "kernel.flavor", "kernel.release", "/proc/version" }))
+            : ieScore >= 4
+                ? Make("Siemens Industrial Edge", ieScore, ieReasons.ToArray())
+                : iotedgeScore > 0
+                    ? Make("IoTEdge", iotedgeScore, iotedgeReasons.ToArray())
+                    : Make("Unknown", 0, new ClassificationReason("No vendor-specific proofs", Array.Empty<string>()));
 
         return new ReportClassification(
             Make(containerScore > 0 ? "True" : "Unknown", containerScore, containerReasons.ToArray()),

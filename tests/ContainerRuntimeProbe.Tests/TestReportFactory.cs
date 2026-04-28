@@ -58,6 +58,16 @@ internal static class TestReportFactory
                     RuntimeReportedHostSource.DockerInfo,
                     Confidence.High,
                     ["runtime-api:docker.info.operating_system"]),
+                new VirtualizationInfo(
+                    VirtualizationKind.Unknown,
+                    null,
+                    Confidence.Unknown,
+                    []),
+                new UnderlyingHostOsInfo(
+                    OperatingSystemFamily.Unknown,
+                    null,
+                    Confidence.Unknown,
+                    []),
                 new HostHardwareInfo(
                     ArchitectureKind.X64,
                     "x86_64",

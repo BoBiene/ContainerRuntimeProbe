@@ -176,6 +176,23 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void HostReport_Wsl2Kernel_InfersVirtualizationAndUnderlyingWindowsHost()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.flavor", "WSL2"),
+            new EvidenceItem("proc-files", "kernel.release", "5.15.167.4-microsoft-standard-WSL2"),
+            new EvidenceItem("proc-files", "/proc/version", "Linux version 5.15.167.4-microsoft-standard-WSL2 (Microsoft@Microsoft.com)")
+        ]);
+
+        Assert.Equal(VirtualizationKind.WSL2, report.Host.Virtualization.Kind);
+        Assert.Equal("Microsoft", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+        Assert.Equal(OperatingSystemFamily.Windows, report.Host.UnderlyingHostOs.Family);
+        Assert.Null(report.Host.UnderlyingHostOs.Version);
+        Assert.Equal(Confidence.Medium, report.Host.UnderlyingHostOs.Confidence);
+    }
+
+    [Fact]
     public void Renderer_OutputsHostSectionsAndJsonHostObject()
     {
         var report = TestReportFactory.CreateSampleReport();
@@ -185,7 +202,9 @@ public sealed class HostParsingAndReportingTests
         var text = ReportRenderer.ToText(report);
 
         Assert.Contains("## Host OS / Node", markdown);
+        Assert.Contains("### Virtualization", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
         Assert.Contains("HostFingerprint=sha256:", text, StringComparison.Ordinal);
     }

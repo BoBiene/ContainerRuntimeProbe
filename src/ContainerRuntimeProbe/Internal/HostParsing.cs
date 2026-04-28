@@ -668,7 +668,7 @@ internal static class HostParsing
     private static KernelFlavor InferKernelFlavor(string text)
     {
         var lower = text.ToLowerInvariant();
-        if (lower.Contains("wsl2", StringComparison.Ordinal) || lower.Contains("microsoft", StringComparison.Ordinal))
+        if (ContainsWsl2Signal(lower) || lower.Contains("microsoft", StringComparison.Ordinal))
         {
             return KernelFlavor.WSL2;
         }
@@ -740,4 +740,8 @@ internal static class HostParsing
         var match = System.Text.RegularExpressions.Regex.Match(name, @"\d+(?:\.\d+){0,2}(?:\s*LTS)?");
         return match.Success ? match.Value.Trim() : null;
     }
+
+    internal static bool ContainsWsl2Signal(string? value)
+        => value?.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase) == true
+            || value?.Contains("WSL2", StringComparison.OrdinalIgnoreCase) == true;
 }
