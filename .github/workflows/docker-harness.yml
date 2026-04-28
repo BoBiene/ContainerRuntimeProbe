@@ -10,7 +10,43 @@ on:
 jobs:
   docker-harness:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario:
+          - name: docker-default
+            run: docker run --rm container-runtime-probe:test
+          - name: docker-privileged
+            run: docker run --rm --privileged container-runtime-probe:test
+          - name: docker-host-network
+            run: docker run --rm --network host container-runtime-probe:test
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
-      - run: docker run --rm container-runtime-probe:test
+      - run: ${{ matrix.scenario.run }}
+
+  docker-rootless-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker run -d --privileged --name rootless-docker -e DOCKER_TLS_CERTDIR= -p 127.0.0.1:2375:2375 docker:dind-rootless
+      - run: |
+          for attempt in $(seq 1 30); do
+            if docker --host tcp://127.0.0.1:2375 version; then
+              exit 0
+            fi
+            sleep 2
+          done
+          docker logs rootless-docker
+          exit 1
+      - run: docker --host tcp://127.0.0.1:2375 build -f docker/Dockerfile.test -t container-runtime-probe:test .
+      - run: docker --host tcp://127.0.0.1:2375 run --rm container-runtime-probe:test
+
+  podman-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update
+      - run: sudo apt-get install -y podman uidmap slirp4netns
+      - run: podman build -f docker/Dockerfile.test -t container-runtime-probe:test .
+      - run: podman run --rm container-runtime-probe:test
