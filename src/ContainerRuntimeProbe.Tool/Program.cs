@@ -35,7 +35,7 @@ static async Task<int> MainAsync(string[] args)
             }
         }
 
-        var engine = new RuntimeProbeEngine();
+        var engine = new ContainerRuntimeProbeEngine();
         if (listProbes)
         {
             foreach (var id in engine.ProbeIds) Console.WriteLine(id);
