@@ -6,10 +6,14 @@ using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe;
 
+/// <summary>
+/// Runs configured probes, collects evidence and returns a normalized report with weighted classification.
+/// </summary>
 public sealed class RuntimeProbeEngine
 {
     private readonly IReadOnlyList<IProbe> _probes;
 
+    /// <summary>Initializes an engine with the default probe set or a custom probe collection.</summary>
     public RuntimeProbeEngine(IEnumerable<IProbe>? probes = null)
     {
         _probes = (probes ?? new IProbe[]
@@ -23,8 +27,10 @@ public sealed class RuntimeProbeEngine
         }).ToList();
     }
 
+    /// <summary>Returns the available probe identifiers.</summary>
     public IReadOnlyList<string> ProbeIds => _probes.Select(p => p.Id).ToList();
 
+    /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
     public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();

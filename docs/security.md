@@ -5,3 +5,4 @@
 - Probe networking is allowlisted to known metadata routes/endpoints.
 - Docker/Podman socket visibility is reported as a security warning.
 - Probe failures return typed outcomes (`Unavailable`, `AccessDenied`, `Timeout`, `NotSupported`, `Error`) instead of crashing.
+- Docker-socket probe is read-only (`GET` requests only).

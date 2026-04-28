@@ -3,14 +3,17 @@
     <AssemblyName>ContainerRuntimeProbe</AssemblyName>
     <RootNamespace>ContainerRuntimeProbe</RootNamespace>
     <PackageId>ContainerRuntimeProbe</PackageId>
-    <Version>0.1.0-preview.1</Version>
+    <Version>0.1.0-preview.2</Version>
     <Description>Vendor-neutral runtime probing library for containerized environments.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>ContainerRuntimeProbe Contributors</Authors>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageTags>container diagnostics runtime docker podman kubernetes ecs azure gcp oci</PackageTags>
+    <PackageProjectUrl>https://github.com/example/ContainerRuntimeProbe</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../CHANGELOG.md" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

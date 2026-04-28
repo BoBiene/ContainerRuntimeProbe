@@ -3,3 +3,11 @@ services:
     build:
       context: ..
       dockerfile: docker/Dockerfile.test
+    command: []
+  probe-with-socket:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.test
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    profiles: ["socket"]

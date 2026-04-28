@@ -1,6 +1,6 @@
 namespace ContainerRuntimeProbe.Internal;
 
-public static class Parsing
+internal static class Parsing
 {
     public static Dictionary<string, string> ParseKeyValueLines(IEnumerable<string> lines, char sep = '=')
     {

@@ -1,6 +1,6 @@
 namespace ContainerRuntimeProbe.Internal;
 
-public static class Redaction
+internal static class Redaction
 {
     private static readonly string[] SecretPatterns = ["TOKEN", "SECRET", "PASSWORD", "PASSWD", "PRIVATE", "KEY", "CERT", "CONNECTIONSTRING", "CONNECTION_STRING", "AUTHORIZATION", "COOKIE", "CREDENTIAL", "SAS"];
 

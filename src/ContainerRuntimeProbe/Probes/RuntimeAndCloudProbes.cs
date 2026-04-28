@@ -47,7 +47,7 @@ internal static class HttpProbe
     }
 }
 
-public sealed class RuntimeApiProbe : IProbe
+internal sealed class RuntimeApiProbe : IProbe
 {
     public string Id => "runtime-api";
 
@@ -81,7 +81,7 @@ public sealed class RuntimeApiProbe : IProbe
     }
 }
 
-public sealed class KubernetesProbe : IProbe
+internal sealed class KubernetesProbe : IProbe
 {
     public string Id => "kubernetes";
 
@@ -127,7 +127,7 @@ public sealed class KubernetesProbe : IProbe
     }
 }
 
-public sealed class CloudMetadataProbe : IProbe
+internal sealed class CloudMetadataProbe : IProbe
 {
     public string Id => "cloud-metadata";
 

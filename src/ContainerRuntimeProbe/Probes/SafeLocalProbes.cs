@@ -24,7 +24,7 @@ internal static class ProbeIo
     }
 }
 
-public sealed class MarkerFileProbe : IProbe
+internal sealed class MarkerFileProbe : IProbe
 {
     public string Id => "marker-files";
     public Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -40,7 +40,7 @@ public sealed class MarkerFileProbe : IProbe
     }
 }
 
-public sealed class EnvironmentProbe : IProbe
+internal sealed class EnvironmentProbe : IProbe
 {
     public string Id => "environment";
     private static readonly string[] Keys =
@@ -63,7 +63,7 @@ public sealed class EnvironmentProbe : IProbe
     }
 }
 
-public sealed class ProcFilesProbe : IProbe
+internal sealed class ProcFilesProbe : IProbe
 {
     public string Id => "proc-files";
     private static readonly string[] Files = ["/proc/self/mountinfo", "/proc/1/mountinfo", "/proc/net/route", "/etc/resolv.conf", "/etc/hostname", "/proc/sys/kernel/hostname", "/etc/os-release", "/proc/version", "/proc/self/status"];

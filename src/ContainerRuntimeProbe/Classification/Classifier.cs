@@ -3,7 +3,7 @@ using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Classification;
 
-public static class Classifier
+internal static class Classifier
 {
     public static ReportClassification Classify(IReadOnlyList<ProbeResult> probes)
     {
