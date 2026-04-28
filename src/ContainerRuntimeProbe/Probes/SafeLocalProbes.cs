@@ -324,20 +324,48 @@ internal sealed class SecuritySandboxProbe : IProbe
             }
         }
 
+        var selinuxMounted = Directory.Exists("/sys/fs/selinux");
+        evidence.Add(new EvidenceItem(Id, "selinux.mount.present", selinuxMounted.ToString()));
+
+        if (selinuxMounted)
+        {
+            var (enforceOc, enforceText, _) = await ProbeIo.ReadFileAsync("/sys/fs/selinux/enforce", context.Timeout, context.CancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, "selinux.enforce.outcome", enforceOc.ToString()));
+            if (enforceOc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(enforceText))
+            {
+                evidence.Add(new EvidenceItem(Id, "selinux.enforce", enforceText.Trim()));
+            }
+        }
+
         // /proc/self/attr/current: AppArmor profile name or SELinux context
         var (attrOc, attrText, _) = await ProbeIo.ReadFileAsync("/proc/self/attr/current", context.Timeout, context.CancellationToken).ConfigureAwait(false);
         if (attrOc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(attrText))
         {
             var attr = attrText.Trim('\n', '\0', ' ');
-            // SELinux context contains ':' separators; AppArmor is a plain label or "unconfined"
-            var key = attr.Contains(':') ? "selinux.context" : "apparmor.profile";
+            var key = LooksLikeSelinuxContext(attr, selinuxMounted) ? "selinux.context" : "apparmor.profile";
             evidence.Add(new EvidenceItem(Id, key, attr));
         }
 
-        // /sys/fs/selinux: directory existence indicates SELinux is mounted
-        evidence.Add(new EvidenceItem(Id, "selinux.mount.present", Directory.Exists("/sys/fs/selinux").ToString()));
-
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static bool LooksLikeSelinuxContext(string attr, bool selinuxMounted)
+    {
+        if (string.IsNullOrWhiteSpace(attr))
+        {
+            return false;
+        }
+
+        var segments = attr.Split(':', StringSplitOptions.TrimEntries);
+        if (segments.Length is < 4 or > 5 || segments.Any(string.IsNullOrWhiteSpace))
+        {
+            return false;
+        }
+
+        return selinuxMounted
+            || segments[0].EndsWith("_u", StringComparison.Ordinal)
+            || segments[1].EndsWith("_r", StringComparison.Ordinal)
+            || segments[2].EndsWith("_t", StringComparison.Ordinal);
     }
 }

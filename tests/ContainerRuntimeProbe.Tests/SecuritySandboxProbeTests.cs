@@ -56,6 +56,15 @@ public sealed class SecuritySandboxProbeTests
     }
 
     [Fact]
+    public void LooksLikeSelinuxContext_RequiresStructuredContext()
+    {
+        Assert.True(SecuritySandboxProbe.LooksLikeSelinuxContext("system_u:system_r:container_t:s0:c12,c34", selinuxMounted: false));
+        Assert.True(SecuritySandboxProbe.LooksLikeSelinuxContext("user:role:type:level", selinuxMounted: true));
+        Assert.False(SecuritySandboxProbe.LooksLikeSelinuxContext("docker-default:unconfined", selinuxMounted: false));
+        Assert.False(SecuritySandboxProbe.LooksLikeSelinuxContext("apparmor:profile:with:colon", selinuxMounted: false));
+    }
+
+    [Fact]
     public async Task SecuritySandboxProbe_OnLinuxWithProcStatus_HasSecurityFields()
     {
         // This test is Linux-only; on /proc-less systems the outcome will be Unavailable
