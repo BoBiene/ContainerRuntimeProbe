@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Collections.Concurrent;
 using System.Net.Http.Headers;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -10,6 +11,8 @@ namespace ContainerRuntimeProbe.Probes;
 
 internal static class HttpProbe
 {
+    private static readonly ConcurrentDictionary<string, SocketsHttpHandler> SharedNetworkHandlers = new(StringComparer.OrdinalIgnoreCase);
+
     public static HttpClient CreateUnixSocketClient(string socketPath, TimeSpan timeout)
     {
         var handler = new SocketsHttpHandler
@@ -23,6 +26,20 @@ internal static class HttpProbe
         };
         return new HttpClient(handler) { BaseAddress = new Uri("http://unix"), Timeout = timeout };
     }
+
+    public static HttpClient CreateNetworkClient(Uri baseAddress, TimeSpan timeout, bool shareConnectionPool = false)
+    {
+        if (!shareConnectionPool)
+        {
+            return new HttpClient(new SocketsHttpHandler()) { BaseAddress = baseAddress, Timeout = timeout };
+        }
+
+        var key = $"{baseAddress.Scheme}://{baseAddress.IdnHost}:{baseAddress.Port}";
+        var handler = SharedNetworkHandlers.GetOrAdd(key, static _ => new SocketsHttpHandler());
+        return new HttpClient(handler, disposeHandler: false) { BaseAddress = baseAddress, Timeout = timeout };
+    }
+
+    internal static int SharedNetworkHandlerCount => SharedNetworkHandlers.Count;
 
     public static async Task<(ProbeOutcome outcome, string? body, int? status, string? message)> GetAsync(HttpClient client, string path, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
@@ -468,7 +485,9 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         // AWS IMDSv2 safe
-        using (var aws = new HttpClient { BaseAddress = context.AwsImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
+        var awsBaseAddress = context.AwsImdsBase ?? new Uri("http://169.254.169.254");
+        var awsSharesPool = context.AwsImdsBase is null;
+        using (var aws = HttpProbe.CreateNetworkClient(awsBaseAddress, context.Timeout, awsSharesPool))
         {
             try
             {
@@ -491,7 +510,9 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         // Azure IMDS
-        using (var az = new HttpClient { BaseAddress = context.AzureImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
+        var azureBaseAddress = context.AzureImdsBase ?? new Uri("http://169.254.169.254");
+        var azureSharesPool = context.AzureImdsBase is null;
+        using (var az = HttpProbe.CreateNetworkClient(azureBaseAddress, context.Timeout, azureSharesPool))
         {
             var azr = await HttpProbe.GetAsync(az, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, context.CancellationToken).ConfigureAwait(false);
             evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", azr.outcome.ToString()));
@@ -502,7 +523,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         // GCP metadata
-        using (var gcp = new HttpClient { BaseAddress = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal"), Timeout = context.Timeout })
+        using (var gcp = HttpProbe.CreateNetworkClient(context.GcpMetadataBase ?? new Uri("http://metadata.google.internal"), context.Timeout))
         {
             var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
             var machineType = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/machine-type", headers, context.CancellationToken).ConfigureAwait(false);
@@ -529,7 +550,9 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         // OCI metadata
-        using (var oci = new HttpClient { BaseAddress = context.OciMetadataBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
+        var ociBaseAddress = context.OciMetadataBase ?? new Uri("http://169.254.169.254");
+        var ociSharesPool = context.OciMetadataBase is null;
+        using (var oci = HttpProbe.CreateNetworkClient(ociBaseAddress, context.Timeout, ociSharesPool))
         {
             var or = await HttpProbe.GetAsync(oci, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, context.CancellationToken).ConfigureAwait(false);
             evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", or.outcome.ToString()));
