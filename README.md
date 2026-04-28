@@ -65,25 +65,25 @@ docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
 Generate only the prefilled GitHub issue URL:
 
 ```bash
-docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample --url-only
 ```
 
 Open the generated URL on Linux:
 
 ```bash
-docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs xdg-open
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample --url-only | xargs xdg-open
 ```
 
 Open the generated URL on Windows PowerShell:
 
 ```powershell
-docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | ForEach-Object { Start-Process $_ }
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample --url-only | ForEach-Object { Start-Process $_ }
 ```
 
 Open the generated URL on macOS:
 
 ```bash
-docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs open
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample --url-only | xargs open
 ```
 
 ### Docker Compose / Portainer Stack
@@ -102,7 +102,7 @@ services:
   container-runtime-probe-submit:
     image: ghcr.io/bobiene/containerruntimeprobe:preview
     container_name: container-runtime-probe-submit
-    command: ["--url-only"]
+    command: ["sample", "--url-only"]
     pull_policy: always
     restart: "no"
 ```
@@ -145,7 +145,7 @@ spec:
         - name: container-runtime-probe
           image: ghcr.io/bobiene/containerruntimeprobe:preview
           imagePullPolicy: Always
-          args: ["--url-only"]
+          args: ["sample", "--url-only"]
 ```
 
 Apply and inspect logs:
@@ -163,7 +163,7 @@ Examples:
 
 ```bash
 podman run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
-nerdctl run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
+nerdctl run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample --url-only
 ```
 
 Reports are especially valuable from Podman, containerd-based systems, Docker-in-Docker setups, LXC/LXD environments, CI runners, and vendor-managed appliance platforms.
@@ -231,7 +231,7 @@ Signals are combined across kernel markers, runtime APIs, orchestrator hints, an
 
 ## Submit a report via GitHub Issue
 
-The fastest path is to run the container with `--url-only`, open the generated URL, review the prefilled issue body, and submit it.
+The fastest path is to run the container with `sample --url-only`, open the generated URL, review the prefilled issue body, and submit it.
 
 If possible, also keep the full JSON output for debugging or attach a reviewed redacted report to the issue. Real samples are useful even when classification is incomplete or partially wrong.
 

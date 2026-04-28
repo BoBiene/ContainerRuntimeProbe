@@ -53,7 +53,8 @@ public sealed class ContainerRuntimeProbeEngine
 
         var classification = Classifier.Classify(results);
         var host = HostReportBuilder.Build(results, classification, fingerprintMode);
+        var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, results, warnings, classification, host);
+        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host);
     }
 }

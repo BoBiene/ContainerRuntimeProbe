@@ -170,9 +170,11 @@ public sealed class ClassifierTests
     {
         var report = Classifier.Classify([
             new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
-                new EvidenceItem("cloud-metadata", "ecs..outcome", "Success")
+                new EvidenceItem("cloud-metadata", "ecsx.task.outcome", "Success")
             ])
         ]);
+        Assert.Equal("Unknown", report.CloudProvider.Value);
+        Assert.Equal("Unknown", report.Orchestrator.Value);
 
         // Only exact "ecs." prefix keys contribute - verify AWS cloud from env
         var reportWithEnv = Classifier.Classify([
@@ -284,6 +286,32 @@ public sealed class ClassifierTests
 
         Assert.Equal("Siemens Industrial Edge", report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
+    public void Classifier_DockerInfoDockerDesktopLinuxkit_DetectsAppleVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("runtime-api", ProbeOutcome.Success, [
+                new EvidenceItem("runtime-api", "docker.info.operating_system", "Docker Desktop"),
+                new EvidenceItem("runtime-api", "docker.info.kernel_version", "6.10.14-linuxkit")
+            ])
+        ]);
+
+        Assert.Equal("Apple", report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
+    }
+
+    [Fact]
+    public void Classifier_DesktopCpuOnly_DoesNotOverclassifyApple()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Core(TM) i7-10700")
+            ])
+        ]);
+
+        Assert.Equal("Unknown", report.PlatformVendor.Value);
     }
 
     [Fact]

@@ -64,8 +64,77 @@ public sealed class RuntimeSampleRendererTests
         var artifacts = RuntimeSampleRenderer.Build(report);
 
         Assert.Contains("kf:WSL2", artifacts.CompactSample, StringComparison.Ordinal);
-        Assert.Contains("pv0", artifacts.CompactSample, StringComparison.Ordinal);
+        Assert.Contains("pvMS", artifacts.CompactSample, StringComparison.Ordinal);
+        Assert.DoesNotContain("pv0", artifacts.CompactSample, StringComparison.Ordinal);
         Assert.Contains("docker-wsl2", artifacts.PrefillUrl, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CompactSample_EncodesMicrosoftVendor_ForWsl2Signals()
+    {
+        var report = TestReportFactory.CreateSampleReport() with
+        {
+            Classification = new ReportClassification(
+                new ClassificationResult("True", Confidence.High, []),
+                new ClassificationResult("Docker", Confidence.Low, []),
+                new ClassificationResult("WSL2", Confidence.High, []),
+                new HostClassificationResult(
+                    new ClassificationResult("Windows", Confidence.High, []),
+                    new ClassificationResult("WSL2", Confidence.High, [])),
+                new EnvironmentClassificationResult(
+                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Microsoft", Confidence.High, [])),
+            Host = TestReportFactory.CreateSampleReport().Host with
+            {
+                VisibleKernel = TestReportFactory.CreateSampleReport().Host.VisibleKernel with
+                {
+                    Release = "5.15.167.4-microsoft-standard-WSL2",
+                    Flavor = KernelFlavor.WSL2
+                }
+            }
+        };
+
+        var artifacts = RuntimeSampleRenderer.Build(report);
+
+        Assert.Contains("pvMS", artifacts.CompactSample, StringComparison.Ordinal);
+        Assert.DoesNotContain("pv0", artifacts.CompactSample, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void CompactSample_EncodesAppleVendor_ForDockerDesktopLinuxkitSignals()
+    {
+        var report = TestReportFactory.CreateSampleReport() with
+        {
+            Classification = new ReportClassification(
+                new ClassificationResult("True", Confidence.High, []),
+                new ClassificationResult("containerd", Confidence.Low, []),
+                new ClassificationResult("None", Confidence.Medium, []),
+                new HostClassificationResult(
+                    new ClassificationResult("Linux", Confidence.High, []),
+                    new ClassificationResult("StandardLinux", Confidence.High, [])),
+                new EnvironmentClassificationResult(
+                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Unknown", Confidence.Unknown, []),
+                new ClassificationResult("Apple", Confidence.Low, [])),
+            Host = TestReportFactory.CreateSampleReport().Host with
+            {
+                VisibleKernel = TestReportFactory.CreateSampleReport().Host.VisibleKernel with
+                {
+                    Release = "6.10.14-linuxkit",
+                    Flavor = KernelFlavor.DockerDesktop
+                }
+            }
+        };
+
+        var artifacts = RuntimeSampleRenderer.Build(report);
+
+        Assert.Contains("pvAP", artifacts.CompactSample, StringComparison.Ordinal);
+        Assert.Contains("docker-desktop", artifacts.PrefillUrl, StringComparison.Ordinal);
     }
 
     [Fact]

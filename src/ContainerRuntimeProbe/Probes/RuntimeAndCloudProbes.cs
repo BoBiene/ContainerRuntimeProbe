@@ -213,23 +213,23 @@ internal sealed class RuntimeApiProbe : IProbe
     private void AddDockerVersionEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, "runtime.engine.version", GetString(doc.RootElement, "Version"));
-        AddEvidenceIfPresent(evidence, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
     }
 
     private void AddDockerInfoEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, "docker.info.operating_system", GetString(doc.RootElement, "OperatingSystem"));
-        AddEvidenceIfPresent(evidence, "docker.info.os_type", GetString(doc.RootElement, "OSType"));
-        AddEvidenceIfPresent(evidence, "docker.info.architecture", GetString(doc.RootElement, "Architecture"));
-        AddEvidenceIfPresent(evidence, "docker.info.kernel_version", GetString(doc.RootElement, "KernelVersion"));
-        AddEvidenceIfPresent(evidence, "docker.info.ncpu", GetString(doc.RootElement, "NCPU"));
-        AddEvidenceIfPresent(evidence, "docker.info.mem_total", GetString(doc.RootElement, "MemTotal"));
-        AddEvidenceIfPresent(evidence, "docker.info.server_version", GetString(doc.RootElement, "ServerVersion"));
-        AddEvidenceIfPresent(evidence, "docker.info.cgroup_driver", GetString(doc.RootElement, "CgroupDriver"));
-        AddEvidenceIfPresent(evidence, "docker.info.cgroup_version", GetString(doc.RootElement, "CgroupVersion"));
-        AddEvidenceIfPresent(evidence, "docker.info.default_runtime", GetString(doc.RootElement, "DefaultRuntime"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.operating_system", GetString(doc.RootElement, "OperatingSystem"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.os_type", GetString(doc.RootElement, "OSType"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.architecture", GetString(doc.RootElement, "Architecture"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.kernel_version", GetString(doc.RootElement, "KernelVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.ncpu", GetString(doc.RootElement, "NCPU"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.mem_total", GetString(doc.RootElement, "MemTotal"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.server_version", GetString(doc.RootElement, "ServerVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_driver", GetString(doc.RootElement, "CgroupDriver"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_version", GetString(doc.RootElement, "CgroupVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.default_runtime", GetString(doc.RootElement, "DefaultRuntime"));
         if (doc.RootElement.TryGetProperty("SecurityOptions", out var securityOptions) && securityOptions.ValueKind == JsonValueKind.Array)
         {
             evidence.Add(new EvidenceItem(Id, "docker.info.security_options_count", securityOptions.GetArrayLength().ToString()));
@@ -240,29 +240,46 @@ internal sealed class RuntimeApiProbe : IProbe
     private void AddPodmanVersionEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, "runtime.engine.version", GetString(doc.RootElement, "Version"));
-        AddEvidenceIfPresent(evidence, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
     }
 
     private void AddPodmanInfoEvidence(List<EvidenceItem> evidence, string body)
     {
+        foreach (var item in ExtractPodmanInfoEvidence(Id, body))
+        {
+            evidence.Add(item);
+        }
+    }
+
+    internal static IReadOnlyList<EvidenceItem> ExtractPodmanInfoEvidence(string probeId, string body)
+    {
         using var doc = JsonDocument.Parse(body);
         if (!doc.RootElement.TryGetProperty("host", out var host) || host.ValueKind != JsonValueKind.Object)
         {
-            return;
+            return [];
         }
 
-        AddEvidenceIfPresent(evidence, "podman.info.architecture", GetString(host, "arch"));
-        AddEvidenceIfPresent(evidence, "podman.info.kernel", GetString(host, "kernel"));
-        AddEvidenceIfPresent(evidence, "podman.info.mem_total", GetString(host, "memTotal"));
-        AddEvidenceIfPresent(evidence, "podman.info.cpus", GetString(host, "cpus"));
-        AddEvidenceIfPresent(evidence, "runtime.architecture", GetString(host, "arch"));
+        var evidence = new List<EvidenceItem>();
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.architecture", GetString(host, "arch"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.kernel", GetString(host, "kernel"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.mem_total", GetString(host, "memTotal"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.cpus", GetString(host, "cpus"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.service_is_remote", GetString(host, "serviceIsRemote"));
+        AddEvidenceIfPresent(evidence, probeId, "runtime.architecture", GetString(host, "arch"));
+
+        if (host.TryGetProperty("remoteSocket", out var remoteSocket) && remoteSocket.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, probeId, "podman.info.remote_socket_path", GetString(remoteSocket, "path"));
+        }
 
         if (host.TryGetProperty("distribution", out var distribution) && distribution.ValueKind == JsonValueKind.Object)
         {
             var distro = $"{GetString(distribution, "distribution")} {GetString(distribution, "version")}".Trim();
-            AddEvidenceIfPresent(evidence, "podman.info.distribution", string.IsNullOrWhiteSpace(distro) ? null : distro);
+            AddEvidenceIfPresent(evidence, probeId, "podman.info.distribution", string.IsNullOrWhiteSpace(distro) ? null : distro);
         }
+
+        return evidence;
     }
 
     private static string? GetString(JsonElement element, string propertyName)
@@ -282,11 +299,11 @@ internal sealed class RuntimeApiProbe : IProbe
         };
     }
 
-    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string probeId, string key, string? value)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+            evidence.Add(new EvidenceItem(probeId, key, value.Trim()));
         }
     }
 

@@ -42,6 +42,19 @@ public static class ReportRenderer
 
         var sb = new StringBuilder();
         sb.AppendLine("# Container Runtime Report");
+        
+        // Probe tool metadata section
+        if (report.ProbeToolInfo is not null)
+        {
+            sb.AppendLine("## Probe Tool Information");
+            sb.AppendLine($"- Version: {report.ProbeToolInfo.Version}");
+            if (!string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash))
+            {
+                sb.AppendLine($"- Git Commit: {report.ProbeToolInfo.GitCommitHash}");
+            }
+            sb.AppendLine();
+        }
+        
         sb.AppendLine("## Summary");
         sb.AppendLine($"- IsContainerized: {report.Classification.IsContainerized.Value} ({report.Classification.IsContainerized.Confidence})");
         sb.AppendLine($"- ContainerRuntime: {report.Classification.ContainerRuntime.Value} ({report.Classification.ContainerRuntime.Confidence})");
@@ -154,8 +167,16 @@ public static class ReportRenderer
         var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
             ? "Unknown"
             : report.Host.UnderlyingHostOs.Family.ToString();
+        
+        var toolInfo = report.ProbeToolInfo is not null 
+            ? $"ProbeToolVersion={report.ProbeToolInfo.Version}, " +
+              (string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash) 
+                  ? "" 
+                  : $"GitCommit={report.ProbeToolInfo.GitCommitHash}, ")
+            : "";
 
-        return $"IsContainerized={report.Classification.IsContainerized.Value}, " +
+        return $"{toolInfo}" +
+               $"IsContainerized={report.Classification.IsContainerized.Value}, " +
                $"Runtime={report.Classification.ContainerRuntime.Value}, " +
                $"Virtualization={report.Classification.Virtualization.Value}, " +
                $"HostFamily={report.Classification.Host.Family.Value}, " +

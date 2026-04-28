@@ -77,6 +77,12 @@ static async Task<int> MainAsync(string[] args)
             }
         }
 
+        // Convenience flags for sample artifacts should work without requiring an explicit "sample" command.
+        if (urlOnly || bodyOnly || sampleOnly)
+        {
+            command = "sample";
+        }
+
         if (maxUrlLength < 256)
         {
             throw new ArgumentException($"--max-url-length must be at least 256, but got {maxUrlLength}.");
@@ -227,9 +233,9 @@ static void PrintHelp()
     Console.WriteLine("  --scenario <name>");
     Console.WriteLine("  --expected <text>");
     Console.WriteLine("  --body-format compact|expanded");
-    Console.WriteLine("  --url-only");
-    Console.WriteLine("  --body-only");
-    Console.WriteLine("  --sample-only");
+    Console.WriteLine("  --url-only                Print only the sample prefill URL (implies sample)");
+    Console.WriteLine("  --body-only               Print only the sample issue body (implies sample)");
+    Console.WriteLine("  --sample-only             Print only the compact sample string (implies sample)");
     Console.WriteLine("  --full-report <path>");
     Console.WriteLine("  --issue-template <name>");
     Console.WriteLine("  --max-url-length <int>");

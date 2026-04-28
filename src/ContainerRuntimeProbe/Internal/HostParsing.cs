@@ -698,6 +698,11 @@ internal static class HostParsing
             return KernelFlavor.DockerDesktop;
         }
 
+        if (lower.Contains("linuxkit", StringComparison.Ordinal))
+        {
+            return KernelFlavor.DockerDesktop;
+        }
+
         if (lower.Contains("raspberry", StringComparison.Ordinal) || lower.Contains("raspi", StringComparison.Ordinal))
         {
             return KernelFlavor.RaspberryPi;

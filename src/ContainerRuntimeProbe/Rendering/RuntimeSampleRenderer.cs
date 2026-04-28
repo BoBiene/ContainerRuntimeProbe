@@ -92,7 +92,7 @@ public static class RuntimeSampleRenderer
 
         sb.AppendLine();
         sb.AppendLine("Optional: attach the full redacted report for better detection improvements:");
-        sb.AppendLine("docker run --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json");
+        sb.AppendLine("docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview json > my-report.json");
         sb.AppendLine("container-runtime-probe json > my-report.json");
         sb.AppendLine();
         sb.AppendLine("The compact sample is enough for triage. The full report helps maintainers add better detection rules.");
@@ -512,7 +512,7 @@ public static class RuntimeSampleRenderer
         sb.AppendLine();
         sb.AppendLine("Docker:");
         sb.AppendLine("```bash");
-        sb.AppendLine("docker run --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json");
+        sb.AppendLine("docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview json > my-report.json");
         sb.AppendLine("```");
         sb.AppendLine();
         sb.AppendLine("Local tool:");
@@ -766,6 +766,7 @@ public static class RuntimeSampleRenderer
         if (report.Classification.Orchestrator.Value == "AWS ECS") return "Ecs";
         if (report.Classification.Orchestrator.Value == "Cloud Run") return "CloudRun";
         if (report.Classification.Orchestrator.Value == "Kubernetes") return "Kubernetes";
+        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == "Apple") return "DockerDesktop";
         if (report.Classification.ContainerRuntime.Value == "Podman") return "Podman";
         if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "DockerDesktopWsl2";
         if (report.Classification.ContainerRuntime.Value == "Docker") return "DockerLinux";
@@ -791,6 +792,7 @@ public static class RuntimeSampleRenderer
                 : "kubernetes";
         }
 
+        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == "Apple") return "docker-desktop";
         if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "docker-wsl2";
         if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop) return "docker-desktop";
         if (report.Classification.ContainerRuntime.Value == "Docker" && report.Classification.CloudProvider.Value == "Azure") return "docker-azure";
@@ -858,6 +860,8 @@ public static class RuntimeSampleRenderer
     private static string MapPlatformVendor(string vendor, string orchestrator, string cloud, string kernelFlavor)
     {
         if (vendor == "Siemens Industrial Edge") return "pvSIE";
+        if (vendor == "Microsoft" || kernelFlavor == "WSL2") return "pvMS";
+        if (vendor == "Apple") return "pvAP";
         if (kernelFlavor == "DockerDesktop") return "pvDD";
         if (orchestrator == "Kubernetes" && cloud == "Azure") return "pvAKS";
         if (orchestrator == "Kubernetes" && cloud == "AWS") return "pvEKS";

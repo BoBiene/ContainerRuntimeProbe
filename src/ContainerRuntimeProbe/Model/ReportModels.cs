@@ -12,6 +12,9 @@ public sealed record ProbeResult(string ProbeId, ProbeOutcome Outcome, IReadOnly
 /// <summary>Security warning surfaced at report level.</summary>
 public sealed record SecurityWarning(string Code, string Message);
 
+/// <summary>Probe tool version and source control information.</summary>
+public sealed record ProbeToolMetadata(string Version, string? GitCommitHash = null);
+
 /// <summary>Reason object including evidence references used for an inferred classification.</summary>
 public sealed record ClassificationReason(string Message, IReadOnlyList<string> EvidenceKeys);
 
@@ -43,6 +46,7 @@ public sealed record ReportClassification(
 public sealed record ContainerRuntimeReport(
     DateTimeOffset GeneratedAt,
     TimeSpan Duration,
+    ProbeToolMetadata? ProbeToolInfo,
     IReadOnlyList<ProbeResult> Probes,
     IReadOnlyList<SecurityWarning> SecurityWarnings,
     ReportClassification Classification,

@@ -39,6 +39,7 @@ public sealed class HostParsingAndReportingTests
     [InlineData("Linux version 6.17.0-1011-azure (buildd@lcy02-amd64) (gcc (Ubuntu 13.3.0) 13.3.0) #11~24.04.2-Ubuntu SMP", "6.17.0-1011-azure", KernelFlavor.Azure)]
     [InlineData("Linux version 6.1.79-99.167.amzn2023.x86_64 (mockbuild@buildhost) (gcc version 11.4.1) #1 SMP", "6.1.79-99.167.amzn2023.x86_64", KernelFlavor.Aws)]
     [InlineData("Linux version 6.6.10-generic (builder@host) (gcc version 13.2.0) #1 SMP", "6.6.10-generic", KernelFlavor.Generic)]
+    [InlineData("Linux version 6.10.14-linuxkit (root@buildkitsandbox) (gcc (Alpine 13.2.1_git20240309) 13.2.1 20240309, GNU ld (GNU Binutils) 2.42) #1 SMP PREEMPT_DYNAMIC", "6.10.14-linuxkit", KernelFlavor.DockerDesktop)]
     [InlineData("Linux version 5.15.167.4-microsoft-standard-WSL2 (Microsoft@Microsoft.com) (gcc version 11.2.0) #1 SMP", "5.15.167.4-microsoft-standard-WSL2", KernelFlavor.WSL2)]
     public void ParseKernel_ExtractsReleaseAndFlavor(string procVersion, string osRelease, KernelFlavor expectedFlavor)
     {
@@ -214,6 +215,7 @@ public sealed class HostParsingAndReportingTests
         var report = new ContainerRuntimeReport(
             DateTimeOffset.UtcNow,
             TimeSpan.FromSeconds(1),
+            null,
             [
                 new ProbeResult("proc-files", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "proc-files").ToArray()),
                 new ProbeResult("runtime-api", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "runtime-api").ToArray()),

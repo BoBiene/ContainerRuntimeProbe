@@ -4,8 +4,8 @@ ContainerRuntimeProbe can emit a dense compact `crp1;...` sample for GitHub issu
 
 Suggested maintainer workflow:
 
-1. A user opens a prefilled GitHub issue with `container-runtime-probe sample` or `docker run --pull=always --rm ghcr.io/bobiene/container-runtime-probe:latest sample`.
-2. The user optionally attaches `my-report.json` created with `docker run --pull=always --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json`.
+1. A user opens a prefilled GitHub issue with `container-runtime-probe sample` or `docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview sample`.
+2. The user optionally attaches `my-report.json` created with `docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview json > my-report.json`.
 3. A maintainer reviews the compact sample and the optional full redacted report.
 4. Useful sanitized samples can be added under `docs/samples/examples/`.
 5. `.sample.txt` files provide quick parser fixtures for compact sample tests.

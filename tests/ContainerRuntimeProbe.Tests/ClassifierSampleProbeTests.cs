@@ -1,0 +1,70 @@
+using System.Text.Json;
+using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Classification;
+using ContainerRuntimeProbe.Model;
+
+namespace ContainerRuntimeProbe.Tests;
+
+public sealed class ClassifierSampleProbeTests
+{
+    [Theory]
+    [InlineData("my-report.json")]
+    [InlineData("wsl2-report.json")]
+    [InlineData("wsl2-system2.json")]
+    [InlineData("wsl2-system3.json")]
+    public void Wsl2SampleProbes_ReclassifyAsMicrosoftVendor(string fixtureName)
+    {
+        var fixturePath = Path.Combine(FindSampleProbeDirectory(), fixtureName);
+        var report = JsonSerializer.Deserialize(
+            File.ReadAllText(fixturePath),
+            ReportJsonContext.Default.ContainerRuntimeReport);
+
+        Assert.NotNull(report);
+
+        var classification = Classifier.Classify(report!.Probes);
+
+        Assert.Equal("WSL2", classification.Virtualization.Value);
+        Assert.Equal("Microsoft", classification.PlatformVendor.Value);
+        Assert.Equal("WSL2", classification.Host.Type.Value);
+    }
+
+    [Theory]
+    [InlineData("mac-os-intel.json")]
+    [InlineData("mac-os-m2-macbook-air.json")]
+    [InlineData("mac-os-m5-macbook-pro.json")]
+    public void MacSampleProbes_ReclassifyAsAppleVendor(string fixtureName)
+    {
+        var fixturePath = Path.Combine(FindSampleProbeDirectory(), fixtureName);
+        var report = JsonSerializer.Deserialize(
+            File.ReadAllText(fixturePath),
+            ReportJsonContext.Default.ContainerRuntimeReport);
+
+        Assert.NotNull(report);
+
+        var classification = Classifier.Classify(report!.Probes);
+
+        Assert.Equal("containerd", classification.ContainerRuntime.Value);
+        Assert.Equal("Apple", classification.PlatformVendor.Value);
+        Assert.True(classification.PlatformVendor.Confidence >= Confidence.Low);
+    }
+
+    private static string FindSampleProbeDirectory()
+    {
+        var directory = new DirectoryInfo(AppContext.BaseDirectory);
+        while (directory is not null)
+        {
+            if (File.Exists(Path.Combine(directory.FullName, "ContainerRuntimeProbe.sln")))
+            {
+                var fixtures = Path.Combine(directory.FullName, "docker", "sample-probes");
+                if (Directory.Exists(fixtures))
+                {
+                    return fixtures;
+                }
+            }
+
+            directory = directory.Parent;
+        }
+
+        throw new DirectoryNotFoundException("Could not locate docker/sample-probes from the test output directory.");
+    }
+}

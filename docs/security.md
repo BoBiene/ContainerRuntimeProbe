@@ -21,7 +21,7 @@ The full report may contain more environment-specific details. Review it before 
 To create a full report for upload:
 
 ```bash
-docker run --pull=always --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview json > my-report.json
 ```
 
 Never share:

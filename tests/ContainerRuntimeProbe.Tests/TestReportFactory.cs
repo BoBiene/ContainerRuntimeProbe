@@ -9,6 +9,7 @@ internal static class TestReportFactory
         => new(
             DateTimeOffset.UtcNow,
             TimeSpan.FromSeconds(1),
+            new ProbeToolMetadata("1.0.0-test"),
             [new ProbeResult("p", ProbeOutcome.Success, [new EvidenceItem("p", "k", "v")])],
             [],
             new ReportClassification(

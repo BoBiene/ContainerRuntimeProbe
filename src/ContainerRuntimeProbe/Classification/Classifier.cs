@@ -301,8 +301,40 @@ internal static class Classifier
             || e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value))
             || e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value));
 
+        var dockerInfoOperatingSystem = GetFirstMatchingValue(e, "docker.info.operating_system");
+        var dockerInfoKernelVersion = GetFirstMatchingValue(e, "docker.info.kernel_version");
+
+        var appleScore = 0;
+        var appleReasons = new List<ClassificationReason>();
+        var dockerDesktopLinuxkitDetected =
+            e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "DockerDesktop", StringComparison.OrdinalIgnoreCase))
+            || e.Any(x => x.Key == "kernel.release" && x.Value?.Contains("linuxkit", StringComparison.OrdinalIgnoreCase) == true)
+            || e.Any(x => x.Key == "/proc/version" && x.Value?.Contains("linuxkit", StringComparison.OrdinalIgnoreCase) == true)
+            || ContainsAny(dockerInfoKernelVersion, "linuxkit");
+
+        if (dockerDesktopLinuxkitDetected)
+        {
+            appleScore += 2;
+            appleReasons.Add(new("LinuxKit kernel fingerprint suggests Docker Desktop VM", new[] { "kernel.flavor", "kernel.release", "/proc/version", "docker.info.kernel_version" }));
+        }
+
+        if (ContainsAny(dockerInfoOperatingSystem, "docker desktop"))
+        {
+            appleScore += 1;
+            appleReasons.Add(new("Runtime API reports Docker Desktop operating system", new[] { "docker.info.operating_system" }));
+        }
+
+        var cpuModelForVendor = GetFirstMatchingValue(e, "cpu.model_name");
+        if (ContainsAny(cpuModelForVendor, "apple", "intel(r) core"))
+        {
+            appleScore += 1;
+            appleReasons.Add(new("CPU model is consistent with desktop/laptop developer hosts", new[] { "cpu.model_name" }));
+        }
+
         var vendor = wsl2VendorDetected
             ? Make("Microsoft", 8, new ClassificationReason("WSL2 kernel fingerprint detected", new[] { "kernel.flavor", "kernel.release", "/proc/version" }))
+            : appleScore >= 2
+                ? Make("Apple", appleScore, appleReasons.ToArray())
             : ieScore >= 4
                 ? Make("Siemens Industrial Edge", ieScore, ieReasons.ToArray())
                 : iotedgeScore > 0
