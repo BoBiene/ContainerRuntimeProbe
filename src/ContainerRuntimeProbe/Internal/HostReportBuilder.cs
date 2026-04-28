@@ -198,7 +198,7 @@ internal static class HostReportBuilder
             return new UnderlyingHostOsInfo(
                 OperatingSystemFamily.Windows,
                 null,
-                Confidence.Medium,
+                Confidence.High,
                 virtualization.EvidenceReferences);
         }
 

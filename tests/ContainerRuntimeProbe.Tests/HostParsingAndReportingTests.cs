@@ -189,7 +189,7 @@ public sealed class HostParsingAndReportingTests
         Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
         Assert.Equal(OperatingSystemFamily.Windows, report.Host.UnderlyingHostOs.Family);
         Assert.Null(report.Host.UnderlyingHostOs.Version);
-        Assert.Equal(Confidence.Medium, report.Host.UnderlyingHostOs.Confidence);
+        Assert.Equal(Confidence.High, report.Host.UnderlyingHostOs.Confidence);
     }
 
     [Fact]
@@ -224,6 +224,9 @@ public sealed class HostParsingAndReportingTests
             new ReportClassification(
                 new("True", Confidence.High, []),
                 new("Docker", Confidence.High, []),
+                new("None", Confidence.Medium, []),
+                new(new("Linux", Confidence.High, []), new("StandardLinux", Confidence.High, [])),
+                new(new("Cloud", Confidence.Medium, [])),
                 new("DockerEngineApi", Confidence.High, []),
                 new("Unknown", Confidence.Unknown, []),
                 new("Azure", Confidence.Medium, []),

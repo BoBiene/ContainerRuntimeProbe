@@ -45,6 +45,10 @@ public static class ReportRenderer
         sb.AppendLine("## Summary");
         sb.AppendLine($"- IsContainerized: {report.Classification.IsContainerized.Value} ({report.Classification.IsContainerized.Confidence})");
         sb.AppendLine($"- ContainerRuntime: {report.Classification.ContainerRuntime.Value} ({report.Classification.ContainerRuntime.Confidence})");
+        sb.AppendLine($"- Virtualization: {report.Classification.Virtualization.Value} ({report.Classification.Virtualization.Confidence})");
+        sb.AppendLine($"- HostFamily: {report.Classification.Host.Family.Value} ({report.Classification.Host.Family.Confidence})");
+        sb.AppendLine($"- HostType: {report.Classification.Host.Type.Value} ({report.Classification.Host.Type.Confidence})");
+        sb.AppendLine($"- EnvironmentType: {report.Classification.Environment.Type.Value} ({report.Classification.Environment.Type.Confidence})");
         sb.AppendLine($"- RuntimeApi: {report.Classification.RuntimeApi.Value} ({report.Classification.RuntimeApi.Confidence})");
         sb.AppendLine($"- Orchestrator: {report.Classification.Orchestrator.Value} ({report.Classification.Orchestrator.Confidence})");
         sb.AppendLine($"- CloudProvider: {report.Classification.CloudProvider.Value} ({report.Classification.CloudProvider.Confidence})");
@@ -153,11 +157,14 @@ public static class ReportRenderer
 
         return $"IsContainerized={report.Classification.IsContainerized.Value}, " +
                $"Runtime={report.Classification.ContainerRuntime.Value}, " +
+               $"Virtualization={report.Classification.Virtualization.Value}, " +
+               $"HostFamily={report.Classification.Host.Family.Value}, " +
+               $"HostType={report.Classification.Host.Type.Value}, " +
+               $"Environment={report.Classification.Environment.Type.Value}, " +
                $"RuntimeApi={report.Classification.RuntimeApi.Value}, " +
                $"Orchestrator={report.Classification.Orchestrator.Value}, " +
                $"Cloud={report.Classification.CloudProvider.Value}, " +
                $"Vendor={report.Classification.PlatformVendor.Value}, " +
-               $"Virtualization={report.Host.Virtualization.Kind}, " +
                $"UnderlyingHost={underlyingHost}, " +
                $"HostOS={hostName}, " +
                $"HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";

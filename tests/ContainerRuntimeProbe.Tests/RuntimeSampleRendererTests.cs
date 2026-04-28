@@ -31,6 +31,12 @@ public sealed class RuntimeSampleRendererTests
             Classification = new ReportClassification(
                 new ClassificationResult("True", Confidence.High, []),
                 new ClassificationResult("Docker", Confidence.Low, []),
+                new ClassificationResult("WSL2", Confidence.High, []),
+                new HostClassificationResult(
+                    new ClassificationResult("Windows", Confidence.High, []),
+                    new ClassificationResult("WSL2", Confidence.High, [])),
+                new EnvironmentClassificationResult(
+                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
                 new ClassificationResult("Unknown", Confidence.Unknown, []),
                 new ClassificationResult("Unknown", Confidence.Unknown, []),
                 new ClassificationResult("Unknown", Confidence.Unknown, []),

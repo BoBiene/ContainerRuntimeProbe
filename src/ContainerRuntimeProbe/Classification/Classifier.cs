@@ -12,21 +12,186 @@ internal static class Classifier
 
         static Confidence ScoreToConfidence(int score) => score switch { >= 8 => Confidence.High, >= 4 => Confidence.Medium, >= 1 => Confidence.Low, _ => Confidence.Unknown };
         ClassificationResult Make(string value, int score, params ClassificationReason[] reasons) => new(value, ScoreToConfidence(score), reasons);
+        ClassificationResult MakeWithConfidence(string value, Confidence confidence, params ClassificationReason[] reasons) => new(value, confidence, reasons);
 
         // Helper: match evidence key in both raw (VARNAME) and env-prefixed (env.VARNAME) forms
         static bool HasEnvKey(List<EvidenceItem> ev, string key) =>
             ev.Any(x => x.Key == key || x.Key == "env." + key);
+
+        static string? GetFirstMatchingValue(IEnumerable<EvidenceItem> ev, params string[] keys)
+            => ev.FirstOrDefault(item => keys.Contains(item.Key, StringComparer.Ordinal))?.Value;
+
+        static IEnumerable<string> GetValues(IEnumerable<EvidenceItem> ev, params string[] keys)
+            => ev.Where(item => keys.Contains(item.Key, StringComparer.Ordinal))
+                .Select(item => item.Value)
+                .Where(value => !string.IsNullOrWhiteSpace(value))!;
+
+        static int? ParseLeadingMajor(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return null;
+            }
+
+            var segments = value.Trim().Split(['.', '-', ' '], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var token = segments.FirstOrDefault();
+            return int.TryParse(token, out var major) ? major : null;
+        }
+
+        static bool ContainsAny(string? value, params string[] fragments)
+            => !string.IsNullOrWhiteSpace(value) && fragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+
+        static bool IsCloudMetadataSuccess(EvidenceItem item)
+            => item.Key is "aws.imds.identity.outcome" or "azure.imds.outcome" or "gcp.metadata.outcome" or "oci.metadata.outcome"
+               && string.Equals(item.Value, "Success", StringComparison.Ordinal);
+
+        static bool IsConsumerCpu(string? cpuModel)
+            // Keep this list conservative and update it as common consumer/workstation families evolve (reviewed for 2026-era models).
+            => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core i", "intel core", "apple m");
+
+        static bool IsHomeDns(string? dnsDomain)
+            => !string.IsNullOrWhiteSpace(dnsDomain)
+               && (dnsDomain.Equals("lan", StringComparison.OrdinalIgnoreCase)
+                   || dnsDomain.EndsWith(".lan", StringComparison.OrdinalIgnoreCase)
+                   || dnsDomain.EndsWith(".home", StringComparison.OrdinalIgnoreCase)
+                   || dnsDomain.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
+                   || dnsDomain.EndsWith("fritz.box", StringComparison.OrdinalIgnoreCase));
+
+        static bool IsCustomCompiler(string? compiler, string? procVersion)
+            => ContainsAny(compiler, "crosstool", "buildroot", "uclibc", "musl", "synology", "qnap")
+               || ContainsAny(procVersion, "crosstool", "buildroot", "uclibc", "synology", "qnap");
+
+        static bool IsVendorAppliance(string? osId, string? osName, string? prettyName)
+            => ContainsAny(osId, "synology", "qnap", "qts", "quts", "dsm")
+               || ContainsAny(osName, "synology", "qnap", "diskstation", "qts", "quts")
+               || ContainsAny(prettyName, "synology", "qnap", "diskstation", "qts", "quts");
+
+        static bool IsKernelUserspaceMismatch(string? osVersion, int? kernelMajor)
+        {
+            if (kernelMajor is null || kernelMajor >= 4)
+            {
+                return false;
+            }
+
+            var distroMajor = ParseLeadingMajor(osVersion);
+            return distroMajor is >= 10;
+        }
 
         // ── IsContainerized ──────────────────────────────────────────────────────
         var containerScore = 0;
         var containerReasons = new List<ClassificationReason>();
         if (e.Any(x => x.Key == "/.dockerenv" && x.Value == bool.TrueString)) { containerScore += 4; containerReasons.Add(new("/.dockerenv exists", new[] { "/.dockerenv" })); }
         if (e.Any(x => x.Key == "/run/.containerenv" && x.Value == bool.TrueString)) { containerScore += 4; containerReasons.Add(new("/run/.containerenv exists", new[] { "/run/.containerenv" })); }
-        if (e.Any(x => x.Key.StartsWith("ns.") && x.Value != "unavailable")) { containerScore += 1; containerReasons.Add(new("Namespace info visible", new[] { "ns.pid", "ns.mnt" })); }
-        if (e.Any(x => x.Key.StartsWith("/proc/self/cgroup:signal") || x.Key.StartsWith("/proc/1/cgroup:signal"))) { containerScore += 3; containerReasons.Add(new("Cgroup container signals detected", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
+        var hasDockerCgroupSignal = e.Any(x =>
+            (x.Key.StartsWith("/proc/self/cgroup:signal") || x.Key.StartsWith("/proc/1/cgroup:signal"))
+            && x.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true);
+        if (hasDockerCgroupSignal) { containerScore += 3; containerReasons.Add(new("Cgroup contains docker path", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
         if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && string.Equals(x.Value, "overlay", StringComparison.OrdinalIgnoreCase))) { containerScore += 3; containerReasons.Add(new("Overlay mount detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
-        if (HasEnvKey(e, "KUBERNETES_SERVICE_HOST") || e.Any(x => x.Key == "env.KUBERNETES_SERVICE_HOST")) { containerScore += 3; containerReasons.Add(new("Kubernetes env marker", new[] { "env.KUBERNETES_SERVICE_HOST" })); }
-        if (e.Any(x => x.Key == "socket.present")) { containerScore += 2; containerReasons.Add(new("Container runtime socket present", new[] { "runtime-api" })); }
+        var containerEvidenceAvailable =
+            probes.Any(probe => probe.ProbeId == "marker-files")
+            || probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success);
+        var isContainerized = containerScore > 0
+            ? Make("True", containerScore, containerReasons.ToArray())
+            : containerEvidenceAvailable
+                ? MakeWithConfidence("False", Confidence.High, new ClassificationReason("No container markers detected in marker files, cgroup paths, or mountinfo", new[] { "/.dockerenv", "/proc/self/cgroup", "/proc/self/mountinfo" }))
+                : MakeWithConfidence("Unknown", Confidence.Unknown, new ClassificationReason("Container markers were not available", Array.Empty<string>()));
+
+        // ── Virtualization / Host / Environment ────────────────────────────────
+        var virtualizationReasons = new List<ClassificationReason>();
+        if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase)))
+        {
+            virtualizationReasons.Add(new("kernel.flavor reports WSL2", new[] { "kernel.flavor" }));
+        }
+        if (e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value)))
+        {
+            virtualizationReasons.Add(new("kernel.release contains microsoft-standard-WSL2", new[] { "kernel.release" }));
+        }
+        if (e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value)))
+        {
+            virtualizationReasons.Add(new("/proc/version contains microsoft-standard-WSL2", new[] { "/proc/version" }));
+        }
+
+        var virtualization = virtualizationReasons.Count > 0
+            ? MakeWithConfidence("WSL2", Confidence.High, virtualizationReasons.ToArray())
+            : MakeWithConfidence("None", probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown, new ClassificationReason("No WSL2 kernel fingerprint detected", new[] { "kernel.release", "/proc/version" }));
+
+        var hostFamily = virtualization.Value == "WSL2"
+            ? MakeWithConfidence("Windows", Confidence.High, new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" }))
+            : MakeWithConfidence("Linux", e.Any(x => x.Key is "kernel.release" or "/proc/version" or "os.id") ? Confidence.High : Confidence.Unknown, new ClassificationReason("Visible kernel does not match WSL2 and remains Linux", new[] { "kernel.release", "/proc/version", "os.id" }));
+
+        var kernelRelease = GetFirstMatchingValue(e, "kernel.release");
+        var kernelMajor = ParseLeadingMajor(kernelRelease);
+        var osId = GetFirstMatchingValue(e, "os.id");
+        var osName = GetFirstMatchingValue(e, "os.name");
+        var prettyName = GetFirstMatchingValue(e, "os.pretty_name");
+        var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
+        var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
+        var procVersion = GetFirstMatchingValue(e, "/proc/version");
+
+        var applianceScore = 0;
+        var applianceReasons = new List<ClassificationReason>();
+        if (IsVendorAppliance(osId, osName, prettyName))
+        {
+            applianceScore += 5;
+            applianceReasons.Add(new("OS release identifies a vendor appliance distribution", new[] { "os.id", "os.name", "os.pretty_name" }));
+        }
+        if (kernelMajor is < 4)
+        {
+            applianceScore += 3;
+            applianceReasons.Add(new("Kernel major version is older than 4.x", new[] { "kernel.release" }));
+        }
+        if (IsKernelUserspaceMismatch(osVersion, kernelMajor))
+        {
+            applianceScore += 3;
+            applianceReasons.Add(new("Kernel version is much older than the detected userspace release", new[] { "kernel.release", "os.version_id", "os.version" }));
+        }
+        if (IsCustomCompiler(kernelCompiler, procVersion))
+        {
+            applianceScore += 2;
+            applianceReasons.Add(new("Kernel compiler/toolchain looks vendor-customized", new[] { "kernel.compiler", "/proc/version" }));
+        }
+
+        var hostType = virtualization.Value == "WSL2"
+            ? MakeWithConfidence("WSL2", Confidence.High, virtualizationReasons.ToArray())
+            : applianceScore >= 5
+                ? Make("Appliance", applianceScore, applianceReasons.ToArray())
+                : kernelMajor is >= 5
+                    ? MakeWithConfidence("StandardLinux", osId is null ? Confidence.Medium : Confidence.High, new ClassificationReason("Modern kernel and userspace do not show appliance mismatch signals", new[] { "kernel.release", "os.id", "os.version_id" }))
+                    : MakeWithConfidence("Unknown", Confidence.Low, new ClassificationReason("Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance", new[] { "kernel.release", "os.version_id", "kernel.compiler" }));
+
+        var environmentReasons = new List<ClassificationReason>();
+        var metadataSuccess = e.Where(IsCloudMetadataSuccess).ToArray();
+        var environmentType = metadataSuccess.Length > 0
+            ? MakeWithConfidence("Cloud", Confidence.High, new ClassificationReason("Cloud metadata endpoint responded successfully", metadataSuccess.Select(item => item.Key).ToArray()))
+            : BuildOnPrem();
+
+        ClassificationResult BuildOnPrem()
+        {
+            var onPremScore = 0;
+            if (probes.Any(probe => probe.ProbeId == "cloud-metadata"))
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("No cloud metadata endpoint succeeded", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome" }));
+            }
+
+            var cpuModel = GetFirstMatchingValue(e, "cpu.model_name");
+            if (IsConsumerCpu(cpuModel))
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("CPU model resembles a consumer/workstation system", new[] { "cpu.model_name" }));
+            }
+
+            var homeDnsSignals = GetValues(e, "dns-search").Where(IsHomeDns).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (homeDnsSignals.Length > 0)
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("DNS search domain looks like a home or LAN network", new[] { "dns-search" }));
+            }
+
+            return onPremScore >= 4
+                ? Make("OnPrem", onPremScore, environmentReasons.ToArray())
+                : MakeWithConfidence("Unknown", onPremScore > 0 ? Confidence.Low : Confidence.Unknown, environmentReasons.Count == 0 ? [new ClassificationReason("No cloud metadata success and no strong on-prem corroboration", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome", "cpu.model_name", "dns-search" })] : environmentReasons.ToArray());
+        }
 
         // ── ContainerRuntime ─────────────────────────────────────────────────────
         var runtimeScore = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -145,8 +310,11 @@ internal static class Classifier
                     : Make("Unknown", 0, new ClassificationReason("No vendor-specific proofs", Array.Empty<string>()));
 
         return new ReportClassification(
-            Make(containerScore > 0 ? "True" : "Unknown", containerScore, containerReasons.ToArray()),
+            isContainerized,
             runtimeClass,
+            virtualization,
+            new HostClassificationResult(hostFamily, hostType),
+            new EnvironmentClassificationResult(environmentType),
             runtimeApi,
             orchestrator,
             cloudProvider,

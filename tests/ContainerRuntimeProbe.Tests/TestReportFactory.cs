@@ -14,6 +14,9 @@ internal static class TestReportFactory
             new ReportClassification(
                 new("True", Confidence.High, []),
                 new("Docker", Confidence.Medium, []),
+                new("None", Confidence.Medium, []),
+                new(new("Linux", Confidence.High, []), new("StandardLinux", Confidence.High, [])),
+                new(new("Cloud", Confidence.Medium, [])),
                 new("DockerEngineApi", Confidence.Medium, []),
                 new("Unknown", Confidence.Unknown, []),
                 new("Azure", Confidence.Medium, []),

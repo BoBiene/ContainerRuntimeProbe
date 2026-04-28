@@ -25,7 +25,7 @@ public sealed class ClassifierTests
     }
 
     [Fact]
-    public void Classifier_NoContainerEvidence_UnknownContainerized()
+    public void Classifier_NoContainerEvidence_ClassifiesAsHost()
     {
         var report = Classifier.Classify([
             new ProbeResult("marker-files", ProbeOutcome.Success, [
@@ -34,8 +34,8 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Unknown", report.IsContainerized.Value);
-        Assert.Equal(Confidence.Unknown, report.IsContainerized.Confidence);
+        Assert.Equal("False", report.IsContainerized.Value);
+        Assert.Equal(Confidence.High, report.IsContainerized.Confidence);
     }
 
     // ── ContainerRuntime scenarios ───────────────────────────────────────────
@@ -358,6 +358,55 @@ public sealed class ClassifierTests
 
         Assert.Equal("Microsoft", report.PlatformVendor.Value);
         Assert.Equal(Confidence.High, report.PlatformVendor.Confidence);
+        Assert.Equal("WSL2", report.Virtualization.Value);
+        Assert.Equal("Windows", report.Host.Family.Value);
+        Assert.Equal("WSL2", report.Host.Type.Value);
+        Assert.Equal("Unknown", report.Environment.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_OldKernelMismatchAndCustomCompiler_DetectsAppliance()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.release", "3.10.108"),
+                new EvidenceItem("proc-files", "kernel.compiler", "gcc version 8.3.0 (crosstool-NG 1.24.0)"),
+                new EvidenceItem("proc-files", "os.id", "debian"),
+                new EvidenceItem("proc-files", "os.version_id", "12"),
+                new EvidenceItem("proc-files", "cpu.model_name", "AMD Ryzen 7 5800U"),
+                new EvidenceItem("proc-files", "dns-search", "fritz.box")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Unavailable")
+            ])
+        ]);
+
+        Assert.Equal("Linux", report.Host.Family.Value);
+        Assert.Equal("Appliance", report.Host.Type.Value);
+        Assert.Equal(Confidence.High, report.Host.Type.Confidence);
+        Assert.Equal("OnPrem", report.Environment.Type.Value);
+        Assert.Equal(Confidence.Medium, report.Environment.Type.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_ModernKernelAndMetadataSuccess_DetectsStandardLinuxInCloud()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.release", "6.6.10-generic"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal("Linux", report.Host.Family.Value);
+        Assert.Equal("StandardLinux", report.Host.Type.Value);
+        Assert.Equal("Cloud", report.Environment.Type.Value);
+        Assert.Equal(Confidence.High, report.Environment.Type.Confidence);
     }
 
     // ── Reasons separation ───────────────────────────────────────────────────
@@ -373,7 +422,10 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        // IsContainerized reasons should only reflect container evidence (socket presence), not runtime API body details
+        // Socket access alone is no longer enough to classify the current process as containerized.
+        Assert.Equal("Unknown", report.IsContainerized.Value);
+
+        // IsContainerized reasons should only reflect container evidence, not runtime API body details
         var containerReasonsText = string.Join("|", report.IsContainerized.Reasons.Select(r => r.Message));
         Assert.DoesNotContain("Weighted score", containerReasonsText, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("API response body", containerReasonsText, StringComparison.OrdinalIgnoreCase);
