@@ -1,6 +1,6 @@
 # ContainerRuntimeProbe
 
-Vendor-neutral .NET 8 runtime probe library + CLI for container/runtime/orchestrator/cloud evidence.
+.NET 8 runtime probe library + CLI for container/runtime/orchestrator/cloud evidence.
 
 ## Build / Test / Pack
 ```bash
@@ -55,13 +55,14 @@ var report = await engine.RunAsync(TimeSpan.FromSeconds(2), includeSensitive: fa
 - explicit warning when docker socket is visible
 
 ## Included probe families (v1)
-- Safe local: markers, mountinfo, routes, DNS, hostnames, os-release, proc version/status, namespaces
-- Runtime API: Docker-compatible and Podman/Libpod Unix socket endpoints
+- Safe local: markers, mountinfo, routes, DNS, hostnames, os-release, proc version, namespaces
+- Security sandbox: Seccomp, NoNewPrivs, capabilities (CapEff/CapBnd/CapPrm), AppArmor profile, SELinux context
+- Runtime API: Docker-compatible and Podman/Libpod Unix socket endpoints; Docker Compose label inspection
 - Kubernetes: env + serviceaccount + optional API reads (`/version`, pod lookup)
-- Cloud/platform: ECS metadata, AWS/Azure/GCP/OCI metadata, Cloud Run/App Service/ACA/Nomad env markers
+- Cloud/platform: ECS metadata, AWS/Azure/GCP/OCI metadata, Cloud Run/App Service/ACA/Nomad/IoTEdge env markers
 
 ## Example reports
-- real in-container run: `docs/examples/report-from-container.md`, `docs/examples/report-from-container.json`
+- in-container run (no socket): `docs/examples/report-from-container.md`, `docs/examples/report-from-container.json`
 - docker-socket run plan + expected evidence: `docs/examples/report-with-docker-socket.md`, `docs/examples/report-with-docker-socket.json`
 
 ## Versioning

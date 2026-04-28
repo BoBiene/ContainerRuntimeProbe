@@ -4,7 +4,7 @@
     <RootNamespace>ContainerRuntimeProbe</RootNamespace>
     <PackageId>ContainerRuntimeProbe</PackageId>
     <Version>0.1.0-preview.2</Version>
-    <Description>Vendor-neutral runtime probing library for containerized environments.</Description>
+    <Description>Runtime probing library for containerized environments.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>ContainerRuntimeProbe Contributors</Authors>
     <PackageTags>container diagnostics runtime docker podman kubernetes ecs azure gcp oci</PackageTags>
