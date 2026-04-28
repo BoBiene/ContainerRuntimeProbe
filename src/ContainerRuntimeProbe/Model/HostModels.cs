@@ -67,6 +67,8 @@ public enum KernelFlavor
     RaspberryPi,
     Realtime,
     LowLatency,
+    Embedded,
+    Qnap,
     Synology,
     Ubuntu,
     Debian
