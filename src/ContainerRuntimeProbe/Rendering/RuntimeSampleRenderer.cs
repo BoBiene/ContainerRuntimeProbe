@@ -14,6 +14,8 @@ public static class RuntimeSampleRenderer
     private const string CompactFormatVersion = "crp1";
     private const string DefaultTemplate = "runtime-sample.yml";
     private const string DefaultRepository = "BoBiene/ContainerRuntimeProbe";
+    private const int CompactTokenLengthLimit = 80;
+    private const int CoreSignalLimit = 6;
     private static readonly Regex SafeTokenRegex = new("^[A-Za-z0-9._:-]+$", RegexOptions.Compiled);
 
     /// <summary>Builds sample artifacts from a report.</summary>
@@ -187,7 +189,7 @@ public static class RuntimeSampleRenderer
             var safeTokens = new List<string>(tokens.Length);
             foreach (var token in tokens)
             {
-                if (token.Length > 80 || !SafeTokenRegex.IsMatch(token) || token.Contains("http", StringComparison.OrdinalIgnoreCase) || token.Contains("token", StringComparison.OrdinalIgnoreCase))
+                if (IsSuspiciousToken(token))
                 {
                     diagnostics.Add($"Suspicious token '{token}' in section '{key}'.");
                     valid = false;
@@ -750,7 +752,7 @@ public static class RuntimeSampleRenderer
         {
             SignalReductionMode.All => signals,
             SignalReductionMode.Priority => signals.Where(signal => signal is "de" or "ce" or "wsl" or "ke" or "ksa" or "dockersock" or "podmansock" || signal.StartsWith("cg:", StringComparison.Ordinal) || signal.StartsWith("mt:", StringComparison.Ordinal) || signal.StartsWith("kf:", StringComparison.Ordinal) || signal.StartsWith("api:", StringComparison.Ordinal) || signal.StartsWith("md:", StringComparison.Ordinal)),
-            SignalReductionMode.Core => signals.Where(signal => signal is "de" or "ce" or "wsl" || signal.StartsWith("cg:", StringComparison.Ordinal) || signal.StartsWith("kf:", StringComparison.Ordinal) || signal.StartsWith("api:", StringComparison.Ordinal)).Take(6),
+            SignalReductionMode.Core => signals.Where(signal => signal is "de" or "ce" or "wsl" || signal.StartsWith("cg:", StringComparison.Ordinal) || signal.StartsWith("kf:", StringComparison.Ordinal) || signal.StartsWith("api:", StringComparison.Ordinal)).Take(CoreSignalLimit),
             _ => signals
         };
 
@@ -876,6 +878,7 @@ public static class RuntimeSampleRenderer
     {
         var family = os.Family.ToLowerInvariant();
         var digits = Regex.Match(os.Version ?? string.Empty, @"\d+(?:\.\d+)?").Value.Replace(".", string.Empty, StringComparison.Ordinal);
+        var fallbackId = os.Id ?? family;
         return family switch
         {
             "debian" => $"deb{TrimDigits(digits, 2, "0")}",
@@ -884,7 +887,7 @@ public static class RuntimeSampleRenderer
             "mariner" => $"mariner{TrimDigits(digits, 1, "0")}",
             "azurelinux" => $"mariner{TrimDigits(digits, 1, "0")}",
             "windowsserver" or "windowsservercore" or "windowsnanoserver" => $"win{TrimDigits(digits, 4, "0")}",
-            _ => string.IsNullOrWhiteSpace(digits) ? (os.Id ?? "unk") : $"{(os.Id ?? family)[..Math.Min(3, (os.Id ?? family).Length)]}{digits}"
+            _ => string.IsNullOrWhiteSpace(digits) ? (os.Id ?? "unk") : $"{fallbackId[..Math.Min(3, fallbackId.Length)]}{digits}"
         };
 
         static string TrimDigits(string digits, int maxLength, string fallback)
@@ -902,9 +905,9 @@ public static class RuntimeSampleRenderer
         }
 
         var lower = hostOs.Name.ToLowerInvariant();
-        if (lower.Contains("ubuntu", StringComparison.Ordinal)) return $"ubu{Regex.Match(lower, @"\d+").Value}";
-        if (lower.Contains("debian", StringComparison.Ordinal)) return $"deb{Regex.Match(lower, @"\d+").Value}";
-        if (lower.Contains("windows", StringComparison.Ordinal)) return $"win{Regex.Match(lower, @"\d+").Value}";
+        if (lower.Contains("ubuntu", StringComparison.Ordinal)) return $"ubu{FirstDigits(lower)}";
+        if (lower.Contains("debian", StringComparison.Ordinal)) return $"deb{FirstDigits(lower)}";
+        if (lower.Contains("windows", StringComparison.Ordinal)) return $"win{FirstDigits(lower)}";
         return AsciiToken(lower.Length > 12 ? lower[..12] : lower);
     }
 
@@ -1020,6 +1023,18 @@ public static class RuntimeSampleRenderer
         var assembly = typeof(ContainerRuntimeProbeEngine).Assembly;
         var informational = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
         return string.IsNullOrWhiteSpace(informational) ? assembly.GetName().Version?.ToString() ?? "0.0.0" : informational;
+    }
+
+    private static bool IsSuspiciousToken(string token)
+        => token.Length > CompactTokenLengthLimit
+           || !SafeTokenRegex.IsMatch(token)
+           || token.Contains("http", StringComparison.OrdinalIgnoreCase)
+           || token.Contains("token", StringComparison.OrdinalIgnoreCase);
+
+    private static string FirstDigits(string value)
+    {
+        var digits = Regex.Match(value, @"\d+").Value;
+        return string.IsNullOrWhiteSpace(digits) ? "0" : digits;
     }
 
     private static bool IsRecognizedClassificationToken(string token)

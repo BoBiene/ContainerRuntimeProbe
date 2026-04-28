@@ -34,7 +34,7 @@ public sealed class SampleRegressionTests
             Assert.DoesNotContain("\"hostname\":", lower, StringComparison.Ordinal);
             Assert.DoesNotContain("\"instanceid\":", lower, StringComparison.Ordinal);
 
-            var txtFile = Path.ChangeExtension(jsonFile, ".txt").Replace(".sample.txt", ".sample.txt", StringComparison.Ordinal);
+            var txtFile = Path.ChangeExtension(jsonFile, ".txt");
             if (File.Exists(txtFile))
             {
                 var txt = File.ReadAllText(txtFile).Trim();

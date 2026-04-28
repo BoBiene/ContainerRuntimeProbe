@@ -50,30 +50,26 @@ static async Task<int> MainAsync(string[] args)
                     command = "sample";
                     break;
                 case "--format":
-                    if (++i >= args.Length)
-                    {
-                        throw new ArgumentException("Missing value for --format.");
-                    }
-
-                    if (string.Equals(command, "sample", StringComparison.OrdinalIgnoreCase)) sampleFormat = args[i];
-                    else reportFormat = args[i];
+                    var formatValue = GetRequiredValue(args, ref i, "--format");
+                    if (string.Equals(command, "sample", StringComparison.OrdinalIgnoreCase)) sampleFormat = formatValue;
+                    else reportFormat = formatValue;
                     break;
-                case "--body-format": bodyFormat = args[++i]; break;
-                case "--repo": repo = args[++i]; break;
-                case "--scenario": scenario = args[++i]; break;
-                case "--expected": expected = args[++i]; break;
-                case "--issue-template": issueTemplate = args[++i]; break;
-                case "--max-url-length": maxUrlLength = int.Parse(args[++i]); break;
+                case "--body-format": bodyFormat = GetRequiredValue(args, ref i, "--body-format"); break;
+                case "--repo": repo = GetRequiredValue(args, ref i, "--repo"); break;
+                case "--scenario": scenario = GetRequiredValue(args, ref i, "--scenario"); break;
+                case "--expected": expected = GetRequiredValue(args, ref i, "--expected"); break;
+                case "--issue-template": issueTemplate = GetRequiredValue(args, ref i, "--issue-template"); break;
+                case "--max-url-length": maxUrlLength = int.Parse(GetRequiredValue(args, ref i, "--max-url-length")); break;
                 case "--url-only": urlOnly = true; break;
                 case "--body-only": bodyOnly = true; break;
                 case "--sample-only": sampleOnly = true; break;
-                case "--full-report": fullReport = args[++i]; break;
-                case "--include-sensitive": includeSensitive = bool.Parse(args[++i]); break;
-                case "--timeout": timeout = TimeSpan.Parse(args[++i]); break;
-                case "--probe": probes = args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase); break;
-                case "--output": output = args[++i]; break;
+                case "--full-report": fullReport = GetRequiredValue(args, ref i, "--full-report"); break;
+                case "--include-sensitive": includeSensitive = bool.Parse(GetRequiredValue(args, ref i, "--include-sensitive")); break;
+                case "--timeout": timeout = TimeSpan.Parse(GetRequiredValue(args, ref i, "--timeout")); break;
+                case "--probe": probes = GetRequiredValue(args, ref i, "--probe").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase); break;
+                case "--output": output = GetRequiredValue(args, ref i, "--output"); break;
                 case "--list-probes": listProbes = true; break;
-                case "--fingerprint": fingerprintMode = Enum.Parse<FingerprintMode>(args[++i], ignoreCase: true); break;
+                case "--fingerprint": fingerprintMode = Enum.Parse<FingerprintMode>(GetRequiredValue(args, ref i, "--fingerprint"), ignoreCase: true); break;
                 default:
                     Console.Error.WriteLine($"Invalid argument: {arg}");
                     PrintHelp();
@@ -83,7 +79,7 @@ static async Task<int> MainAsync(string[] args)
 
         if (maxUrlLength < 256)
         {
-            throw new ArgumentException("--max-url-length must be at least 256.");
+            throw new ArgumentException($"--max-url-length must be at least 256, but got {maxUrlLength}.");
         }
 
         var engine = new ContainerRuntimeProbeEngine();
@@ -161,16 +157,21 @@ static async Task<int> MainAsync(string[] args)
         Console.Error.WriteLine(ex.Message);
         return 2;
     }
-    catch (IndexOutOfRangeException)
-    {
-        Console.Error.WriteLine("Missing value for argument.");
-        return 2;
-    }
     catch (Exception ex)
     {
         Console.Error.WriteLine(ex);
         return 1;
     }
+}
+
+static string GetRequiredValue(IReadOnlyList<string> args, ref int index, string option)
+{
+    if (++index >= args.Count)
+    {
+        throw new ArgumentException($"Missing value for {option}.");
+    }
+
+    return args[index];
 }
 
 static string DetectCommand(IReadOnlyList<string> args)
