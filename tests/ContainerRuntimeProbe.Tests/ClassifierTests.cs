@@ -242,6 +242,49 @@ public sealed class ClassifierTests
         Assert.Equal("Unknown", report.CloudProvider.Value);
     }
 
+    [Fact]
+    public void Classifier_CloudProbeWithoutOnPremSignals_RemainsUnknown()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable")
+            ])
+        ]);
+
+        Assert.Equal("Unknown", report.Environment.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_OnPremDmiVendor_DetectsOnPrem()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable")
+            ]),
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Dell Inc.")
+            ])
+        ]);
+
+        Assert.Equal("OnPrem", report.Environment.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_CorporateDns_ContributesToOnPremScore()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Lenovo"),
+                new EvidenceItem("proc-files", "dns-search", "corp.example.com")
+            ])
+        ]);
+
+        Assert.Equal("OnPrem", report.Environment.Type.Value);
+        Assert.Contains(report.Environment.Type.Reasons, reason => reason.Message.Contains("managed corporate network", StringComparison.OrdinalIgnoreCase));
+    }
+
     // ── PlatformVendor / Siemens IE scenarios ────────────────────────────────
 
     [Fact]

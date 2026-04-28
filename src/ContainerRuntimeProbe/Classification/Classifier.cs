@@ -57,6 +57,15 @@ internal static class Classifier
                    || dnsDomain.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
                    || dnsDomain.EndsWith("fritz.box", StringComparison.OrdinalIgnoreCase));
 
+        static bool IsCorporateDns(string? dnsDomain)
+            => !string.IsNullOrWhiteSpace(dnsDomain)
+               && dnsDomain.Contains('.', StringComparison.Ordinal)
+               && !IsHomeDns(dnsDomain);
+
+        static bool IsOnPremDmiVendor(string? dmiVendor)
+            => ContainsAny(dmiVendor, "dell", "lenovo", "hewlett-packard", "hp", "asus", "asustek", "supermicro", "gigabyte", "msi", "fujitsu", "vmware", "qemu", "innotek", "oracle virtualbox")
+               && !ContainsAny(dmiVendor, "amazon ec2", "google", "microsoft corporation", "oraclecloud", "alibaba");
+
         static bool IsCustomCompiler(string? compiler, string? procVersion)
             => ContainsAny(compiler, "crosstool", "buildroot", "uclibc", "musl", "synology", "qnap")
                || ContainsAny(procVersion, "crosstool", "buildroot", "uclibc", "synology", "qnap");
@@ -168,9 +177,8 @@ internal static class Classifier
         ClassificationResult BuildOnPrem()
         {
             var onPremScore = 0;
-            if (probes.Any(probe => probe.ProbeId == "cloud-metadata"))
+            if (probes.Any(probe => probe.ProbeId == "cloud-metadata") && metadataSuccess.Length == 0)
             {
-                onPremScore += 2;
                 environmentReasons.Add(new("No cloud metadata endpoint succeeded", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome" }));
             }
 
@@ -186,6 +194,20 @@ internal static class Classifier
             {
                 onPremScore += 2;
                 environmentReasons.Add(new("DNS search domain looks like a home or LAN network", new[] { "dns-search" }));
+            }
+
+            var corporateDnsSignals = GetValues(e, "dns-search").Where(IsCorporateDns).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (corporateDnsSignals.Length > 0)
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("DNS search domain looks like a managed corporate network", new[] { "dns-search" }));
+            }
+
+            var dmiVendor = GetFirstMatchingValue(e, "dmi.sys_vendor");
+            if (IsOnPremDmiVendor(dmiVendor))
+            {
+                onPremScore += 4;
+                environmentReasons.Add(new("DMI vendor resembles non-cloud workstation/server hardware", new[] { "dmi.sys_vendor" }));
             }
 
             return onPremScore >= 4

@@ -91,6 +91,7 @@ internal sealed class ProcFilesProbe : IProbe
         "/etc/os-release", "/usr/lib/os-release",
         "/proc/version", "/proc/sys/kernel/osrelease", "/proc/sys/kernel/ostype", "/proc/sys/kernel/version",
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
+        "/sys/devices/virtual/dmi/id/sys_vendor", "/sys/devices/virtual/dmi/id/product_name",
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
@@ -205,6 +206,14 @@ internal sealed class ProcFilesProbe : IProbe
                 var key = file.Split('/').Last();
                 AddEvidenceIfPresent(evidence, $"cpu.{key}", text?.Trim());
                 AddEvidenceIfPresent(evidence, $"cpu.{key}.count", HostParsing.ParseCpuRangeCount(text)?.ToString());
+            }
+            else if (file == "/sys/devices/virtual/dmi/id/sys_vendor")
+            {
+                AddEvidenceIfPresent(evidence, "dmi.sys_vendor", text?.Trim());
+            }
+            else if (file == "/sys/devices/virtual/dmi/id/product_name")
+            {
+                AddEvidenceIfPresent(evidence, "dmi.product_name", text?.Trim());
             }
             else if (file == "/proc/meminfo")
             {
