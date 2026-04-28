@@ -81,7 +81,7 @@ public sealed class SecuritySandboxProbeTests
     [Fact]
     public void SecuritySandboxProbe_IsIncludedInDefaultProbeSet()
     {
-        var engine = new RuntimeProbeEngine();
+        var engine = new ContainerRuntimeProbeEngine();
         Assert.Contains("security-sandbox", engine.ProbeIds);
     }
 
@@ -89,7 +89,7 @@ public sealed class SecuritySandboxProbeTests
     public async Task SecuritySandboxProbe_DoesNotDuplicateStatusFields_WithProcFilesProbe()
     {
         // ProcFilesProbe no longer reads /proc/self/status; verify no overlap in a full engine run
-        var engine = new RuntimeProbeEngine();
+        var engine = new ContainerRuntimeProbeEngine();
         var report = await engine.RunAsync(TimeSpan.FromMilliseconds(500), includeSensitive: false);
 
         // proc-files probe should not contain status.Seccomp etc.

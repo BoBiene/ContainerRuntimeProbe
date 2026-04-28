@@ -43,7 +43,7 @@ dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj 
 
 ## Library usage
 ```csharp
-var engine = new RuntimeProbeEngine();
+var engine = new ContainerRuntimeProbeEngine();
 var report = await engine.RunAsync(TimeSpan.FromSeconds(2), includeSensitive: false);
 ```
 

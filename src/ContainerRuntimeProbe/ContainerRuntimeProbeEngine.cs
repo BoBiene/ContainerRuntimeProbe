@@ -9,12 +9,12 @@ namespace ContainerRuntimeProbe;
 /// <summary>
 /// Runs configured probes, collects evidence and returns a normalized report with weighted classification.
 /// </summary>
-public sealed class RuntimeProbeEngine
+public sealed class ContainerRuntimeProbeEngine
 {
     private readonly IReadOnlyList<IProbe> _probes;
 
     /// <summary>Initializes an engine with the default probe set or a custom probe collection.</summary>
-    public RuntimeProbeEngine(IEnumerable<IProbe>? probes = null)
+    public ContainerRuntimeProbeEngine(IEnumerable<IProbe>? probes = null)
     {
         _probes = (probes ?? new IProbe[]
         {
