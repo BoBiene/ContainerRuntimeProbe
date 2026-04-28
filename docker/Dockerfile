@@ -1,13 +1,14 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG TARGETOS=linux
-ARG TARGETARCH=amd64
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /src
 COPY . .
-RUN [ -n "$TARGETARCH" ] || { echo "TARGETARCH must not be empty" >&2; exit 1; } \
-    && case "$TARGETARCH" in \
-        amd64) runtime_id="${TARGETOS}-x64" ;; \
-        arm64) runtime_id="${TARGETOS}-arm64" ;; \
-        *) echo "Unsupported target architecture: $TARGETARCH" >&2; exit 1 ;; \
+RUN target_os="${TARGETOS:-linux}" \
+    && target_arch="${TARGETARCH:-amd64}" \
+    && case "$target_arch" in \
+        amd64) runtime_id="${target_os}-x64" ;; \
+        arm64) runtime_id="${target_os}-arm64" ;; \
+        *) echo "Unsupported target architecture: $target_arch" >&2; exit 1 ;; \
     esac \
     && dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
         -c Release -r "$runtime_id" -p:PublishTrimmed=true --self-contained true -o /app
