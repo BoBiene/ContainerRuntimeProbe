@@ -45,7 +45,7 @@ internal static class Parsing
     {
         // cgroup v2: single line "0::/<path>"
         // cgroup v1: multiple lines like "12:memory:/docker/<id>" or "1:name=systemd:/kubepods/..."
-        var containerSignals = new[] { "/docker/", "/kubepods/", "/lxc/", "podman", "/containerd/", "/actions_job/" };
+        var containerSignals = new[] { "/docker/", "/kubepods/", "/lxc/", "podman", "libpod", "/containerd/", "/actions_job/" };
         foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries).Take(50))
         {
             if (containerSignals.Any(s => line.Contains(s, StringComparison.OrdinalIgnoreCase)))
