@@ -41,6 +41,12 @@ internal static class HttpProbe
 
     internal static int SharedNetworkHandlerCount => SharedNetworkHandlers.Count;
 
+    internal static object? GetSharedNetworkHandlerForBaseAddress(Uri baseAddress)
+    {
+        var key = $"{baseAddress.Scheme}://{baseAddress.IdnHost}:{baseAddress.Port}";
+        return SharedNetworkHandlers.TryGetValue(key, out var handler) ? handler : null;
+    }
+
     public static async Task<(ProbeOutcome outcome, string? body, int? status, string? message)> GetAsync(HttpClient client, string path, Dictionary<string, string>? headers = null, CancellationToken ct = default)
     {
         try

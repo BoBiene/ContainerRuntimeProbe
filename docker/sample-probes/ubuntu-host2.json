@@ -776,7 +776,7 @@
         }
       ],
       "Warnings": [
-        "Fingerprint is diagnostic only and not a security identity."
+"Fingerprintisdiagnosticonlyandnotasecurityidentity."
       ]
     }
   }

@@ -47,17 +47,23 @@ public sealed class RuntimeApiProbeMetadataTests
     [Fact]
     public void CreateNetworkClient_SharedPool_ReusesHandlersPerBaseAddress()
     {
-        var baseline = HttpProbe.SharedNetworkHandlerCount;
+        var firstBaseAddress = new Uri($"http://shared-{Guid.NewGuid():N}.example");
+        var secondBaseAddress = new Uri($"http://shared-{Guid.NewGuid():N}.example");
 
-        using var aws = HttpProbe.CreateNetworkClient(new Uri("http://169.254.169.254"), TimeSpan.FromSeconds(1), shareConnectionPool: true);
-        using var azure = HttpProbe.CreateNetworkClient(new Uri("http://169.254.169.254"), TimeSpan.FromSeconds(1), shareConnectionPool: true);
-        using var oci = HttpProbe.CreateNetworkClient(new Uri("http://169.254.169.254"), TimeSpan.FromSeconds(1), shareConnectionPool: true);
-        using var gcp = HttpProbe.CreateNetworkClient(new Uri("http://metadata.google.internal"), TimeSpan.FromSeconds(1), shareConnectionPool: true);
+        using var first = HttpProbe.CreateNetworkClient(firstBaseAddress, TimeSpan.FromSeconds(1), shareConnectionPool: true);
+        using var second = HttpProbe.CreateNetworkClient(firstBaseAddress, TimeSpan.FromSeconds(1), shareConnectionPool: true);
+        using var third = HttpProbe.CreateNetworkClient(secondBaseAddress, TimeSpan.FromSeconds(1), shareConnectionPool: true);
 
-        Assert.Equal(baseline + 2, HttpProbe.SharedNetworkHandlerCount);
-        Assert.Equal(new Uri("http://169.254.169.254"), aws.BaseAddress);
-        Assert.Equal(new Uri("http://169.254.169.254"), azure.BaseAddress);
-        Assert.Equal(new Uri("http://169.254.169.254"), oci.BaseAddress);
-        Assert.Equal(new Uri("http://metadata.google.internal"), gcp.BaseAddress);
+        Assert.Equal(firstBaseAddress, first.BaseAddress);
+        Assert.Equal(firstBaseAddress, second.BaseAddress);
+        Assert.Equal(secondBaseAddress, third.BaseAddress);
+
+        var firstHandler = HttpProbe.GetSharedNetworkHandlerForBaseAddress(firstBaseAddress);
+        var secondHandler = HttpProbe.GetSharedNetworkHandlerForBaseAddress(firstBaseAddress);
+        var thirdHandler = HttpProbe.GetSharedNetworkHandlerForBaseAddress(secondBaseAddress);
+
+        Assert.NotNull(firstHandler);
+        Assert.Same(firstHandler, secondHandler);
+        Assert.NotSame(firstHandler, thirdHandler);
     }
 }

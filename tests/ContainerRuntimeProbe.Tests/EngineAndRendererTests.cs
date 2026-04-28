@@ -41,29 +41,51 @@ public sealed class EngineAndRendererTests
     [Fact]
     public async Task RunAsync_ExecutesProbesInParallel()
     {
+        var coordinator = new ParallelProbeCoordinator(expectedStarts: 3);
         var engine = new ContainerRuntimeProbeEngine(
         [
-            new DelayedProbe("first", TimeSpan.FromMilliseconds(150)),
-            new DelayedProbe("second", TimeSpan.FromMilliseconds(150)),
-            new DelayedProbe("third", TimeSpan.FromMilliseconds(150))
+            new CoordinatedProbe("first", coordinator),
+            new CoordinatedProbe("second", coordinator),
+            new CoordinatedProbe("third", coordinator)
         ]);
 
-        var startedAt = DateTimeOffset.UtcNow;
-        var report = await engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
-        var elapsed = DateTimeOffset.UtcNow - startedAt;
+        var runTask = engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
+
+        await coordinator.AllStarted.Task.WaitAsync(TimeSpan.FromSeconds(2));
+        coordinator.Release.TrySetResult();
+
+        var report = await runTask;
 
         Assert.Equal(3, report.Probes.Count);
-        Assert.True(elapsed < TimeSpan.FromMilliseconds(350), $"Expected parallel probe execution, but took {elapsed}.");
+        Assert.Equal(3, coordinator.StartedCount);
     }
 
-    private sealed class DelayedProbe(string id, TimeSpan delay) : IProbe
+    private sealed class CoordinatedProbe(string id, ParallelProbeCoordinator coordinator) : IProbe
     {
         public string Id => id;
 
         public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
         {
-            await Task.Delay(delay, context.CancellationToken);
+            coordinator.SignalStarted();
+            await coordinator.Release.Task.WaitAsync(context.CancellationToken);
             return new ProbeResult(id, ProbeOutcome.Success, []);
+        }
+    }
+
+    private sealed class ParallelProbeCoordinator(int expectedStarts)
+    {
+        private int _startedCount;
+
+        public TaskCompletionSource AllStarted { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public int StartedCount => _startedCount;
+
+        public void SignalStarted()
+        {
+            if (Interlocked.Increment(ref _startedCount) == expectedStarts)
+            {
+                AllStarted.TrySetResult();
+            }
         }
     }
 }
