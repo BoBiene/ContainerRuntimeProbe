@@ -7,13 +7,20 @@ namespace ContainerRuntimeProbe.Probes;
 
 internal static class ProbeIo
 {
+    /// <summary>Maximum number of bytes to read from a probe file. Prevents memory issues on large /proc files.</summary>
+    private const int MaxReadBytes = 262_144; // 256 KB
+
     public static async Task<(ProbeOutcome outcome, string? text, string? message)> ReadFileAsync(string path, TimeSpan timeout, CancellationToken ct)
     {
         try
         {
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(timeout);
-            var text = await File.ReadAllTextAsync(path, cts.Token).ConfigureAwait(false);
+
+            await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
+            var buffer = new byte[MaxReadBytes];
+            var bytesRead = await fs.ReadAsync(buffer.AsMemory(0, MaxReadBytes), cts.Token).ConfigureAwait(false);
+            var text = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
             return (ProbeOutcome.Success, text, null);
         }
         catch (UnauthorizedAccessException ex) { return (ProbeOutcome.AccessDenied, null, ex.Message); }
@@ -66,7 +73,15 @@ internal sealed class EnvironmentProbe : IProbe
 internal sealed class ProcFilesProbe : IProbe
 {
     public string Id => "proc-files";
-    private static readonly string[] Files = ["/proc/self/mountinfo", "/proc/1/mountinfo", "/proc/net/route", "/etc/resolv.conf", "/etc/hostname", "/proc/sys/kernel/hostname", "/etc/os-release", "/proc/version", "/proc/self/status"];
+    private static readonly string[] Files =
+    [
+        "/proc/1/cgroup", "/proc/self/cgroup",
+        "/proc/self/mountinfo", "/proc/1/mountinfo",
+        "/proc/net/route", "/etc/resolv.conf",
+        "/etc/hostname", "/proc/sys/kernel/hostname",
+        "/etc/os-release", "/usr/lib/os-release",
+        "/proc/version", "/proc/self/status"
+    ];
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
     {
@@ -74,19 +89,31 @@ internal sealed class ProcFilesProbe : IProbe
         var evidence = new List<EvidenceItem>();
         var final = ProbeOutcome.Success;
         string? message = null;
+        var osReleaseRead = false;
 
         foreach (var file in Files)
         {
+            // Skip /usr/lib/os-release if /etc/os-release was successfully read
+            if (file == "/usr/lib/os-release" && osReleaseRead) continue;
+
             var (outcome, text, msg) = await ProbeIo.ReadFileAsync(file, context.Timeout, context.CancellationToken).ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
             {
-                final = outcome;
-                message = msg;
+                if (outcome != ProbeOutcome.Unavailable)
+                {
+                    final = outcome;
+                    message = msg;
+                }
                 evidence.Add(new EvidenceItem(Id, file, outcome.ToString()));
                 continue;
             }
 
-            if (file.Contains("mountinfo", StringComparison.Ordinal))
+            if (file == "/proc/1/cgroup" || file == "/proc/self/cgroup")
+            {
+                foreach (var signal in Parsing.ParseCgroupSignals(text!))
+                    evidence.Add(new EvidenceItem(Id, $"{file}:signal", signal));
+            }
+            else if (file.Contains("mountinfo", StringComparison.Ordinal))
             {
                 foreach (var signal in Parsing.ParseMountInfoSignals(text!)) evidence.Add(new EvidenceItem(Id, $"{file}:signal", signal));
             }
@@ -99,11 +126,12 @@ internal sealed class ProcFilesProbe : IProbe
                 foreach (var domain in Parsing.ParseResolvSearchDomains(text!)) evidence.Add(new EvidenceItem(Id, "dns-search", domain));
                 if (text!.Contains("127.0.0.11", StringComparison.Ordinal)) evidence.Add(new EvidenceItem(Id, "docker-dns", "127.0.0.11"));
             }
-            else if (file == "/etc/os-release")
+            else if (file == "/etc/os-release" || file == "/usr/lib/os-release")
             {
                 var kv = Parsing.ParseKeyValueLines(text!.Split('\n'));
                 if (kv.TryGetValue("ID", out var id)) evidence.Add(new EvidenceItem(Id, "os.id", id));
                 if (kv.TryGetValue("VERSION_ID", out var ver)) evidence.Add(new EvidenceItem(Id, "os.version", ver));
+                osReleaseRead = true;
             }
             else if (file == "/proc/self/status")
             {
@@ -131,6 +159,14 @@ internal sealed class ProcFilesProbe : IProbe
             {
                 evidence.Add(new EvidenceItem(Id, $"ns.{ns}", "unavailable"));
             }
+        }
+
+        // cgroup v2 memory limit (if available)
+        foreach (var limitFile in new[] { "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes" })
+        {
+            var (oc, txt, _) = await ProbeIo.ReadFileAsync(limitFile, context.Timeout, context.CancellationToken).ConfigureAwait(false);
+            if (oc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(txt))
+                evidence.Add(new EvidenceItem(Id, $"cgroup.memory.limit:{limitFile}", txt.Trim()));
         }
 
         sw.Stop();

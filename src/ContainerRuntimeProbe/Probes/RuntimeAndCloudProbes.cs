@@ -56,8 +56,22 @@ internal sealed class RuntimeApiProbe : IProbe
         var sw = Stopwatch.StartNew();
         var evidence = new List<EvidenceItem>();
         var sockets = new List<string> { "/var/run/docker.sock", "/run/docker.sock", "/run/podman/podman.sock", "/var/run/podman/podman.sock" };
-        var uid = Environment.GetEnvironmentVariable("UID") ?? "0";
-        sockets.Add($"/run/user/{uid}/podman/podman.sock");
+
+        // Discover per-user Podman sockets via XDG_RUNTIME_DIR or by enumerating /run/user/
+        var xdgDir = Environment.GetEnvironmentVariable("XDG_RUNTIME_DIR");
+        if (!string.IsNullOrWhiteSpace(xdgDir))
+        {
+            sockets.Add(Path.Combine(xdgDir, "podman", "podman.sock"));
+        }
+        else if (Directory.Exists("/run/user"))
+        {
+            try
+            {
+                foreach (var dir in Directory.GetDirectories("/run/user"))
+                    sockets.Add(Path.Combine(dir, "podman", "podman.sock"));
+            }
+            catch { /* /run/user may be unreadable */ }
+        }
 
         foreach (var socket in sockets.Distinct())
         {

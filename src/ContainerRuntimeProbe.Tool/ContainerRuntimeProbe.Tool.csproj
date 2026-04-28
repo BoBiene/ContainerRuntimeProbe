@@ -11,7 +11,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>ContainerRuntimeProbe Contributors</Authors>
     <PackageTags>container diagnostics cli runtime docker podman kubernetes</PackageTags>
-    <PackageProjectUrl>https://github.com/example/ContainerRuntimeProbe</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/BoBiene/ContainerRuntimeProbe</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>

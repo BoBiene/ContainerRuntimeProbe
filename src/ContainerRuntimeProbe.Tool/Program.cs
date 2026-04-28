@@ -48,8 +48,14 @@ static async Task<int> MainAsync(string[] args)
             "json" => ReportRenderer.ToJson(report),
             "markdown" => ReportRenderer.ToMarkdown(report),
             "text" => ReportRenderer.ToText(report),
-            _ => throw new ArgumentException("--format must be one of: json|markdown|text")
+            _ => null
         };
+
+        if (rendered is null)
+        {
+            Console.Error.WriteLine($"--format must be one of: json|markdown|text (got: {format})");
+            return 2;
+        }
 
         if (string.IsNullOrWhiteSpace(output)) Console.WriteLine(rendered);
         else await File.WriteAllTextAsync(output, rendered).ConfigureAwait(false);

@@ -8,7 +8,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Authors>ContainerRuntimeProbe Contributors</Authors>
     <PackageTags>container diagnostics runtime docker podman kubernetes ecs azure gcp oci</PackageTags>
-    <PackageProjectUrl>https://github.com/example/ContainerRuntimeProbe</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/BoBiene/ContainerRuntimeProbe</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
   </PropertyGroup>
