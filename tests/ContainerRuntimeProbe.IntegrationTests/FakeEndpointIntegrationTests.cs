@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
@@ -27,14 +28,8 @@ public sealed class FakeEndpointIntegrationTests
                     await sw.WriteAsync("{}");
                     ctx.Response.Close();
                 }
-                catch (ObjectDisposedException)
-                {
-                    break;
-                }
-                catch (HttpListenerException)
-                {
-                    break;
-                }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
             }
         });
 
@@ -46,6 +41,263 @@ public sealed class FakeEndpointIntegrationTests
         cts.Cancel();
         listener.Stop();
         await server;
+    }
+
+    // ── Compose label extraction unit tests (no HTTP, pure JSON parsing) ─────
+
+    [Fact]
+    public void ComposeLabels_ExtractFromInspectJson_ReturnsKnownLabels()
+    {
+        const string json = """
+            {
+              "Config": {
+                "Labels": {
+                  "com.docker.compose.project": "myproject",
+                  "com.docker.compose.service": "web",
+                  "com.docker.compose.version": "2.24.0",
+                  "com.docker.compose.container-number": "1",
+                  "com.example.custom": "should-be-ignored"
+                }
+              }
+            }
+            """;
+
+        var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
+
+        Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.project" && e.Value == "myproject");
+        Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.service" && e.Value == "web");
+        Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.version" && e.Value == "2.24.0");
+        Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.container-number" && e.Value == "1");
+        // Unknown labels must NOT be emitted
+        Assert.DoesNotContain(items, e => e.Key.Contains("custom"));
+    }
+
+    [Fact]
+    public void ComposeLabels_ExtractFromInspectJson_NoLabels_ReturnsEmpty()
+    {
+        const string json = """{"Config":{"Labels":{}}}""";
+        var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public void ComposeLabels_ExtractFromInspectJson_NoConfigSection_ReturnsEmpty()
+    {
+        const string json = """{"Id":"abc123"}""";
+        var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public void ComposeLabels_ExtractFromInspectJson_InvalidJson_ReturnsEmpty()
+    {
+        var items = ComposeLabels.ExtractFromInspectJson("runtime-api", "not-json{{").ToList();
+        Assert.Empty(items);
+    }
+
+    [Fact]
+    public void ComposeLabels_ExtractFromInspectJson_LongPathValue_IsTruncatedAt256()
+    {
+        var longPath = new string('/', 300);
+        var json = $"{{\"Config\":{{\"Labels\":{{\"com.docker.compose.project.working_dir\":\"{longPath}\"}}}}}}";
+        var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
+        Assert.Single(items);
+        Assert.Equal(256, items[0].Value?.Length);
+    }
+
+    // ── Kubernetes probe integration test ─────────────────────────────────────
+
+    [Fact]
+    public async Task KubernetesProbe_FakeServer_ApiVersionSuccess()
+    {
+        // Arrange: create temp service-account files
+        var tmpDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tmpDir);
+        var tokenFile = Path.Combine(tmpDir, "token");
+        var nsFile = Path.Combine(tmpDir, "namespace");
+        await File.WriteAllTextAsync(tokenFile, "fake-bearer-token");
+        await File.WriteAllTextAsync(nsFile, "test-namespace");
+
+        // Start a fake HTTP server that returns a synthetic /version response
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                HttpListenerContext ctx;
+                try { ctx = await listener.GetContextAsync(); }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+
+                var path = ctx.Request.Url?.AbsolutePath ?? "";
+                int statusCode;
+                string body;
+
+                if (path == "/version")
+                {
+                    statusCode = 200;
+                    body = """{"major":"1","minor":"28","gitVersion":"v1.28.0"}""";
+                }
+                else if (path.StartsWith("/api/v1/namespaces/"))
+                {
+                    // Simulate 403 Forbidden for pod lookup (RBAC not granted)
+                    statusCode = 403;
+                    body = """{"kind":"Status","status":"Failure","reason":"Forbidden"}""";
+                }
+                else
+                {
+                    statusCode = 404;
+                    body = "{}";
+                }
+
+                ctx.Response.StatusCode = statusCode;
+                ctx.Response.ContentType = "application/json";
+                var bytes = Encoding.UTF8.GetBytes(body);
+                await ctx.Response.OutputStream.WriteAsync(bytes, cts.Token);
+                ctx.Response.Close();
+            }
+        });
+
+        try
+        {
+            var probe = new KubernetesProbe(
+                tokenPaths: [tokenFile],
+                namespacePaths: [nsFile],
+                serviceHostOverride: "127.0.0.1");
+
+            var probeCtx = new ProbeContext(
+                Timeout: TimeSpan.FromSeconds(5),
+                IncludeSensitive: false,
+                EnabledProbes: null,
+                KubernetesApiBase: new Uri($"http://127.0.0.1:{port}"),
+                AwsImdsBase: null,
+                AzureImdsBase: null,
+                GcpMetadataBase: null,
+                OciMetadataBase: null,
+                CancellationToken: CancellationToken.None);
+
+            var result = await probe.ExecuteAsync(probeCtx);
+
+            // ServiceAccount files found
+            Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.token" && e.Value == "present");
+            Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.namespace" && e.Value == "test-namespace");
+
+            // /version succeeded
+            Assert.Contains(result.Evidence, e => e.Key == "api.version.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "api.version.body" && e.Value!.Contains("v1.28"));
+
+            // Probe must complete without throwing; overall outcome is Success
+            Assert.Equal(ProbeOutcome.Success, result.Outcome);
+
+            // Pod lookup (if HOSTNAME is set in this environment) should be mapped as evidence, not throw
+            var podOutcome = result.Evidence.FirstOrDefault(e => e.Key == "api.pod.outcome");
+            if (podOutcome is not null)
+            {
+                // 403 from fake server should map to AccessDenied, not an exception
+                Assert.Equal("AccessDenied", podOutcome.Value);
+            }
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+            Directory.Delete(tmpDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task KubernetesProbe_FakeServer_UnauthorizedMappedAsEvidence()
+    {
+        var tmpDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tmpDir);
+        var tokenFile = Path.Combine(tmpDir, "token");
+        var nsFile = Path.Combine(tmpDir, "namespace");
+        await File.WriteAllTextAsync(tokenFile, "expired-token");
+        await File.WriteAllTextAsync(nsFile, "default");
+
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                HttpListenerContext ctx;
+                try { ctx = await listener.GetContextAsync(); }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+
+                // Always return 401 Unauthorized
+                ctx.Response.StatusCode = 401;
+                ctx.Response.ContentType = "application/json";
+                var bytes = Encoding.UTF8.GetBytes("""{"kind":"Status","reason":"Unauthorized"}""");
+                await ctx.Response.OutputStream.WriteAsync(bytes, cts.Token);
+                ctx.Response.Close();
+            }
+        });
+
+        try
+        {
+            var probe = new KubernetesProbe(
+                tokenPaths: [tokenFile],
+                namespacePaths: [nsFile],
+                serviceHostOverride: "127.0.0.1");
+
+            var probeCtx = new ProbeContext(
+                Timeout: TimeSpan.FromSeconds(5),
+                IncludeSensitive: false,
+                EnabledProbes: null,
+                KubernetesApiBase: new Uri($"http://127.0.0.1:{port}"),
+                AwsImdsBase: null,
+                AzureImdsBase: null,
+                GcpMetadataBase: null,
+                OciMetadataBase: null,
+                CancellationToken: CancellationToken.None);
+
+            var result = await probe.ExecuteAsync(probeCtx);
+
+            // Probe must not throw; 401 is mapped to AccessDenied evidence
+            Assert.Contains(result.Evidence, e => e.Key == "api.version.outcome" && e.Value == "AccessDenied");
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+            Directory.Delete(tmpDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task KubernetesProbe_NoEnvAndNoToken_ReturnsUnavailable()
+    {
+        var probe = new KubernetesProbe(
+            tokenPaths: ["/nonexistent/token"],
+            namespacePaths: ["/nonexistent/namespace"],
+            serviceHostOverride: null);
+
+        var probeCtx = new ProbeContext(
+            Timeout: TimeSpan.FromSeconds(1),
+            IncludeSensitive: false,
+            EnabledProbes: null,
+            KubernetesApiBase: null,
+            AwsImdsBase: null,
+            AzureImdsBase: null,
+            GcpMetadataBase: null,
+            OciMetadataBase: null,
+            CancellationToken: CancellationToken.None);
+
+        var result = await probe.ExecuteAsync(probeCtx);
+        Assert.Equal(ProbeOutcome.Unavailable, result.Outcome);
     }
 
     private static int GetFreePort()

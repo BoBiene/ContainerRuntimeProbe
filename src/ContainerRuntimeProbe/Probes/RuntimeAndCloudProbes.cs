@@ -47,6 +47,48 @@ internal static class HttpProbe
     }
 }
 
+internal static class ComposeLabels
+{
+    /// <summary>Well-known Docker Compose label keys to extract from container inspect response.</summary>
+    internal static readonly string[] KnownLabels =
+    [
+        "com.docker.compose.project",
+        "com.docker.compose.service",
+        "com.docker.compose.version",
+        "com.docker.compose.container-number",
+        "com.docker.compose.project.working_dir",
+        "com.docker.compose.project.config_files"
+    ];
+
+    /// <summary>
+    /// Parses Docker container-inspect JSON and emits evidence for Compose labels.
+    /// Uses JsonDocument (AOT-safe) to navigate Config.Labels without reflection.
+    /// </summary>
+    public static IEnumerable<EvidenceItem> ExtractFromInspectJson(string probeId, string json)
+    {
+        JsonDocument doc;
+        try { doc = JsonDocument.Parse(json); }
+        catch { yield break; }
+
+        using (doc)
+        {
+            if (!doc.RootElement.TryGetProperty("Config", out var config)) yield break;
+            if (!config.TryGetProperty("Labels", out var labels)) yield break;
+            if (labels.ValueKind != JsonValueKind.Object) yield break;
+
+            foreach (var prop in labels.EnumerateObject())
+            {
+                // Only emit the well-known Compose labels to keep output bounded
+                if (Array.IndexOf(KnownLabels, prop.Name) < 0) continue;
+                var rawValue = prop.Value.GetString() ?? string.Empty;
+                // Truncate path values (working_dir, config_files) to avoid excessively long output
+                var value = rawValue.Length > 256 ? rawValue[..256] : rawValue;
+                yield return new EvidenceItem(probeId, $"compose.label.{prop.Name}", value);
+            }
+        }
+    }
+}
+
 internal sealed class RuntimeApiProbe : IProbe
 {
     public string Id => "runtime-api";
@@ -87,11 +129,50 @@ internal sealed class RuntimeApiProbe : IProbe
                 if (!string.IsNullOrWhiteSpace(body)) evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:body", body.Length > 512 ? body[..512] : body));
                 if (!string.IsNullOrWhiteSpace(msg)) evidence.Add(new EvidenceItem(Id, $"{socket}:{endpoint}:message", msg));
             }
+
+            // Container inspection for Docker Compose labels.
+            // Try the current container's hostname as the container identifier.
+            await ProbeComposeLabelsAsync(client, evidence, context.CancellationToken).ConfigureAwait(false);
         }
 
         sw.Stop();
         var outcome = evidence.Count == 0 ? ProbeOutcome.Unavailable : ProbeOutcome.Success;
         return new ProbeResult(Id, outcome, evidence, outcome == ProbeOutcome.Unavailable ? "No docker/podman socket found" : null, sw.Elapsed);
+    }
+
+    private async Task ProbeComposeLabelsAsync(HttpClient client, List<EvidenceItem> evidence, CancellationToken ct)
+    {
+        // Gather candidate container identifiers from well-known sources.
+        var candidates = new List<string>();
+        var hostname = Environment.GetEnvironmentVariable("HOSTNAME");
+        if (!string.IsNullOrWhiteSpace(hostname)) candidates.Add(hostname);
+
+        foreach (var path in new[] { "/etc/hostname", "/proc/sys/kernel/hostname" })
+        {
+            try
+            {
+                var h = (await File.ReadAllTextAsync(path, ct).ConfigureAwait(false)).Trim();
+                if (!string.IsNullOrEmpty(h) && !candidates.Contains(h)) candidates.Add(h);
+            }
+            catch { /* unavailable */ }
+        }
+
+        foreach (var candidate in candidates)
+        {
+            var (oc, body, status, _) = await HttpProbe.GetAsync(client, $"/containers/{Uri.EscapeDataString(candidate)}/json", ct: ct).ConfigureAwait(false);
+
+            evidence.Add(new EvidenceItem(Id, $"container.inspect.outcome", oc.ToString()));
+            if (status.HasValue && status.Value != 200)
+                evidence.Add(new EvidenceItem(Id, "container.inspect.status", status.Value.ToString()));
+
+            if (oc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(body))
+            {
+                foreach (var item in ComposeLabels.ExtractFromInspectJson(Id, body))
+                    evidence.Add(item);
+                // Once we get a successful inspection, no need to try other candidates
+                return;
+            }
+        }
     }
 }
 
@@ -99,16 +180,36 @@ internal sealed class KubernetesProbe : IProbe
 {
     public string Id => "kubernetes";
 
+    private readonly IReadOnlyList<string> _tokenPaths;
+    private readonly IReadOnlyList<string> _namespacePaths;
+    private readonly string? _serviceHostOverride;
+
+    private static readonly string[] DefaultTokenPaths =
+        ["/run/secrets/kubernetes.io/serviceaccount/token", "/var/run/secrets/kubernetes.io/serviceaccount/token"];
+    private static readonly string[] DefaultNamespacePaths =
+        ["/run/secrets/kubernetes.io/serviceaccount/namespace", "/var/run/secrets/kubernetes.io/serviceaccount/namespace"];
+
+    /// <summary>Production constructor using standard Kubernetes service-account mount paths.</summary>
+    public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null) { }
+
+    /// <summary>Test constructor allowing injection of custom paths and a service-host override.</summary>
+    internal KubernetesProbe(string[] tokenPaths, string[] namespacePaths, string? serviceHostOverride)
+    {
+        _tokenPaths = tokenPaths;
+        _namespacePaths = namespacePaths;
+        _serviceHostOverride = serviceHostOverride;
+    }
+
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
     {
         var sw = Stopwatch.StartNew();
         var evidence = new List<EvidenceItem>();
-        var host = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
+        var host = _serviceHostOverride ?? Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_HOST");
         var port = Environment.GetEnvironmentVariable("KUBERNETES_SERVICE_PORT") ?? "443";
         if (!string.IsNullOrWhiteSpace(host)) evidence.Add(new EvidenceItem(Id, "env.KUBERNETES_SERVICE_HOST", host));
 
-        var tokenPath = new[] { "/run/secrets/kubernetes.io/serviceaccount/token", "/var/run/secrets/kubernetes.io/serviceaccount/token" }.FirstOrDefault(File.Exists);
-        var nsPath = new[] { "/run/secrets/kubernetes.io/serviceaccount/namespace", "/var/run/secrets/kubernetes.io/serviceaccount/namespace" }.FirstOrDefault(File.Exists);
+        var tokenPath = _tokenPaths.FirstOrDefault(File.Exists);
+        var nsPath = _namespacePaths.FirstOrDefault(File.Exists);
         if (tokenPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.token", "present", EvidenceSensitivity.Sensitive));
         if (nsPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.namespace", (await File.ReadAllTextAsync(nsPath, context.CancellationToken).ConfigureAwait(false)).Trim()));
 
