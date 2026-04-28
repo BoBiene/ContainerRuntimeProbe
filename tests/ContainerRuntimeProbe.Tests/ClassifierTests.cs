@@ -283,8 +283,13 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        // IsContainerized reasons should only reflect container evidence, not runtime API details
+        // IsContainerized reasons should only reflect container evidence (socket presence), not runtime API body details
         var containerReasonsText = string.Join("|", report.IsContainerized.Reasons.Select(r => r.Message));
         Assert.DoesNotContain("Weighted score", containerReasonsText, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("API response body", containerReasonsText, StringComparison.OrdinalIgnoreCase);
+
+        // Runtime reasons should be in ContainerRuntime.Reasons, not IsContainerized.Reasons
+        var runtimeReasonsText = string.Join("|", report.ContainerRuntime.Reasons.Select(r => r.Message));
+        Assert.Contains("Docker /_ping", runtimeReasonsText, StringComparison.OrdinalIgnoreCase);
     }
 }

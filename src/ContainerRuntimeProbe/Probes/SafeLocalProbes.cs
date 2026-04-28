@@ -21,7 +21,9 @@ internal static class ProbeIo
             var buffer = new byte[MaxReadBytes];
             var bytesRead = await fs.ReadAsync(buffer.AsMemory(0, MaxReadBytes), cts.Token).ConfigureAwait(false);
             var text = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
-            return (ProbeOutcome.Success, text, null);
+            // If we read exactly MaxReadBytes, file may have been truncated silently; signal this in the message
+            var message = bytesRead == MaxReadBytes ? $"[truncated at {MaxReadBytes} bytes]" : null;
+            return (ProbeOutcome.Success, text, message);
         }
         catch (UnauthorizedAccessException ex) { return (ProbeOutcome.AccessDenied, null, ex.Message); }
         catch (OperationCanceledException ex) { return (ProbeOutcome.Timeout, null, ex.Message); }

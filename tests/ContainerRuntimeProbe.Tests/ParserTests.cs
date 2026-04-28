@@ -68,6 +68,6 @@ public sealed class ParserTests
         var lines = Enumerable.Range(0, 200).Select(i => $"{i}:memory:/docker/id{i}");
         var text = string.Join('\n', lines);
         var signals = Parsing.ParseCgroupSignals(text).ToList();
-        Assert.True(signals.Count <= 50);
+        Assert.Equal(50, signals.Count);
     }
 }
