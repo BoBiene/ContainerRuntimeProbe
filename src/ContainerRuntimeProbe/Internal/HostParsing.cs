@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Classification;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Internal;
@@ -667,75 +668,18 @@ internal static class HostParsing
 
     private static KernelFlavor InferKernelFlavor(string text)
     {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return KernelFlavor.Unknown;
+        }
+
         var lower = text.ToLowerInvariant();
-        if (ContainsWsl2Signal(lower) || lower.Contains("microsoft", StringComparison.Ordinal))
+        foreach (var signal in DetectionMaps.KernelFlavorSignals)
         {
-            return KernelFlavor.WSL2;
-        }
-
-        if (lower.Contains("azure", StringComparison.Ordinal))
-        {
-            return KernelFlavor.Azure;
-        }
-
-        if (lower.Contains("aws", StringComparison.Ordinal) || lower.Contains("amzn", StringComparison.Ordinal))
-        {
-            return KernelFlavor.Aws;
-        }
-
-        if (lower.Contains("gcp", StringComparison.Ordinal) || lower.Contains("google", StringComparison.Ordinal))
-        {
-            return KernelFlavor.Gcp;
-        }
-
-        if (lower.Contains("oracle", StringComparison.Ordinal))
-        {
-            return KernelFlavor.OracleCloud;
-        }
-
-        if (lower.Contains("synology", StringComparison.Ordinal))
-        {
-            // Note: "dsm" is intentionally excluded — too short/ambiguous as a substring match.
-            // Synology kernel images always include "synology" in the compiler string.
-            return KernelFlavor.Synology;
-        }
-
-        // Ubuntu kernels include "Ubuntu SMP" in the version string and
-        // "(Ubuntu ...)" in the compiler string embedded in /proc/version.
-        // Must come after cloud-provider checks so Azure/AWS Ubuntu kernels
-        // keep their cloud-specific flavor.
-        if (lower.Contains("ubuntu", StringComparison.Ordinal))
-        {
-            return KernelFlavor.Ubuntu;
-        }
-
-        // Debian kernels embed "Debian X.Y.Z-patch" in the version string
-        // (e.g. "#1 SMP Debian 4.19.316-1") and "(Debian X.Y.Z-patch)"
-        // in the compiler string. Must come after Ubuntu to avoid cross-match
-        // on Ubuntu kernels that also carry Debian-based GCC packages.
-        if (lower.Contains("debian", StringComparison.Ordinal))
-        {
-            return KernelFlavor.Debian;
-        }
-
-        if (lower.Contains("docker desktop", StringComparison.Ordinal))
-        {
-            return KernelFlavor.DockerDesktop;
-        }
-
-        if (lower.Contains("linuxkit", StringComparison.Ordinal))
-        {
-            return KernelFlavor.DockerDesktop;
-        }
-
-        if (lower.Contains("raspberry", StringComparison.Ordinal) || lower.Contains("raspi", StringComparison.Ordinal))
-        {
-            return KernelFlavor.RaspberryPi;
-        }
-
-        if (lower.Contains("lowlatency", StringComparison.Ordinal))
-        {
-            return KernelFlavor.LowLatency;
+            if (lower.Contains(signal.Signal, StringComparison.Ordinal))
+            {
+                return signal.Flavor;
+            }
         }
 
         if (lower.Contains("rt", StringComparison.Ordinal) || lower.Contains("realtime", StringComparison.Ordinal))
@@ -743,7 +687,7 @@ internal static class HostParsing
             return KernelFlavor.Realtime;
         }
 
-        return string.IsNullOrWhiteSpace(text) ? KernelFlavor.Unknown : KernelFlavor.Generic;
+        return KernelFlavor.Generic;
     }
 
     private static long? ParseMemInfoKb(string? rawValue)
