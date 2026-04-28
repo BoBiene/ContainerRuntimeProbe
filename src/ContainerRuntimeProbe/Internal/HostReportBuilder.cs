@@ -163,7 +163,7 @@ internal static class HostReportBuilder
             }
         }
 
-        if (ContainsWsl2Signal(release))
+        if (HostParsing.ContainsWsl2Signal(release))
         {
             foreach (var reference in GetEvidenceReferences(evidence, "kernel.release"))
             {
@@ -171,7 +171,7 @@ internal static class HostReportBuilder
             }
         }
 
-        if (ContainsWsl2Signal(procVersion))
+        if (HostParsing.ContainsWsl2Signal(procVersion))
         {
             foreach (var reference in GetEvidenceReferences(evidence, "/proc/version"))
             {
@@ -432,8 +432,4 @@ internal static class HostReportBuilder
         var zoneParts = value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return zoneParts.Length > 0 ? zoneParts[^1] : value;
     }
-
-    private static bool ContainsWsl2Signal(string? value)
-        => value?.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase) == true
-            || value?.Contains("WSL2", StringComparison.OrdinalIgnoreCase) == true;
 }

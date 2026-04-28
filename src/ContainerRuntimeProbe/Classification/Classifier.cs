@@ -1,4 +1,5 @@
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Classification;
@@ -11,10 +12,6 @@ internal static class Classifier
 
         static Confidence ScoreToConfidence(int score) => score switch { >= 8 => Confidence.High, >= 4 => Confidence.Medium, >= 1 => Confidence.Low, _ => Confidence.Unknown };
         ClassificationResult Make(string value, int score, params ClassificationReason[] reasons) => new(value, ScoreToConfidence(score), reasons);
-        static bool ContainsWsl2Signal(string? value) =>
-            value?.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase) == true
-            || value?.Contains("WSL2", StringComparison.OrdinalIgnoreCase) == true;
-
         // Helper: match evidence key in both raw (VARNAME) and env-prefixed (env.VARNAME) forms
         static bool HasEnvKey(List<EvidenceItem> ev, string key) =>
             ev.Any(x => x.Key == key || x.Key == "env." + key);
@@ -135,8 +132,8 @@ internal static class Classifier
 
         var wsl2VendorDetected =
             e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase))
-            || e.Any(x => x.Key == "kernel.release" && ContainsWsl2Signal(x.Value))
-            || e.Any(x => x.Key == "/proc/version" && ContainsWsl2Signal(x.Value));
+            || e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value))
+            || e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value));
 
         var vendor = wsl2VendorDetected
             ? Make("Microsoft", 8, new ClassificationReason("WSL2 kernel fingerprint detected", new[] { "kernel.flavor", "kernel.release", "/proc/version" }))
