@@ -1,6 +1,6 @@
 {
-  "GeneratedAt": "2026-04-28T09:32:03.3177888+00:00",
-  "Duration": "00:00:00.4804075",
+  "GeneratedAt": "2026-04-28T14:46:59.1362784+00:00",
+  "Duration": "00:00:06.0972349",
   "Probes": [
     {
       "ProbeId": "marker-files",
@@ -9,7 +9,7 @@
         {
           "ProbeId": "marker-files",
           "Key": "/.dockerenv",
-          "Value": "True",
+          "Value": "False",
           "Sensitivity": "Public"
         },
         {
@@ -20,21 +20,14 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0070446"
+      "Duration": "00:00:00.0006994"
     },
     {
       "ProbeId": "environment",
       "Outcome": "Success",
-      "Evidence": [
-        {
-          "ProbeId": "environment",
-          "Key": "HOSTNAME",
-          "Value": "96548146ac99",
-          "Sensitivity": "Public"
-        }
-      ],
+      "Evidence": [],
       "Message": null,
-      "Duration": "00:00:00.0345779"
+      "Duration": "00:00:00.0034093"
     },
     {
       "ProbeId": "proc-files",
@@ -42,15 +35,39 @@
       "Evidence": [
         {
           "ProbeId": "proc-files",
-          "Key": "/etc/hostname",
-          "Value": "96548146ac99",
+          "Key": "/proc/self/mountinfo:signal",
+          "Value": "overlay",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/sys/kernel/hostname",
-          "Value": "96548146ac99",
+          "Key": "/proc/1/mountinfo:signal",
+          "Value": "overlay",
           "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "default-route-device",
+          "Value": "eth0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dns-search",
+          "Value": "vcq0jmfdokweppwtd0ncfytsif.dx.internal.cloudapp.net",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/etc/hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/sys/kernel/hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
         },
         {
           "ProbeId": "proc-files",
@@ -60,49 +77,283 @@
         },
         {
           "ProbeId": "proc-files",
+          "Key": "os.id_like",
+          "Value": "debian",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.name",
+          "Value": "Ubuntu",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.pretty_name",
+          "Value": "Ubuntu 24.04.4 LTS",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
           "Key": "os.version",
+          "Value": "24.04.4 LTS (Noble Numbat)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version_id",
           "Value": "24.04",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
+          "Key": "os.version_codename",
+          "Value": "noble",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.home_url",
+          "Value": "https://www.ubuntu.com/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.support_url",
+          "Value": "https://help.ubuntu.com/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.bug_report_url",
+          "Value": "https://bugs.launchpad.net/ubuntu/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
           "Key": "/proc/version",
-          "Value": "Linux version 6.12.47 (@124b6677fa5a) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04.2) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP Mon Oct 27 10:01:15 UTC 2025",
+          "Value": "Linux version 6.17.0-1010-azure (buildd@lcy02-amd64-097) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.logical_processors",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.vendor",
+          "Value": "AuthenticAMD",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model_name",
+          "Value": "AMD EPYC 9V74 80-Core Processor",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.family",
+          "Value": "25",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "17",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
+          "Value": "1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0xffffffff",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.count",
+          "Value": "116",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.hash",
+          "Value": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_total_bytes",
+          "Value": "8323989504",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_available_bytes",
+          "Value": "5529255936",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.current",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory/memory.usage_in_bytes",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/cpu.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.pid",
-          "Value": "pid:[4026532176]",
+          "Value": "pid:[4026531836]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.mnt",
-          "Value": "mnt:[4026532177]",
+          "Value": "mnt:[4026531832]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.net",
-          "Value": "net:[4026531840]",
+          "Value": "net:[4026531833]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.uts",
-          "Value": "uts:[4026532147]",
+          "Value": "uts:[4026531838]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.ipc",
-          "Value": "ipc:[4026532146]",
+          "Value": "ipc:[4026531839]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler",
+          "Value": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.flavor",
+          "Value": "Azure",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0760361"
+      "Duration": "00:00:00.0334024"
     },
     {
       "ProbeId": "security-sandbox",
@@ -117,19 +368,19 @@
         {
           "ProbeId": "security-sandbox",
           "Key": "status.CapPrm",
-          "Value": "00000000a80425fb",
+          "Value": "0000000000000000",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "security-sandbox",
           "Key": "status.CapEff",
-          "Value": "00000000a80425fb",
+          "Value": "0000000000000000",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "security-sandbox",
           "Key": "status.CapBnd",
-          "Value": "00000000a80425fb",
+          "Value": "000001ffffffffff",
           "Sensitivity": "Public"
         },
         {
@@ -142,6 +393,18 @@
           "ProbeId": "security-sandbox",
           "Key": "status.Seccomp",
           "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.Seccomp",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "apparmor.profile",
+          "Value": "unconfined",
           "Sensitivity": "Public"
         },
         {
@@ -152,21 +415,14 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0150000"
-    },
-    {
-      "ProbeId": "runtime-api",
-      "Outcome": "Unavailable",
-      "Evidence": [],
-      "Message": "No docker/podman socket found",
-      "Duration": "00:00:00.0018766"
+      "Duration": "00:00:00.0011882"
     },
     {
       "ProbeId": "kubernetes",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "Kubernetes env/token missing",
-      "Duration": "00:00:00.0003726"
+      "Duration": "00:00:00.0000694"
     },
     {
       "ProbeId": "cloud-metadata",
@@ -175,347 +431,247 @@
         {
           "ProbeId": "cloud-metadata",
           "Key": "azure.imds.outcome",
-          "Value": "AccessDenied",
+          "Value": "Timeout",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.machine_type.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.zone.outcome",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "gcp.metadata.outcome",
-          "Value": "AccessDenied",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "oci.metadata.outcome",
-          "Value": "AccessDenied",
+          "Value": "Timeout",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.2993539"
+      "Duration": "00:00:06.0299022"
     }
   ],
   "SecurityWarnings": [],
   "Classification": {
     "IsContainerized": {
       "Value": "True",
+      "Confidence": "Low",
+      "Reasons": [
+        {
+          "Message": "Namespace info visible",
+          "EvidenceKeys": [
+            "ns.pid",
+            "ns.mnt"
+          ]
+        }
+      ]
+    },
+    "ContainerRuntime": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No runtime evidence",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "RuntimeApi": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Runtime API probe outcomes",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "Orchestrator": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No orchestrator markers",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "CloudProvider": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Cloud metadata/env markers",
+          "EvidenceKeys": [
+            "cloud-metadata"
+          ]
+        }
+      ]
+    },
+    "PlatformVendor": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No vendor-specific proofs",
+          "EvidenceKeys": []
+        }
+      ]
+    }
+  },
+  "Host": {
+    "ContainerImageOs": {
+      "Family": "Ubuntu",
+      "Id": "ubuntu",
+      "IdLike": [
+        "debian"
+      ],
+      "Name": "Ubuntu",
+      "PrettyName": "Ubuntu 24.04.4 LTS",
+      "Version": "24.04.4 LTS (Noble Numbat)",
+      "VersionId": "24.04",
+      "VersionCodename": "noble",
+      "BuildId": null,
+      "Variant": null,
+      "VariantId": null,
+      "HomeUrl": "https://www.ubuntu.com/",
+      "SupportUrl": "https://help.ubuntu.com/",
+      "BugReportUrl": "https://bugs.launchpad.net/ubuntu/",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Confidence": "High",
+      "EvidenceReferences": [
+        "proc-files:os.bug_report_url",
+        "proc-files:os.home_url",
+        "proc-files:os.id",
+        "proc-files:os.id_like",
+        "proc-files:os.name",
+        "proc-files:os.pretty_name",
+        "proc-files:os.support_url",
+        "proc-files:os.version",
+        "proc-files:os.version_codename",
+        "proc-files:os.version_id"
+      ]
+    },
+    "VisibleKernel": {
+      "Name": "Linux",
+      "Release": "6.17.0-1010-azure",
+      "Version": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Flavor": "Azure",
+      "Compiler": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
       "Confidence": "Medium",
-      "Reasons": [
+      "EvidenceReferences": [
+        "proc-files:kernel.compiler",
+        "proc-files:kernel.flavor",
+        "proc-files:kernel.name",
+        "proc-files:kernel.release",
+        "proc-files:kernel.version"
+      ]
+    },
+    "RuntimeReportedHostOs": {
+      "Family": "Unknown",
+      "Name": null,
+      "Version": null,
+      "KernelVersion": null,
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Source": "Unknown",
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "Hardware": {
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Cpu": {
+        "LogicalProcessorCount": 2,
+        "VisibleProcessorCount": 2,
+        "Vendor": "AuthenticAMD",
+        "ModelName": "AMD EPYC 9V74 80-Core Processor",
+        "Family": "AMD",
+        "FlagsHash": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c",
+        "FlagsCount": 116,
+        "CgroupCpuQuota": null,
+        "CgroupCpuMax": null
+      },
+      "Memory": {
+        "MemTotalBytes": 8323989504,
+        "CgroupMemoryLimitBytes": null,
+        "CgroupMemoryCurrentBytes": null,
+        "CgroupMemoryLimitRaw": null
+      },
+      "CloudMachineType": null
+    },
+    "Fingerprint": {
+      "Algorithm": "CRP-HOST-FP-v1",
+      "Value": "sha256:6813124e32d17aa8a06b66e1a8417b2ae389c100c021906b7a3ff48a2b62a5a3",
+      "Stability": "KernelOnly",
+      "IncludedSignalCount": 8,
+      "ExcludedSensitiveSignalCount": 1,
+      "Components": [
         {
-          "Message": "/.dockerenv exists",
-          "EvidenceKeys": [
-            "/.dockerenv"
-          ]
+          "Name": "architecture.normalized",
+          "Included": true,
+          "RawValueRedacted": "X64"
         },
         {
-          "Message": "Namespace info visible",
-          "EvidenceKeys": [
-            "ns.pid",
-            "ns.mnt"
-          ]
-        }
-      ]
-    },
-    "ContainerRuntime": {
-      "Value": "Unknown",
-      "Confidence": "Unknown",
-      "Reasons": [
-        {
-          "Message": "No runtime evidence",
-          "EvidenceKeys": []
-        }
-      ]
-    },
-    "RuntimeApi": {
-      "Value": "Unknown",
-      "Confidence": "Unknown",
-      "Reasons": [
-        {
-          "Message": "Runtime API probe outcomes",
-          "EvidenceKeys": [
-            "runtime-api"
-          ]
-        }
-      ]
-    },
-    "Orchestrator": {
-      "Value": "Unknown",
-      "Confidence": "Unknown",
-      "Reasons": [
-        {
-          "Message": "No orchestrator markers",
-          "EvidenceKeys": []
-        }
-      ]
-    },
-    "CloudProvider": {
-      "Value": "Unknown",
-      "Confidence": "Unknown",
-      "Reasons": [
-        {
-          "Message": "Cloud metadata/env markers",
-          "EvidenceKeys": [
-            "cloud-metadata"
-          ]
-        }
-      ]
-    },
-    "PlatformVendor": {
-      "Value": "Unknown",
-      "Confidence": "Unknown",
-      "Reasons": [
-        {
-          "Message": "No vendor-specific proofs",
-          "EvidenceKeys": []
-        }
-      ]
-    }
-  }
-}
-
-  "GeneratedAt": "2026-04-28T09:32:03.3177888+00:00",
-  "Duration": "00:00:00.4804075",
-  "Probes": [
-    {
-      "ProbeId": "marker-files",
-      "Outcome": 0,
-      "Evidence": [
-        {
-          "ProbeId": "marker-files",
-          "Key": "/.dockerenv",
-          "Value": "True",
-          "Sensitivity": 0
+          "Name": "cpu.family",
+          "Included": true,
+          "RawValueRedacted": "AMD"
         },
         {
-          "ProbeId": "marker-files",
-          "Key": "/run/.containerenv",
-          "Value": "False",
-          "Sensitivity": 0
+          "Name": "cpu.flags.hash",
+          "Included": true,
+          "RawValueRedacted": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c"
+        },
+        {
+          "Name": "cpu.modelName.normalized",
+          "Included": true,
+          "RawValueRedacted": "AMD EPYC 9V74 80-Core Processor"
+        },
+        {
+          "Name": "cpu.vendor",
+          "Included": true,
+          "RawValueRedacted": "AuthenticAMD"
+        },
+        {
+          "Name": "kernel.flavor",
+          "Included": true,
+          "RawValueRedacted": "Azure"
+        },
+        {
+          "Name": "kernel.release",
+          "Included": true,
+          "RawValueRedacted": "6.17.0-1010-azure"
+        },
+        {
+          "Name": "memory.total.bucket",
+          "Included": true,
+          "RawValueRedacted": "8GiB"
+        },
+        {
+          "Name": "hostname",
+          "Included": false,
+          "RawValueRedacted": "redacted"
         }
       ],
-      "Message": null,
-      "Duration": "00:00:00.0070446"
-    },
-    {
-      "ProbeId": "environment",
-      "Outcome": 0,
-      "Evidence": [
-        {
-          "ProbeId": "environment",
-          "Key": "HOSTNAME",
-          "Value": "96548146ac99",
-          "Sensitivity": 0
-        }
-      ],
-      "Message": null,
-      "Duration": "00:00:00.0345779"
-    },
-    {
-      "ProbeId": "proc-files",
-      "Outcome": 0,
-      "Evidence": [
-        {
-          "ProbeId": "proc-files",
-          "Key": "/etc/hostname",
-          "Value": "96548146ac99",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/sys/kernel/hostname",
-          "Value": "96548146ac99",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "os.id",
-          "Value": "ubuntu",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "os.version",
-          "Value": "24.04",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/version",
-          "Value": "Linux version 6.12.47 (@124b6677fa5a) (gcc (Ubuntu 11.4.0-1ubuntu1~22.04.2) 11.4.0, GNU ld (GNU Binutils for Ubuntu) 2.38) #1 SMP Mon Oct 27 10:01:15 UTC 2025",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "status.CapEff",
-          "Value": "00000000a80425fb",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "status.NoNewPrivs",
-          "Value": "0",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "status.Seccomp",
-          "Value": "0",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "status.Seccomp_filters",
-          "Value": "0",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "ns.pid",
-          "Value": "pid:[4026532176]",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "ns.mnt",
-          "Value": "mnt:[4026532177]",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "ns.net",
-          "Value": "net:[4026531840]",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "ns.uts",
-          "Value": "uts:[4026532147]",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "ns.ipc",
-          "Value": "ipc:[4026532146]",
-          "Sensitivity": 0
-        }
-      ],
-      "Message": null,
-      "Duration": "00:00:00.0760361"
-    },
-    {
-      "ProbeId": "runtime-api",
-      "Outcome": 1,
-      "Evidence": [],
-      "Message": "No docker/podman socket found",
-      "Duration": "00:00:00.0018766"
-    },
-    {
-      "ProbeId": "kubernetes",
-      "Outcome": 1,
-      "Evidence": [],
-      "Message": "Kubernetes env/token missing",
-      "Duration": "00:00:00.0003726"
-    },
-    {
-      "ProbeId": "cloud-metadata",
-      "Outcome": 0,
-      "Evidence": [
-        {
-          "ProbeId": "cloud-metadata",
-          "Key": "azure.imds.outcome",
-          "Value": "AccessDenied",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "cloud-metadata",
-          "Key": "gcp.metadata.outcome",
-          "Value": "AccessDenied",
-          "Sensitivity": 0
-        },
-        {
-          "ProbeId": "cloud-metadata",
-          "Key": "oci.metadata.outcome",
-          "Value": "AccessDenied",
-          "Sensitivity": 0
-        }
-      ],
-      "Message": null,
-      "Duration": "00:00:00.2993539"
-    }
-  ],
-  "SecurityWarnings": [],
-  "Classification": {
-    "IsContainerized": {
-      "Value": "True",
-      "Confidence": 2,
-      "Reasons": [
-        {
-          "Message": "/.dockerenv exists",
-          "EvidenceKeys": [
-            "/.dockerenv"
-          ]
-        },
-        {
-          "Message": "Namespace info visible",
-          "EvidenceKeys": [
-            "ns.pid",
-            "ns.mnt"
-          ]
-        }
-      ]
-    },
-    "ContainerRuntime": {
-      "Value": "Unknown",
-      "Confidence": 0,
-      "Reasons": [
-        {
-          "Message": "No runtime evidence",
-          "EvidenceKeys": []
-        }
-      ]
-    },
-    "RuntimeApi": {
-      "Value": "Unknown",
-      "Confidence": 0,
-      "Reasons": [
-        {
-          "Message": "Runtime API probe outcomes",
-          "EvidenceKeys": [
-            "runtime-api"
-          ]
-        }
-      ]
-    },
-    "Orchestrator": {
-      "Value": "Unknown",
-      "Confidence": 0,
-      "Reasons": [
-        {
-          "Message": "No orchestrator markers",
-          "EvidenceKeys": []
-        }
-      ]
-    },
-    "CloudProvider": {
-      "Value": "Azure",
-      "Confidence": 2,
-      "Reasons": [
-        {
-          "Message": "Cloud metadata/env markers",
-          "EvidenceKeys": [
-            "cloud-metadata"
-          ]
-        }
-      ]
-    },
-    "PlatformVendor": {
-      "Value": "Unknown",
-      "Confidence": 0,
-      "Reasons": [
-        {
-          "Message": "No vendor-specific proofs",
-          "EvidenceKeys": []
-        }
+      "Warnings": [
+        "Fingerprint is diagnostic only and not a security identity."
       ]
     }
   }

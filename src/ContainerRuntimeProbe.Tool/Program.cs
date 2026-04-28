@@ -1,4 +1,5 @@
 using ContainerRuntimeProbe;
+using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Rendering;
 
 return await MainAsync(args);
@@ -11,6 +12,7 @@ static async Task<int> MainAsync(string[] args)
     var output = string.Empty;
     IReadOnlySet<string>? probes = null;
     var listProbes = false;
+    var fingerprintMode = FingerprintMode.Safe;
 
     try
     {
@@ -28,6 +30,7 @@ static async Task<int> MainAsync(string[] args)
                 case "--probe": probes = args[++i].Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase); break;
                 case "--output": output = args[++i]; break;
                 case "--list-probes": listProbes = true; break;
+                case "--fingerprint": fingerprintMode = Enum.Parse<FingerprintMode>(args[++i], ignoreCase: true); break;
                 default:
                     Console.Error.WriteLine($"Invalid argument: {args[i]}");
                     PrintHelp();
@@ -42,7 +45,7 @@ static async Task<int> MainAsync(string[] args)
             return 0;
         }
 
-        var report = await engine.RunAsync(timeout, includeSensitive, probes).ConfigureAwait(false);
+        var report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode).ConfigureAwait(false);
         var rendered = format.ToLowerInvariant() switch
         {
             "json" => ReportRenderer.ToJson(report),
@@ -84,4 +87,5 @@ static void PrintHelp()
     Console.WriteLine("  --include-sensitive <bool>");
     Console.WriteLine("  --probe <id1,id2>");
     Console.WriteLine("  --list-probes");
+    Console.WriteLine("  --fingerprint none|safe|extended");
 }

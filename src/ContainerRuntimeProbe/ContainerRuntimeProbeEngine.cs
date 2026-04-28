@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Classification;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Probes;
 
@@ -32,7 +33,7 @@ public sealed class ContainerRuntimeProbeEngine
     public IReadOnlyList<string> ProbeIds => _probes.Select(p => p.Id).ToList();
 
     /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
-    public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, CancellationToken cancellationToken = default)
+    public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, FingerprintMode fingerprintMode = FingerprintMode.Safe, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
         var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, cancellationToken);
@@ -51,7 +52,8 @@ public sealed class ContainerRuntimeProbeEngine
         }
 
         var classification = Classifier.Classify(results);
+        var host = HostReportBuilder.Build(results, classification, fingerprintMode);
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, results, warnings, classification);
+        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, results, warnings, classification, host);
     }
 }

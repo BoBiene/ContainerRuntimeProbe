@@ -67,7 +67,12 @@ internal sealed class EnvironmentProbe : IProbe
         var sw = Stopwatch.StartNew();
         var evidence = Keys.Select(k => (k, v: Environment.GetEnvironmentVariable(k)))
             .Where(x => !string.IsNullOrWhiteSpace(x.v))
-            .Select(x => new EvidenceItem(Id, x.k, Redaction.MaybeRedact(x.k, x.v, context.IncludeSensitive), Redaction.IsSensitiveKey(x.k) ? EvidenceSensitivity.Sensitive : EvidenceSensitivity.Public))
+            .Select(x =>
+            {
+                var isSensitive = x.k.Equals("HOSTNAME", StringComparison.OrdinalIgnoreCase) || Redaction.IsSensitiveKey(x.k);
+                var value = isSensitive && !context.IncludeSensitive ? "<redacted>" : x.v;
+                return new EvidenceItem(Id, x.k, value, isSensitive ? EvidenceSensitivity.Sensitive : EvidenceSensitivity.Public);
+            })
             .ToList();
         sw.Stop();
         return Task.FromResult(new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed));
@@ -84,7 +89,10 @@ internal sealed class ProcFilesProbe : IProbe
         "/proc/net/route", "/etc/resolv.conf",
         "/etc/hostname", "/proc/sys/kernel/hostname",
         "/etc/os-release", "/usr/lib/os-release",
-        "/proc/version"
+        "/proc/version", "/proc/sys/kernel/osrelease", "/proc/sys/kernel/ostype", "/proc/sys/kernel/version",
+        "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
+        "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+        "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -94,6 +102,10 @@ internal sealed class ProcFilesProbe : IProbe
         var final = ProbeOutcome.Success;
         string? message = null;
         var osReleaseRead = false;
+        string? procVersion = null;
+        string? kernelOsRelease = null;
+        string? kernelOsType = null;
+        string? kernelVersion = null;
 
         foreach (var file in Files)
         {
@@ -132,14 +144,111 @@ internal sealed class ProcFilesProbe : IProbe
             }
             else if (file == "/etc/os-release" || file == "/usr/lib/os-release")
             {
-                var kv = Parsing.ParseKeyValueLines(text!.Split('\n'));
-                if (kv.TryGetValue("ID", out var id)) evidence.Add(new EvidenceItem(Id, "os.id", id));
-                if (kv.TryGetValue("VERSION_ID", out var ver)) evidence.Add(new EvidenceItem(Id, "os.version", ver));
+                var os = HostParsing.ParseOsRelease(text!);
+                AddEvidenceIfPresent(evidence, "os.id", os.Id);
+                foreach (var item in os.IdLike) evidence.Add(new EvidenceItem(Id, "os.id_like", item));
+                AddEvidenceIfPresent(evidence, "os.name", os.Name);
+                AddEvidenceIfPresent(evidence, "os.pretty_name", os.PrettyName);
+                AddEvidenceIfPresent(evidence, "os.version", os.Version);
+                AddEvidenceIfPresent(evidence, "os.version_id", os.VersionId);
+                AddEvidenceIfPresent(evidence, "os.version_codename", os.VersionCodename);
+                AddEvidenceIfPresent(evidence, "os.build_id", os.BuildId);
+                AddEvidenceIfPresent(evidence, "os.variant", os.Variant);
+                AddEvidenceIfPresent(evidence, "os.variant_id", os.VariantId);
+                AddEvidenceIfPresent(evidence, "os.home_url", os.HomeUrl);
+                AddEvidenceIfPresent(evidence, "os.support_url", os.SupportUrl);
+                AddEvidenceIfPresent(evidence, "os.bug_report_url", os.BugReportUrl);
                 osReleaseRead = true;
+            }
+            else if (file == "/proc/version")
+            {
+                procVersion = text;
+                evidence.Add(new EvidenceItem(Id, file, text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()));
+            }
+            else if (file == "/proc/sys/kernel/osrelease")
+            {
+                kernelOsRelease = text;
+                AddEvidenceIfPresent(evidence, "kernel.release", text?.Trim());
+            }
+            else if (file == "/proc/sys/kernel/ostype")
+            {
+                kernelOsType = text;
+                AddEvidenceIfPresent(evidence, "kernel.name", text?.Trim());
+            }
+            else if (file == "/proc/sys/kernel/version")
+            {
+                kernelVersion = text;
+                AddEvidenceIfPresent(evidence, "kernel.version", text?.Trim());
+            }
+            else if (file == "/proc/cpuinfo")
+            {
+                var cpu = HostParsing.ParseCpuInfo(text!);
+                AddEvidenceIfPresent(evidence, "cpu.logical_processors", cpu.LogicalProcessorCount?.ToString());
+                AddEvidenceIfPresent(evidence, "cpu.vendor", cpu.Vendor);
+                AddEvidenceIfPresent(evidence, "cpu.model_name", cpu.ModelName);
+                AddEvidenceIfPresent(evidence, "cpu.family", cpu.Family);
+                AddEvidenceIfPresent(evidence, "cpu.model", cpu.Model);
+                AddEvidenceIfPresent(evidence, "cpu.stepping", cpu.Stepping);
+                AddEvidenceIfPresent(evidence, "cpu.microcode", cpu.Microcode);
+                AddEvidenceIfPresent(evidence, "cpu.flags.count", cpu.FlagsCount?.ToString());
+                AddEvidenceIfPresent(evidence, "cpu.flags.hash", cpu.FlagsHash is null ? null : $"sha256:{cpu.FlagsHash}");
+                AddEvidenceIfPresent(evidence, "cpu.hardware", cpu.Hardware);
+                AddEvidenceIfPresent(evidence, "cpu.revision", cpu.Revision);
+                var sanitizedSerial = HostParsing.SanitizeCpuSerial(cpu.Serial, context.IncludeSensitive);
+                if (!string.IsNullOrWhiteSpace(sanitizedSerial))
+                {
+                    evidence.Add(new EvidenceItem(Id, "cpu.serial", sanitizedSerial, EvidenceSensitivity.Sensitive));
+                }
+            }
+            else if (file is "/sys/devices/system/cpu/online" or "/sys/devices/system/cpu/possible" or "/sys/devices/system/cpu/present")
+            {
+                var key = file.Split('/').Last();
+                AddEvidenceIfPresent(evidence, $"cpu.{key}", text?.Trim());
+                AddEvidenceIfPresent(evidence, $"cpu.{key}.count", HostParsing.ParseCpuRangeCount(text)?.ToString());
+            }
+            else if (file == "/proc/meminfo")
+            {
+                var memory = HostParsing.ParseMemInfo(text!);
+                AddEvidenceIfPresent(evidence, "memory.mem_total_bytes", memory.MemTotalBytes?.ToString());
+                AddEvidenceIfPresent(evidence, "memory.mem_available_bytes", memory.MemAvailableBytes?.ToString());
+            }
+            else if (file is "/sys/fs/cgroup/memory.max" or "/sys/fs/cgroup/memory/memory.limit_in_bytes")
+            {
+                AddEvidenceIfPresent(evidence, "memory.cgroup.limit_raw", text?.Trim());
+                AddEvidenceIfPresent(evidence, "memory.cgroup.limit_bytes", NormalizeCgroupBytes(text)?.ToString());
+            }
+            else if (file is "/sys/fs/cgroup/memory.current" or "/sys/fs/cgroup/memory/memory.usage_in_bytes")
+            {
+                AddEvidenceIfPresent(evidence, "memory.cgroup.current_bytes", HostParsing.ParseNullableLong(text)?.ToString());
+            }
+            else if (file == "/sys/fs/cgroup/cpu.max")
+            {
+                var raw = text?.Trim();
+                if (!string.IsNullOrWhiteSpace(raw))
+                {
+                    evidence.Add(new EvidenceItem(Id, "cpu.cgroup.max", raw));
+                    var parts = raw.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                    if (parts.Length > 0 && parts[0] != "max")
+                    {
+                        AddEvidenceIfPresent(evidence, "cpu.cgroup.quota", parts[0]);
+                    }
+                }
+            }
+            else if (file == "/sys/fs/cgroup/cpu/cpu.cfs_quota_us")
+            {
+                AddEvidenceIfPresent(evidence, "cpu.cgroup.quota", HostParsing.ParseNullableLong(text)?.ToString());
             }
             else
             {
-                evidence.Add(new EvidenceItem(Id, file, text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()));
+                var value = text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (file is "/etc/hostname" or "/proc/sys/kernel/hostname")
+                {
+                    evidence.Add(new EvidenceItem(Id, file, context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                }
+                else
+                {
+                    evidence.Add(new EvidenceItem(Id, file, value));
+                }
             }
         }
 
@@ -157,16 +266,32 @@ internal sealed class ProcFilesProbe : IProbe
             }
         }
 
-        // cgroup v2 memory limit (if available)
-        foreach (var limitFile in new[] { "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes" })
+        var kernel = HostParsing.ParseKernel(procVersion, kernelOsRelease, kernelOsType, kernelVersion);
+        AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
+        AddEvidenceIfPresent(evidence, "kernel.release", kernel.Release);
+        AddEvidenceIfPresent(evidence, "kernel.version", kernel.Version);
+        AddEvidenceIfPresent(evidence, "kernel.compiler", kernel.Compiler);
+        if (kernel.Flavor != KernelFlavor.Unknown)
         {
-            var (oc, txt, _) = await ProbeIo.ReadFileAsync(limitFile, context.Timeout, context.CancellationToken).ConfigureAwait(false);
-            if (oc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(txt))
-                evidence.Add(new EvidenceItem(Id, $"cgroup.memory.limit:{limitFile}", txt.Trim()));
+            evidence.Add(new EvidenceItem(Id, "kernel.flavor", kernel.Flavor.ToString()));
         }
 
         sw.Stop();
         return new ProbeResult(Id, final, evidence, message, sw.Elapsed);
+    }
+
+    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem("proc-files", key, value.Trim()));
+        }
+    }
+
+    private static long? NormalizeCgroupBytes(string? raw)
+    {
+        var value = raw?.Trim();
+        return value == "max" ? null : HostParsing.ParseNullableLong(value);
     }
 }
 
@@ -216,4 +341,3 @@ internal sealed class SecuritySandboxProbe : IProbe
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
     }
 }
-

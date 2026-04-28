@@ -33,7 +33,8 @@ public sealed record ContainerRuntimeReport(
     TimeSpan Duration,
     IReadOnlyList<ProbeResult> Probes,
     IReadOnlyList<SecurityWarning> SecurityWarnings,
-    ReportClassification Classification);
+    ReportClassification Classification,
+    HostReport Host);
 
 /// <summary>Source-generation context for JSON serialization.</summary>
 [JsonSerializable(typeof(ContainerRuntimeReport))]
