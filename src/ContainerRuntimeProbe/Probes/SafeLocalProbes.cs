@@ -83,7 +83,7 @@ internal sealed class ProcFilesProbe : IProbe
         "/proc/net/route", "/etc/resolv.conf",
         "/etc/hostname", "/proc/sys/kernel/hostname",
         "/etc/os-release", "/usr/lib/os-release",
-        "/proc/version", "/proc/self/status"
+        "/proc/version"
     ];
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -136,14 +136,6 @@ internal sealed class ProcFilesProbe : IProbe
                 if (kv.TryGetValue("VERSION_ID", out var ver)) evidence.Add(new EvidenceItem(Id, "os.version", ver));
                 osReleaseRead = true;
             }
-            else if (file == "/proc/self/status")
-            {
-                foreach (var line in text!.Split('\n').Where(l => l.StartsWith("Seccomp") || l.StartsWith("NoNewPrivs") || l.StartsWith("CapEff")))
-                {
-                    var p = line.Split(':', 2);
-                    if (p.Length == 2) evidence.Add(new EvidenceItem(Id, $"status.{p[0].Trim()}", p[1].Trim()));
-                }
-            }
             else
             {
                 evidence.Add(new EvidenceItem(Id, file, text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()));
@@ -176,3 +168,51 @@ internal sealed class ProcFilesProbe : IProbe
         return new ProbeResult(Id, final, evidence, message, sw.Elapsed);
     }
 }
+
+/// <summary>Probes Linux security and sandbox attributes for the current process.</summary>
+internal sealed class SecuritySandboxProbe : IProbe
+{
+    public string Id => "security-sandbox";
+
+    public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
+    {
+        var sw = Stopwatch.StartNew();
+        var evidence = new List<EvidenceItem>();
+
+        // /proc/self/status: Seccomp, NoNewPrivs, CapEff, CapBnd, CapPrm
+        var (statusOc, statusText, _) = await ProbeIo.ReadFileAsync("/proc/self/status", context.Timeout, context.CancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "proc.self.status.outcome", statusOc.ToString()));
+        if (statusOc == ProbeOutcome.Success && statusText is not null)
+        {
+            foreach (var line in statusText.Split('\n'))
+            {
+                foreach (var field in new[] { "Seccomp", "NoNewPrivs", "CapEff", "CapBnd", "CapPrm" })
+                {
+                    if (line.StartsWith(field, StringComparison.Ordinal))
+                    {
+                        var parts = line.Split(':', 2);
+                        if (parts.Length == 2)
+                            evidence.Add(new EvidenceItem(Id, $"status.{field}", parts[1].Trim()));
+                    }
+                }
+            }
+        }
+
+        // /proc/self/attr/current: AppArmor profile name or SELinux context
+        var (attrOc, attrText, _) = await ProbeIo.ReadFileAsync("/proc/self/attr/current", context.Timeout, context.CancellationToken).ConfigureAwait(false);
+        if (attrOc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(attrText))
+        {
+            var attr = attrText.Trim('\n', '\0', ' ');
+            // SELinux context contains ':' separators; AppArmor is a plain label or "unconfined"
+            var key = attr.Contains(':') ? "selinux.context" : "apparmor.profile";
+            evidence.Add(new EvidenceItem(Id, key, attr));
+        }
+
+        // /sys/fs/selinux: directory existence indicates SELinux is mounted
+        evidence.Add(new EvidenceItem(Id, "selinux.mount.present", Directory.Exists("/sys/fs/selinux").ToString()));
+
+        sw.Stop();
+        return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+}
+
