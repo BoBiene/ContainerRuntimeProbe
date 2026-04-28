@@ -145,5 +145,21 @@ public static class ReportRenderer
 
     /// <summary>Renders a compact one-line textual summary.</summary>
     public static string ToText(ContainerRuntimeReport report)
-        => $"IsContainerized={report.Classification.IsContainerized.Value}, Runtime={report.Classification.ContainerRuntime.Value}, RuntimeApi={report.Classification.RuntimeApi.Value}, Orchestrator={report.Classification.Orchestrator.Value}, Cloud={report.Classification.CloudProvider.Value}, Vendor={report.Classification.PlatformVendor.Value}, Virtualization={report.Host.Virtualization.Kind}, UnderlyingHost={(report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown ? "Unknown" : report.Host.UnderlyingHostOs.Family.ToString())}, HostOS={(report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown")}, HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
+    {
+        var hostName = report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown";
+        var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
+            ? "Unknown"
+            : report.Host.UnderlyingHostOs.Family.ToString();
+
+        return $"IsContainerized={report.Classification.IsContainerized.Value}, " +
+               $"Runtime={report.Classification.ContainerRuntime.Value}, " +
+               $"RuntimeApi={report.Classification.RuntimeApi.Value}, " +
+               $"Orchestrator={report.Classification.Orchestrator.Value}, " +
+               $"Cloud={report.Classification.CloudProvider.Value}, " +
+               $"Vendor={report.Classification.PlatformVendor.Value}, " +
+               $"Virtualization={report.Host.Virtualization.Kind}, " +
+               $"UnderlyingHost={underlyingHost}, " +
+               $"HostOS={hostName}, " +
+               $"HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
+    }
 }
