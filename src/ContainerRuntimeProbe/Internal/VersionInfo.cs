@@ -47,7 +47,7 @@ internal static class VersionInfo
             {
                 var candidate = informationalVersion[(plusIndex + 1)..];
                 if (IsHexHash(candidate))
-                    return candidate;
+                    return candidate.ToLowerInvariant();
             }
         }
 
@@ -75,11 +75,11 @@ internal static class VersionInfo
                 if (File.Exists(refFile))
                 {
                     var hash = File.ReadAllText(refFile).Trim();
-                    return IsHexHash(hash) ? hash : null;
+                    return IsHexHash(hash) ? hash.ToLowerInvariant() : null;
                 }
             }
 
-            return IsHexHash(headContent) ? headContent : null;
+            return IsHexHash(headContent) ? headContent.ToLowerInvariant() : null;
         }
         catch
         {
