@@ -107,13 +107,14 @@ internal sealed class ProcFilesProbe : IProbe
         string? kernelOsRelease = null;
         string? kernelOsType = null;
         string? kernelVersion = null;
+        var fileReads = Files.ToDictionary(file => file, file => ProbeIo.ReadFileAsync(file, context.Timeout, context.CancellationToken));
 
         foreach (var file in Files)
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
 
-            var (outcome, text, msg) = await ProbeIo.ReadFileAsync(file, context.Timeout, context.CancellationToken).ConfigureAwait(false);
+            var (outcome, text, msg) = await fileReads[file].ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
             {
                 if (outcome != ProbeOutcome.Unavailable)
