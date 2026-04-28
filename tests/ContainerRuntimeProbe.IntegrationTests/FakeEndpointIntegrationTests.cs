@@ -45,6 +45,53 @@ public sealed class FakeEndpointIntegrationTests
         await server;
     }
 
+    [Fact]
+    public async Task Engine_RunAsync_AllowsMetadataEndpointOverrides()
+    {
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource();
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var ctx = await listener.GetContextAsync();
+                    ctx.Response.StatusCode = 200;
+                    await using var sw = new StreamWriter(ctx.Response.OutputStream);
+                    await sw.WriteAsync("{}");
+                    ctx.Response.Close();
+                }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+            }
+        });
+
+        try
+        {
+            var engine = new ContainerRuntimeProbeEngine();
+            var report = await engine.RunAsync(
+                TimeSpan.FromSeconds(1),
+                includeSensitive: false,
+                new ProbeRunOptions(AzureImdsBase: new Uri($"http://127.0.0.1:{port}")),
+                enabledProbes: new HashSet<string>(["cloud-metadata"], StringComparer.OrdinalIgnoreCase));
+
+            var cloudMetadata = Assert.Single(report.Probes);
+            Assert.Equal("cloud-metadata", cloudMetadata.ProbeId);
+            Assert.Contains(cloudMetadata.Evidence, e => e.Key == "azure.imds.outcome" && e.Value == "Success");
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+        }
+    }
+
     // ── Compose label extraction unit tests (no HTTP, pure JSON parsing) ─────
 
     [Fact]

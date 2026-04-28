@@ -34,9 +34,23 @@ public sealed class ContainerRuntimeProbeEngine
 
     /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
     public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, FingerprintMode fingerprintMode = FingerprintMode.Safe, CancellationToken cancellationToken = default)
+        => await RunAsync(timeout, includeSensitive, options: null, enabledProbes, fingerprintMode, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
+    public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, ProbeRunOptions? options, IReadOnlySet<string>? enabledProbes = null, FingerprintMode fingerprintMode = FingerprintMode.Safe, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
-        var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, false, cancellationToken);
+        var context = new ProbeContext(
+            timeout,
+            includeSensitive,
+            enabledProbes,
+            options?.KubernetesApiBase,
+            options?.AwsImdsBase,
+            options?.AzureImdsBase,
+            options?.GcpMetadataBase,
+            options?.OciMetadataBase,
+            options?.KubernetesSkipTlsValidation ?? false,
+            cancellationToken);
         var selected = enabledProbes is null || enabledProbes.Count == 0 ? _probes : _probes.Where(p => enabledProbes.Contains(p.Id)).ToList();
 
         var results = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
