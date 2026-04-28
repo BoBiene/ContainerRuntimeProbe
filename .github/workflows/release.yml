@@ -1,13 +1,110 @@
-name: release
+name: Publish Release
+
 on:
   push:
     tags: ['v*']
+
+permissions:
+  contents: write   # create GitHub releases and upload assets
+  packages: write   # push to GitHub Packages (NuGet + Container Registry)
+
 jobs:
-  release:
+  nuget-release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for MinVer tag resolution
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - run: dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts
+      - name: Pack
+        run: dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts/packages
+      - name: Push to GitHub Packages
+        run: |
+          dotnet nuget add source \
+            --username ${{ github.repository_owner }} \
+            --password ${{ secrets.GITHUB_TOKEN }} \
+            --store-password-in-clear-text \
+            --name github \
+            "https://nuget.pkg.github.com/${{ github.repository_owner }}/index.json"
+          dotnet nuget push "artifacts/packages/*.nupkg" \
+            --api-key ${{ secrets.GITHUB_TOKEN }} \
+            --source github \
+            --skip-duplicate
+
+  cli-release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - rid: linux-x64
+            asset_suffix: linux-x64
+          - rid: linux-arm64
+            asset_suffix: linux-arm64
+          - rid: win-x64
+            asset_suffix: win-x64.exe
+          - rid: osx-x64
+            asset_suffix: osx-x64
+          - rid: osx-arm64
+            asset_suffix: osx-arm64
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for MinVer tag resolution
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Publish self-contained binary
+        run: |
+          dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
+            -c Release -r ${{ matrix.rid }} \
+            -p:PublishTrimmed=true --self-contained true \
+            -o artifacts/cli/${{ matrix.rid }}
+      - name: Prepare asset
+        run: |
+          BIN=artifacts/cli/${{ matrix.rid }}/ContainerRuntimeProbe.Tool
+          [[ "${{ matrix.rid }}" == win-* ]] && BIN="${BIN}.exe"
+          ASSET="artifacts/container-runtime-probe-${{ matrix.asset_suffix }}"
+          cp "$BIN" "$ASSET"
+          echo "asset=$ASSET" >> "$GITHUB_ENV"
+      - name: Upload binary to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.asset }}
+
+  docker-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for MinVer tag resolution
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute image name
+        id: image
+        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+      - name: Extract version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Build and push release image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.image.outputs.name }}:latest
+            ${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}
+            ${{ steps.image.outputs.name }}:${{ github.ref_name }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
