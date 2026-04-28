@@ -1,6 +1,10 @@
-{
-  "GeneratedAt": "2026-04-28T18:44:52.9282346+00:00",
-  "Duration": "00:00:06.1610596",
+﻿{
+  "GeneratedAt": "2026-04-28T20:20:48.5302145+00:00",
+  "Duration": "00:00:05.5236579",
+  "ProbeToolInfo": {
+    "Version": "0.1.0-preview.12\u002B18a0e6a4bfea31eb1f3bab67c337fadfa7772d3f",
+    "GitCommitHash": null
+  },
   "Probes": [
     {
       "ProbeId": "marker-files",
@@ -20,7 +24,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0019512"
+      "Duration": "00:00:00.0065516"
     },
     {
       "ProbeId": "environment",
@@ -40,7 +44,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0020182"
+      "Duration": "00:00:00.0075586"
     },
     {
       "ProbeId": "proc-files",
@@ -48,32 +52,176 @@
       "Evidence": [
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/self/mountinfo:signal",
-          "Value": "overlay",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "12:blkio:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/self/mountinfo:signal",
-          "Value": "containerd",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "11:perf_event:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/1/mountinfo:signal",
-          "Value": "overlay",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "10:cpuset:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/1/mountinfo:signal",
-          "Value": "containerd",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "9:memory:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "8:devices:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "7:net_cls,net_prio:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "6:pids:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "5:cpu,cpuacct:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "4:rdma:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "3:hugetlb:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "2:freezer:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "1:name=systemd:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "0::/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "12:blkio:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "11:perf_event:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "10:cpuset:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "9:memory:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "8:devices:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "7:net_cls,net_prio:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "6:pids:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "5:cpu,cpuacct:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "4:rdma:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "3:hugetlb:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "2:freezer:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "1:name=systemd:/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "0::/docker/c571ff5219df6c38292621cc87dd5ec9d936a79a22d3946d267b756cebd919d3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "default-route-device",
           "Value": "eth0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dns-search",
+          "Value": "inray.local",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "docker-dns",
+          "Value": "127.0.0.11",
           "Sensitivity": "Public"
         },
         {
@@ -145,13 +293,13 @@
         {
           "ProbeId": "proc-files",
           "Key": "/proc/version",
-          "Value": "Linux version 6.12.76-linuxkit (root@buildkitsandbox) (gcc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "Linux version 5.4.0-216-generic (buildd@lcy02-amd64-014) (gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~20.04.2)) #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "6.12.76-linuxkit",
+          "Value": "5.4.0-216-generic",
           "Sensitivity": "Public"
         },
         {
@@ -163,157 +311,181 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "#236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.logical_processors",
-          "Value": "18",
+          "Value": "3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.vendor",
-          "Value": "0x61",
+          "Value": "AuthenticAMD",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.model_name",
-          "Value": "0",
+          "Value": "AMD EPYC 9334 32-Core Processor",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.family",
-          "Value": "8",
+          "Value": "25",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "17",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
+          "Value": "1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0xa10113b",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.flags.count",
-          "Value": "36",
+          "Value": "79",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.flags.hash",
-          "Value": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd",
+          "Value": "sha256:507a5474228a6c3366f902170de15430b36346ddf72f92ecabdab575eb50d2b9",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.online",
-          "Value": "0-17",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.online.count",
-          "Value": "18",
+          "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible",
-          "Value": "0-17",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible.count",
-          "Value": "18",
+          "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present",
-          "Value": "0-17",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present.count",
-          "Value": "18",
+          "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_total_bytes",
-          "Value": "8214757376",
+          "Value": "12545622016",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_available_bytes",
-          "Value": "7107444736",
+          "Value": "7424307200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.current",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.limit_raw",
-          "Value": "max",
+          "Value": "9223372036854771712",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.cgroup.limit_bytes",
+          "Value": "9223372036854771712",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.current_bytes",
-          "Value": "15106048",
+          "Value": "14372864",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+          "Key": "/sys/fs/cgroup/cpu.max",
           "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/fs/cgroup/memory/memory.usage_in_bytes",
-          "Value": "Unavailable",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "cpu.cgroup.max",
-          "Value": "max 100000",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
-          "Value": "Unavailable",
+          "Key": "cpu.cgroup.quota",
+          "Value": "-1",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.pid",
-          "Value": "pid:[4026532973]",
+          "Value": "pid:[4026534217]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.mnt",
-          "Value": "mnt:[4026532970]",
+          "Value": "mnt:[4026533620]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.net",
-          "Value": "net:[4026532975]",
+          "Value": "net:[4026534219]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.uts",
-          "Value": "uts:[4026532971]",
+          "Value": "uts:[4026533687]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.ipc",
-          "Value": "ipc:[4026532972]",
+          "Value": "ipc:[4026534216]",
           "Sensitivity": "Public"
         },
         {
@@ -325,30 +497,30 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "6.12.76-linuxkit",
+          "Value": "5.4.0-216-generic",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "#236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.compiler",
-          "Value": "gcc (Alpine 15.2.0",
+          "Value": "gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~20.04.2",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.flavor",
-          "Value": "Generic",
+          "Value": "Ubuntu",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0420377"
+      "Duration": "00:00:00.1707116"
     },
     {
       "ProbeId": "security-sandbox",
@@ -392,8 +564,8 @@
         },
         {
           "ProbeId": "security-sandbox",
-          "Key": "status.Seccomp",
-          "Value": "1",
+          "Key": "apparmor.profile",
+          "Value": "docker-default (enforce)",
           "Sensitivity": "Public"
         },
         {
@@ -404,21 +576,21 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0011945"
+      "Duration": "00:00:00.0024348"
     },
     {
       "ProbeId": "runtime-api",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "No docker/podman socket found",
-      "Duration": "00:00:00.0002069"
+      "Duration": "00:00:00.0007161"
     },
     {
       "ProbeId": "kubernetes",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "Kubernetes env/token missing",
-      "Duration": "00:00:00.0000988"
+      "Duration": "00:00:00.0004335"
     },
     {
       "ProbeId": "cloud-metadata",
@@ -427,36 +599,36 @@
         {
           "ProbeId": "cloud-metadata",
           "Key": "azure.imds.outcome",
-          "Value": "Timeout",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "gcp.metadata.machine_type.outcome",
-          "Value": "Unavailable",
+          "Value": "Timeout",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "gcp.metadata.zone.outcome",
-          "Value": "Unavailable",
+          "Value": "Timeout",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "gcp.metadata.outcome",
-          "Value": "Unavailable",
+          "Value": "Timeout",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "cloud-metadata",
           "Key": "oci.metadata.outcome",
-          "Value": "Timeout",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:06.0844907"
+      "Duration": "00:00:05.2562066"
     }
   ],
   "SecurityWarnings": [],
@@ -468,26 +640,26 @@
         {
           "Message": "/.dockerenv exists",
           "EvidenceKeys": [
-            "/.dockerenv"
+"/.dockerenv"
           ]
         },
         {
-          "Message": "Overlay mount detected",
+          "Message": "Cgroup contains docker path",
           "EvidenceKeys": [
-            "/proc/self/mountinfo",
-            "/proc/1/mountinfo"
+            "/proc/self/cgroup",
+"/proc/1/cgroup"
           ]
         }
       ]
     },
     "ContainerRuntime": {
-      "Value": "containerd",
+      "Value": "Docker",
       "Confidence": "Low",
       "Reasons": [
         {
-          "Message": "containerd mount signal",
+          "Message": "Docker cgroup path",
           "EvidenceKeys": [
-            "proc-files"
+"proc-files"
           ]
         }
       ]
@@ -500,7 +672,7 @@
           "Message": "No WSL2 kernel fingerprint detected",
           "EvidenceKeys": [
             "kernel.release",
-            "/proc/version"
+"/proc/version"
           ]
         }
       ]
@@ -515,7 +687,7 @@
             "EvidenceKeys": [
               "kernel.release",
               "/proc/version",
-              "os.id"
+"os.id"
             ]
           }
         ]
@@ -529,7 +701,7 @@
             "EvidenceKeys": [
               "kernel.release",
               "os.id",
-              "os.version_id"
+"os.version_id"
             ]
           }
         ]
@@ -537,8 +709,8 @@
     },
     "Environment": {
       "Type": {
-        "Value": "Unknown",
-        "Confidence": "Low",
+        "Value": "OnPrem",
+        "Confidence": "Medium",
         "Reasons": [
           {
             "Message": "No cloud metadata endpoint succeeded",
@@ -546,7 +718,13 @@
               "aws.imds.identity.outcome",
               "azure.imds.outcome",
               "gcp.metadata.outcome",
-              "oci.metadata.outcome"
+"oci.metadata.outcome"
+            ]
+          },
+          {
+            "Message": "DNS search domain looks like a home or LAN network",
+            "EvidenceKeys": [
+"dns-search"
             ]
           }
         ]
@@ -559,7 +737,7 @@
         {
           "Message": "Runtime API probe outcomes",
           "EvidenceKeys": [
-            "runtime-api"
+"runtime-api"
           ]
         }
       ]
@@ -581,7 +759,7 @@
         {
           "Message": "Cloud metadata/env markers",
           "EvidenceKeys": [
-            "cloud-metadata"
+"cloud-metadata"
           ]
         }
       ]
@@ -613,8 +791,8 @@
       "HomeUrl": "https://www.debian.org/",
       "SupportUrl": "https://www.debian.org/support",
       "BugReportUrl": "https://bugs.debian.org/",
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Confidence": "High",
       "EvidenceReferences": [
         "proc-files:os.bug_report_url",
@@ -625,24 +803,24 @@
         "proc-files:os.support_url",
         "proc-files:os.version",
         "proc-files:os.version_codename",
-        "proc-files:os.version_id"
+"proc-files:os.version_id"
       ]
     },
     "VisibleKernel": {
       "Name": "Linux",
-      "Release": "6.12.76-linuxkit",
-      "Version": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
-      "Flavor": "Generic",
-      "Compiler": "gcc (Alpine 15.2.0",
+      "Release": "5.4.0-216-generic",
+      "Version": "#236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Flavor": "Ubuntu",
+      "Compiler": "gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~20.04.2",
       "Confidence": "Medium",
       "EvidenceReferences": [
         "proc-files:kernel.compiler",
         "proc-files:kernel.flavor",
         "proc-files:kernel.name",
         "proc-files:kernel.release",
-        "proc-files:kernel.version"
+"proc-files:kernel.version"
       ]
     },
     "RuntimeReportedHostOs": {
@@ -669,30 +847,30 @@
       "EvidenceReferences": []
     },
     "Hardware": {
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Cpu": {
-        "LogicalProcessorCount": 18,
-        "VisibleProcessorCount": 18,
-        "Vendor": "0x61",
-        "ModelName": "0",
-        "Family": "0x61",
-        "FlagsHash": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd",
-        "FlagsCount": 36,
-        "CgroupCpuQuota": null,
-        "CgroupCpuMax": "max 100000"
+        "LogicalProcessorCount": 3,
+        "VisibleProcessorCount": 8,
+        "Vendor": "AuthenticAMD",
+        "ModelName": "AMD EPYC 9334 32-Core Processor",
+        "Family": "AMD",
+        "FlagsHash": "sha256:507a5474228a6c3366f902170de15430b36346ddf72f92ecabdab575eb50d2b9",
+        "FlagsCount": 79,
+        "CgroupCpuQuota": -1,
+        "CgroupCpuMax": null
       },
       "Memory": {
-        "MemTotalBytes": 8214757376,
-        "CgroupMemoryLimitBytes": null,
-        "CgroupMemoryCurrentBytes": 15106048,
-        "CgroupMemoryLimitRaw": "max"
+        "MemTotalBytes": 12545622016,
+        "CgroupMemoryLimitBytes": 9223372036854771712,
+        "CgroupMemoryCurrentBytes": 14372864,
+        "CgroupMemoryLimitRaw": "9223372036854771712"
       },
       "CloudMachineType": null
     },
     "Fingerprint": {
       "Algorithm": "CRP-HOST-FP-v1",
-      "Value": "sha256:72eb3c85a136ee382badfb987bd21bbd81c5e8938dd3ce436e276c1420e1d1ca",
+      "Value": "sha256:2cf123d5c9175f13c8ae31e0dc09788f49a25a8108af29852eedf93922111a7a",
       "Stability": "KernelOnly",
       "IncludedSignalCount": 8,
       "ExcludedSensitiveSignalCount": 1,
@@ -700,42 +878,42 @@
         {
           "Name": "architecture.normalized",
           "Included": true,
-          "RawValueRedacted": "Arm64"
+          "RawValueRedacted": "X64"
         },
         {
           "Name": "cpu.family",
           "Included": true,
-          "RawValueRedacted": "0x61"
+          "RawValueRedacted": "AMD"
         },
         {
           "Name": "cpu.flags.hash",
           "Included": true,
-          "RawValueRedacted": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd"
+          "RawValueRedacted": "sha256:507a5474228a6c3366f902170de15430b36346ddf72f92ecabdab575eb50d2b9"
         },
         {
           "Name": "cpu.modelName.normalized",
           "Included": true,
-          "RawValueRedacted": "0"
+          "RawValueRedacted": "AMD EPYC 9334 32-Core Processor"
         },
         {
           "Name": "cpu.vendor",
           "Included": true,
-          "RawValueRedacted": "0x61"
+          "RawValueRedacted": "AuthenticAMD"
         },
         {
           "Name": "kernel.flavor",
           "Included": true,
-          "RawValueRedacted": "Generic"
+          "RawValueRedacted": "Ubuntu"
         },
         {
           "Name": "kernel.release",
           "Included": true,
-          "RawValueRedacted": "6.12.76-linuxkit"
+          "RawValueRedacted": "5.4.0-216-generic"
         },
         {
           "Name": "memory.total.bucket",
           "Included": true,
-          "RawValueRedacted": "8GiB"
+          "RawValueRedacted": "12GiB"
         },
         {
           "Name": "hostname",
@@ -744,7 +922,7 @@
         }
       ],
       "Warnings": [
-        "Fingerprint is diagnostic only and not a security identity."
+"Fingerprintisdiagnosticonlyandnotasecurityidentity."
       ]
     }
   }

@@ -10,8 +10,9 @@ public sealed class SampleRegressionTests
     {
         var examplesDirectory = FindExamplesDirectory();
         var jsonFiles = Directory.GetFiles(examplesDirectory, "*.sample.json", SearchOption.TopDirectoryOnly);
+        var txtFiles = Directory.GetFiles(examplesDirectory, "*.sample.txt", SearchOption.TopDirectoryOnly);
 
-        Assert.NotEmpty(jsonFiles);
+        Assert.True(jsonFiles.Length > 0 || txtFiles.Length > 0);
 
         foreach (var jsonFile in jsonFiles)
         {
@@ -40,6 +41,15 @@ public sealed class SampleRegressionTests
                 var txt = File.ReadAllText(txtFile).Trim();
                 Assert.Equal(compactSample, txt);
             }
+        }
+
+        foreach (var txtFile in txtFiles)
+        {
+            var compactSample = File.ReadAllText(txtFile).Trim();
+            Assert.False(string.IsNullOrWhiteSpace(compactSample));
+
+            var parsed = RuntimeSampleRenderer.ParseCompactSample(compactSample);
+            Assert.True(parsed.IsValid, string.Join(Environment.NewLine, parsed.Diagnostics));
         }
     }
 

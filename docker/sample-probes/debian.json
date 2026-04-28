@@ -1,6 +1,6 @@
 {
-  "GeneratedAt": "2026-04-28T18:44:52.9282346+00:00",
-  "Duration": "00:00:06.1610596",
+  "GeneratedAt": "2026-04-28T16:19:15.7294687+00:00",
+  "Duration": "00:00:06.5088786",
   "Probes": [
     {
       "ProbeId": "marker-files",
@@ -20,7 +20,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0019512"
+      "Duration": "00:00:00.0259386"
     },
     {
       "ProbeId": "environment",
@@ -40,7 +40,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0020182"
+      "Duration": "00:00:00.0385356"
     },
     {
       "ProbeId": "proc-files",
@@ -54,20 +54,8 @@
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/proc/self/mountinfo:signal",
-          "Value": "containerd",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
           "Key": "/proc/1/mountinfo:signal",
           "Value": "overlay",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/1/mountinfo:signal",
-          "Value": "containerd",
           "Sensitivity": "Public"
         },
         {
@@ -75,6 +63,12 @@
           "Key": "default-route-device",
           "Value": "eth0",
           "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dns-search",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
         },
         {
           "ProbeId": "proc-files",
@@ -145,13 +139,13 @@
         {
           "ProbeId": "proc-files",
           "Key": "/proc/version",
-          "Value": "Linux version 6.12.76-linuxkit (root@buildkitsandbox) (gcc (Alpine 15.2.0) 15.2.0, GNU ld (GNU Binutils) 2.45.1) #1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "Linux version 6.1.0-40-amd64 (debian-kernel@lists.debian.org) (gcc-12 (Debian 12.2.0-14\u002Bdeb12u1) 12.2.0, GNU ld (GNU Binutils for Debian) 2.40) #1 SMP PREEMPT_DYNAMIC Debian 6.1.153-1 (2025-09-20)",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "6.12.76-linuxkit",
+          "Value": "6.1.0-40-amd64",
           "Sensitivity": "Public"
         },
         {
@@ -163,91 +157,109 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "#1 SMP PREEMPT_DYNAMIC Debian 6.1.153-1 (2025-09-20)",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.logical_processors",
-          "Value": "18",
+          "Value": "3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.vendor",
-          "Value": "0x61",
+          "Value": "GenuineIntel",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.model_name",
-          "Value": "0",
+          "Value": "Intel(R) Pentium(R) CPU  N3540  @ 2.16GHz",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.family",
+          "Value": "6",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "55",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
           "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0x829",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
           "Key": "cpu.flags.count",
-          "Value": "36",
+          "Value": "77",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.flags.hash",
-          "Value": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd",
+          "Value": "sha256:1914bfdbe2413f1ba588db2ec44229e30a2ad595c9c547382e9d92d6335d3904",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.online",
-          "Value": "0-17",
+          "Value": "0-3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.online.count",
-          "Value": "18",
+          "Value": "4",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible",
-          "Value": "0-17",
+          "Value": "0-3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible.count",
-          "Value": "18",
+          "Value": "4",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present",
-          "Value": "0-17",
+          "Value": "0-3",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present.count",
-          "Value": "18",
+          "Value": "4",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_total_bytes",
-          "Value": "8214757376",
+          "Value": "8206766080",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_available_bytes",
-          "Value": "7107444736",
+          "Value": "5311475712",
           "Sensitivity": "Public"
         },
         {
@@ -259,7 +271,7 @@
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.current_bytes",
-          "Value": "15106048",
+          "Value": "14766080",
           "Sensitivity": "Public"
         },
         {
@@ -289,31 +301,31 @@
         {
           "ProbeId": "proc-files",
           "Key": "ns.pid",
-          "Value": "pid:[4026532973]",
+          "Value": "pid:[4026532841]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.mnt",
-          "Value": "mnt:[4026532970]",
+          "Value": "mnt:[4026532838]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.net",
-          "Value": "net:[4026532975]",
+          "Value": "net:[4026532843]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.uts",
-          "Value": "uts:[4026532971]",
+          "Value": "uts:[4026532839]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.ipc",
-          "Value": "ipc:[4026532972]",
+          "Value": "ipc:[4026532840]",
           "Sensitivity": "Public"
         },
         {
@@ -325,19 +337,19 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "6.12.76-linuxkit",
+          "Value": "6.1.0-40-amd64",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
+          "Value": "#1 SMP PREEMPT_DYNAMIC Debian 6.1.153-1 (2025-09-20)",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.compiler",
-          "Value": "gcc (Alpine 15.2.0",
+          "Value": "gcc-12 (Debian 12.2.0-14\u002Bdeb12u1",
           "Sensitivity": "Public"
         },
         {
@@ -348,7 +360,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0420377"
+      "Duration": "00:00:00.5264919"
     },
     {
       "ProbeId": "security-sandbox",
@@ -398,27 +410,33 @@
         },
         {
           "ProbeId": "security-sandbox",
+          "Key": "apparmor.profile",
+          "Value": "docker-default (enforce)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
           "Key": "selinux.mount.present",
           "Value": "False",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0011945"
+      "Duration": "00:00:00.0075268"
     },
     {
       "ProbeId": "runtime-api",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "No docker/podman socket found",
-      "Duration": "00:00:00.0002069"
+      "Duration": "00:00:00.0023396"
     },
     {
       "ProbeId": "kubernetes",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "Kubernetes env/token missing",
-      "Duration": "00:00:00.0000988"
+      "Duration": "00:00:00.0013732"
     },
     {
       "ProbeId": "cloud-metadata",
@@ -427,7 +445,7 @@
         {
           "ProbeId": "cloud-metadata",
           "Key": "azure.imds.outcome",
-          "Value": "Timeout",
+          "Value": "Unavailable",
           "Sensitivity": "Public"
         },
         {
@@ -456,7 +474,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:06.0844907"
+      "Duration": "00:00:05.6670935"
     }
   ],
   "SecurityWarnings": [],
@@ -472,85 +490,23 @@
           ]
         },
         {
-          "Message": "Overlay mount detected",
+          "Message": "Namespace info visible",
           "EvidenceKeys": [
-            "/proc/self/mountinfo",
-            "/proc/1/mountinfo"
+            "ns.pid",
+            "ns.mnt"
           ]
         }
       ]
     },
     "ContainerRuntime": {
-      "Value": "containerd",
-      "Confidence": "Low",
+      "Value": "Unknown",
+      "Confidence": "Unknown",
       "Reasons": [
         {
-          "Message": "containerd mount signal",
-          "EvidenceKeys": [
-            "proc-files"
-          ]
+          "Message": "No runtime evidence",
+          "EvidenceKeys": []
         }
       ]
-    },
-    "Virtualization": {
-      "Value": "None",
-      "Confidence": "Medium",
-      "Reasons": [
-        {
-          "Message": "No WSL2 kernel fingerprint detected",
-          "EvidenceKeys": [
-            "kernel.release",
-            "/proc/version"
-          ]
-        }
-      ]
-    },
-    "Host": {
-      "Family": {
-        "Value": "Linux",
-        "Confidence": "High",
-        "Reasons": [
-          {
-            "Message": "Visible kernel does not match WSL2 and remains Linux",
-            "EvidenceKeys": [
-              "kernel.release",
-              "/proc/version",
-              "os.id"
-            ]
-          }
-        ]
-      },
-      "Type": {
-        "Value": "StandardLinux",
-        "Confidence": "High",
-        "Reasons": [
-          {
-            "Message": "Modern kernel and userspace do not show appliance mismatch signals",
-            "EvidenceKeys": [
-              "kernel.release",
-              "os.id",
-              "os.version_id"
-            ]
-          }
-        ]
-      }
-    },
-    "Environment": {
-      "Type": {
-        "Value": "Unknown",
-        "Confidence": "Low",
-        "Reasons": [
-          {
-            "Message": "No cloud metadata endpoint succeeded",
-            "EvidenceKeys": [
-              "aws.imds.identity.outcome",
-              "azure.imds.outcome",
-              "gcp.metadata.outcome",
-              "oci.metadata.outcome"
-            ]
-          }
-        ]
-      }
     },
     "RuntimeApi": {
       "Value": "Unknown",
@@ -613,8 +569,8 @@
       "HomeUrl": "https://www.debian.org/",
       "SupportUrl": "https://www.debian.org/support",
       "BugReportUrl": "https://bugs.debian.org/",
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Confidence": "High",
       "EvidenceReferences": [
         "proc-files:os.bug_report_url",
@@ -630,12 +586,12 @@
     },
     "VisibleKernel": {
       "Name": "Linux",
-      "Release": "6.12.76-linuxkit",
-      "Version": "#1 SMP Fri Mar  6 10:10:19 UTC 2026",
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
+      "Release": "6.1.0-40-amd64",
+      "Version": "#1 SMP PREEMPT_DYNAMIC Debian 6.1.153-1 (2025-09-20)",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Flavor": "Generic",
-      "Compiler": "gcc (Alpine 15.2.0",
+      "Compiler": "gcc-12 (Debian 12.2.0-14\u002Bdeb12u1",
       "Confidence": "Medium",
       "EvidenceReferences": [
         "proc-files:kernel.compiler",
@@ -656,43 +612,31 @@
       "Confidence": "Unknown",
       "EvidenceReferences": []
     },
-    "Virtualization": {
-      "Kind": "Unknown",
-      "PlatformVendor": null,
-      "Confidence": "Unknown",
-      "EvidenceReferences": []
-    },
-    "UnderlyingHostOs": {
-      "Family": "Unknown",
-      "Version": null,
-      "Confidence": "Unknown",
-      "EvidenceReferences": []
-    },
     "Hardware": {
-      "Architecture": "Arm64",
-      "RawArchitecture": "arm64",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Cpu": {
-        "LogicalProcessorCount": 18,
-        "VisibleProcessorCount": 18,
-        "Vendor": "0x61",
-        "ModelName": "0",
-        "Family": "0x61",
-        "FlagsHash": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd",
-        "FlagsCount": 36,
+        "LogicalProcessorCount": 3,
+        "VisibleProcessorCount": 4,
+        "Vendor": "GenuineIntel",
+        "ModelName": "Intel(R) Pentium(R) CPU  N3540  @ 2.16GHz",
+        "Family": "IntelXeon",
+        "FlagsHash": "sha256:1914bfdbe2413f1ba588db2ec44229e30a2ad595c9c547382e9d92d6335d3904",
+        "FlagsCount": 77,
         "CgroupCpuQuota": null,
         "CgroupCpuMax": "max 100000"
       },
       "Memory": {
-        "MemTotalBytes": 8214757376,
+        "MemTotalBytes": 8206766080,
         "CgroupMemoryLimitBytes": null,
-        "CgroupMemoryCurrentBytes": 15106048,
+        "CgroupMemoryCurrentBytes": 14766080,
         "CgroupMemoryLimitRaw": "max"
       },
       "CloudMachineType": null
     },
     "Fingerprint": {
       "Algorithm": "CRP-HOST-FP-v1",
-      "Value": "sha256:72eb3c85a136ee382badfb987bd21bbd81c5e8938dd3ce436e276c1420e1d1ca",
+      "Value": "sha256:95c85c158035978c6519402cc769db009831c87f48a258dbc674c3e85d1269b7",
       "Stability": "KernelOnly",
       "IncludedSignalCount": 8,
       "ExcludedSensitiveSignalCount": 1,
@@ -700,27 +644,27 @@
         {
           "Name": "architecture.normalized",
           "Included": true,
-          "RawValueRedacted": "Arm64"
+          "RawValueRedacted": "X64"
         },
         {
           "Name": "cpu.family",
           "Included": true,
-          "RawValueRedacted": "0x61"
+          "RawValueRedacted": "IntelXeon"
         },
         {
           "Name": "cpu.flags.hash",
           "Included": true,
-          "RawValueRedacted": "sha256:86723125334506afe9600b2633977f845cead3d23bf2d810e09663f12b0a93fd"
+          "RawValueRedacted": "sha256:1914bfdbe2413f1ba588db2ec44229e30a2ad595c9c547382e9d92d6335d3904"
         },
         {
           "Name": "cpu.modelName.normalized",
           "Included": true,
-          "RawValueRedacted": "0"
+          "RawValueRedacted": "Intel(R) Pentium(R) CPU N3540 @ 2.16GHz"
         },
         {
           "Name": "cpu.vendor",
           "Included": true,
-          "RawValueRedacted": "0x61"
+          "RawValueRedacted": "GenuineIntel"
         },
         {
           "Name": "kernel.flavor",
@@ -730,7 +674,7 @@
         {
           "Name": "kernel.release",
           "Included": true,
-          "RawValueRedacted": "6.12.76-linuxkit"
+          "RawValueRedacted": "6.1.0-40-amd64"
         },
         {
           "Name": "memory.total.bucket",

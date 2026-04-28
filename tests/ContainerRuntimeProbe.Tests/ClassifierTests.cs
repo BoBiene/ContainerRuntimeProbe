@@ -505,4 +505,38 @@ public sealed class ClassifierTests
         var runtimeReasonsText = string.Join("|", report.ContainerRuntime.Reasons.Select(r => r.Message));
         Assert.Contains("Docker /_ping", runtimeReasonsText, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void Classifier_SynologyKernelFlavor_DetectsSynologyVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("marker-files", ProbeOutcome.Success, [
+                new EvidenceItem("marker-files", "/.dockerenv", "True")
+            ]),
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.flavor", "Synology"),
+                new EvidenceItem("proc-files", "kernel.release", "5.10.55+"),
+                new EvidenceItem("proc-files", "os.id", "debian")
+            ])
+        ]);
+
+        Assert.Equal("Synology", report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
+    }
+
+    [Fact]
+    public void Classifier_SynologyOsSignals_DetectsSynologyVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "os.id", "synology"),
+                new EvidenceItem("proc-files", "os.name", "Synology"),
+                new EvidenceItem("proc-files", "kernel.release", "5.10.55+"),
+                new EvidenceItem("proc-files", "kernel.flavor", "Generic")
+            ])
+        ]);
+
+        Assert.Equal("Synology", report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
+    }
 }

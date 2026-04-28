@@ -286,82 +286,8 @@ internal static class Classifier
         var cloudProvider = Make(cloud, cloudScore, new ClassificationReason("Cloud metadata/env markers", new[] { "cloud-metadata" }));
 
         // ── PlatformVendor ───────────────────────────────────────────────────────
-        // IoTEdge: any evidence key or value containing "iotedge" indicates Azure IoT Edge / Siemens IE hosting.
-        // IoTEdge alone → classify as "IoTEdge" (conservative; could be any IoTEdge deployment).
-        // IoTEdge + Siemens-specific signals → "Siemens Industrial Edge".
-        var iotedgeScore = 0;
-        var iotedgeReasons = new List<ClassificationReason>();
-        if (e.Any(x => x.Key.Contains("iotedge", StringComparison.OrdinalIgnoreCase)))
-        {
-            iotedgeScore += 5;
-            iotedgeReasons.Add(new("IoTEdge env marker detected", new[] { "environment" }));
-        }
-
-        // Siemens-specific: key or value references "siemens" or "industrial"
-        var hasSiemensSpecific = e.Any(x =>
-            x.Key.Contains("siemens", StringComparison.OrdinalIgnoreCase) ||
-            x.Key.Contains("industrial", StringComparison.OrdinalIgnoreCase) ||
-            x.Value?.Contains("siemens", StringComparison.OrdinalIgnoreCase) == true);
-
-        var ieScore = 0;
-        var ieReasons = new List<ClassificationReason>();
-        if (iotedgeScore > 0 && hasSiemensSpecific)
-        {
-            ieScore = iotedgeScore + 4;
-            ieReasons.AddRange(iotedgeReasons);
-            ieReasons.Add(new("Siemens-specific signals corroborate IoTEdge", new[] { "environment", "runtime-api" }));
-            // Compose further corroborates Siemens Industrial Edge context
-            if (e.Any(x => x.Key.Contains("compose", StringComparison.OrdinalIgnoreCase)))
-            {
-                ieScore += 2;
-                ieReasons.Add(new("Docker Compose corroboration", new[] { "runtime-api" }));
-            }
-        }
-
-        var wsl2VendorDetected =
-            e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase))
-            || e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value))
-            || e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value));
-
-        var dockerInfoOperatingSystem = GetFirstMatchingValue(e, "docker.info.operating_system");
-        var dockerInfoKernelVersion = GetFirstMatchingValue(e, "docker.info.kernel_version");
-
-        var appleScore = 0;
-        var appleReasons = new List<ClassificationReason>();
-        var dockerDesktopLinuxkitDetected =
-            e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "DockerDesktop", StringComparison.OrdinalIgnoreCase))
-            || e.Any(x => x.Key == "kernel.release" && x.Value?.Contains("linuxkit", StringComparison.OrdinalIgnoreCase) == true)
-            || e.Any(x => x.Key == "/proc/version" && x.Value?.Contains("linuxkit", StringComparison.OrdinalIgnoreCase) == true)
-            || ContainsAny(dockerInfoKernelVersion, "linuxkit");
-
-        if (dockerDesktopLinuxkitDetected)
-        {
-            appleScore += 2;
-            appleReasons.Add(new("LinuxKit kernel fingerprint suggests Docker Desktop VM", new[] { "kernel.flavor", "kernel.release", "/proc/version", "docker.info.kernel_version" }));
-        }
-
-        if (ContainsAny(dockerInfoOperatingSystem, "docker desktop"))
-        {
-            appleScore += 1;
-            appleReasons.Add(new("Runtime API reports Docker Desktop operating system", new[] { "docker.info.operating_system" }));
-        }
-
-        var cpuModelForVendor = GetFirstMatchingValue(e, "cpu.model_name");
-        if (ContainsAny(cpuModelForVendor, "apple", "intel(r) core"))
-        {
-            appleScore += 1;
-            appleReasons.Add(new("CPU model is consistent with desktop/laptop developer hosts", new[] { "cpu.model_name" }));
-        }
-
-        var vendor = wsl2VendorDetected
-            ? Make("Microsoft", 8, new ClassificationReason("WSL2 kernel fingerprint detected", new[] { "kernel.flavor", "kernel.release", "/proc/version" }))
-            : appleScore >= 2
-                ? Make("Apple", appleScore, appleReasons.ToArray())
-            : ieScore >= 4
-                ? Make("Siemens Industrial Edge", ieScore, ieReasons.ToArray())
-                : iotedgeScore > 0
-                    ? Make("IoTEdge", iotedgeScore, iotedgeReasons.ToArray())
-                    : Make("Unknown", 0, new ClassificationReason("No vendor-specific proofs", Array.Empty<string>()));
+        // Delegated to VendorDetection for independent maintainability and testability.
+        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
 
         return new ReportClassification(
             isContainerized,

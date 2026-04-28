@@ -26,12 +26,34 @@ internal static class VersionInfo
         return informationalVersion ?? "unknown";
     }
 
-    /// <summary>Attempts to read git commit hash from .git/HEAD and git index files.</summary>
+    /// <summary>
+    /// Extracts git commit hash. Prefers the hash embedded by MinVer in
+    /// <see cref="AssemblyInformationalVersionAttribute"/> as <c>{version}+{hash}</c>
+    /// (works inside Docker containers and CI). Falls back to reading <c>.git/HEAD</c>
+    /// for local dev builds where MinVer may not have embedded the hash.
+    /// </summary>
     private static string? GetGitCommitHash()
     {
+        // Primary: parse hash from AssemblyInformationalVersion suffix (+{hash}).
+        // MinVer always embeds the full 40-char SHA-1 commit hash there.
+        var informationalVersion = typeof(VersionInfo).Assembly
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()
+            ?.InformationalVersion;
+
+        if (!string.IsNullOrWhiteSpace(informationalVersion))
+        {
+            var plusIndex = informationalVersion.IndexOf('+', StringComparison.Ordinal);
+            if (plusIndex >= 0)
+            {
+                var candidate = informationalVersion[(plusIndex + 1)..];
+                if (IsHexHash(candidate))
+                    return candidate;
+            }
+        }
+
+        // Fallback: walk up and read .git/HEAD (works in local dev without MinVer tags).
         try
         {
-            // Try to find .git directory (walk up from assembly location)
             var assemblyDir = Path.GetDirectoryName(typeof(VersionInfo).Assembly.Location);
             if (string.IsNullOrEmpty(assemblyDir))
                 return null;
@@ -40,44 +62,40 @@ internal static class VersionInfo
             if (gitDir is null)
                 return null;
 
-            // Read HEAD to get current branch ref or commit hash
             var headFile = Path.Combine(gitDir, "HEAD");
             if (!File.Exists(headFile))
                 return null;
 
             var headContent = File.ReadAllText(headFile).Trim();
 
-            // If HEAD contains "ref: refs/heads/...", read that ref file
-            if (headContent.StartsWith("ref:"))
+            if (headContent.StartsWith("ref:", StringComparison.Ordinal))
             {
-                var refPath = headContent.Substring(5).Trim();
+                var refPath = headContent[5..].Trim();
                 var refFile = Path.Combine(gitDir, refPath);
                 if (File.Exists(refFile))
                 {
-                    return File.ReadAllText(refFile).Trim();
+                    var hash = File.ReadAllText(refFile).Trim();
+                    return IsHexHash(hash) ? hash : null;
                 }
             }
 
-            // HEAD might be a direct commit hash (detached state)
-            if (headContent.Length == 40 || headContent.Length == 64) // SHA1 or SHA256
-            {
-                return headContent;
-            }
-
-            return null;
+            return IsHexHash(headContent) ? headContent : null;
         }
         catch
         {
-            // If anything fails, return null - version is still available
             return null;
         }
     }
+
+    private static bool IsHexHash(string value)
+        => (value.Length == 40 || value.Length == 64) // SHA-1 or SHA-256
+            && value.All(c => c is >= '0' and <= '9' or >= 'a' and <= 'f' or >= 'A' and <= 'F');
 
     /// <summary>Walks up directory tree to find .git directory.</summary>
     private static string? FindGitDirectory(string startPath)
     {
         var current = new DirectoryInfo(startPath);
-        const int maxLevels = 10; // Prevent infinite loops
+        const int maxLevels = 10;
         var level = 0;
 
         while (current is not null && level < maxLevels)
