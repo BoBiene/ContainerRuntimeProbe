@@ -422,6 +422,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
+        // Socket access alone is no longer enough to classify the current process as containerized.
         Assert.Equal("Unknown", report.IsContainerized.Value);
 
         // IsContainerized reasons should only reflect container evidence, not runtime API body details

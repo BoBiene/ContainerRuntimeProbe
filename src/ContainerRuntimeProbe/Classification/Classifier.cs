@@ -45,7 +45,7 @@ internal static class Classifier
                && string.Equals(item.Value, "Success", StringComparison.Ordinal);
 
         static bool IsConsumerCpu(string? cpuModel)
-            => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core(tm)", "core i", "intel core", "apple m");
+            => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core i", "intel core", "apple m");
 
         static bool IsHomeDns(string? dnsDomain)
             => !string.IsNullOrWhiteSpace(dnsDomain)
