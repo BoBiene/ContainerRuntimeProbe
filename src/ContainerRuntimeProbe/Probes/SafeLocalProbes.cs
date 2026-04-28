@@ -67,7 +67,12 @@ internal sealed class EnvironmentProbe : IProbe
         var sw = Stopwatch.StartNew();
         var evidence = Keys.Select(k => (k, v: Environment.GetEnvironmentVariable(k)))
             .Where(x => !string.IsNullOrWhiteSpace(x.v))
-            .Select(x => new EvidenceItem(Id, x.k, Redaction.MaybeRedact(x.k, x.v, context.IncludeSensitive), Redaction.IsSensitiveKey(x.k) ? EvidenceSensitivity.Sensitive : EvidenceSensitivity.Public))
+            .Select(x =>
+            {
+                var isSensitive = x.k.Equals("HOSTNAME", StringComparison.OrdinalIgnoreCase) || Redaction.IsSensitiveKey(x.k);
+                var value = isSensitive && !context.IncludeSensitive ? "<redacted>" : x.v;
+                return new EvidenceItem(Id, x.k, value, isSensitive ? EvidenceSensitivity.Sensitive : EvidenceSensitivity.Public);
+            })
             .ToList();
         sw.Stop();
         return Task.FromResult(new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed));
@@ -235,7 +240,15 @@ internal sealed class ProcFilesProbe : IProbe
             }
             else
             {
-                evidence.Add(new EvidenceItem(Id, file, text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault()));
+                var value = text!.Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (file is "/etc/hostname" or "/proc/sys/kernel/hostname")
+                {
+                    evidence.Add(new EvidenceItem(Id, file, context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                }
+                else
+                {
+                    evidence.Add(new EvidenceItem(Id, file, value));
+                }
             }
         }
 

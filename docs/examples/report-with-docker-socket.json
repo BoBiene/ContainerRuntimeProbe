@@ -1,17 +1,1088 @@
 {
+  "GeneratedAt": "2026-04-28T14:47:12.8823751+00:00",
+  "Duration": "00:00:06.1781433",
+  "Probes": [
+    {
+      "ProbeId": "marker-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "marker-files",
+          "Key": "/.dockerenv",
+          "Value": "False",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "marker-files",
+          "Key": "/run/.containerenv",
+          "Value": "False",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0007578"
+    },
+    {
+      "ProbeId": "environment",
+      "Outcome": "Success",
+      "Evidence": [],
+      "Message": null,
+      "Duration": "00:00:00.0034597"
+    },
+    {
+      "ProbeId": "proc-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/mountinfo:signal",
+          "Value": "overlay",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/mountinfo:signal",
+          "Value": "overlay",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "default-route-device",
+          "Value": "eth0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dns-search",
+          "Value": "vcq0jmfdokweppwtd0ncfytsif.dx.internal.cloudapp.net",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/etc/hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/sys/kernel/hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.id",
+          "Value": "ubuntu",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.id_like",
+          "Value": "debian",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.name",
+          "Value": "Ubuntu",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.pretty_name",
+          "Value": "Ubuntu 24.04.4 LTS",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version",
+          "Value": "24.04.4 LTS (Noble Numbat)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version_id",
+          "Value": "24.04",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version_codename",
+          "Value": "noble",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.home_url",
+          "Value": "https://www.ubuntu.com/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.support_url",
+          "Value": "https://help.ubuntu.com/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.bug_report_url",
+          "Value": "https://bugs.launchpad.net/ubuntu/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/version",
+          "Value": "Linux version 6.17.0-1010-azure (buildd@lcy02-amd64-097) (x86_64-linux-gnu-gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0, GNU ld (GNU Binutils for Ubuntu) 2.42) #10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.logical_processors",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.vendor",
+          "Value": "AuthenticAMD",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model_name",
+          "Value": "AMD EPYC 9V74 80-Core Processor",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.family",
+          "Value": "25",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "17",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
+          "Value": "1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0xffffffff",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.count",
+          "Value": "116",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.hash",
+          "Value": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present",
+          "Value": "0-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present.count",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_total_bytes",
+          "Value": "8323989504",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_available_bytes",
+          "Value": "5527855104",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.current",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory/memory.limit_in_bytes",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory/memory.usage_in_bytes",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/cpu.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.pid",
+          "Value": "pid:[4026531836]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.mnt",
+          "Value": "mnt:[4026531832]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.net",
+          "Value": "net:[4026531833]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.uts",
+          "Value": "uts:[4026531838]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.ipc",
+          "Value": "ipc:[4026531839]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler",
+          "Value": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.flavor",
+          "Value": "Azure",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0354300"
+    },
+    {
+      "ProbeId": "security-sandbox",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "proc.self.status.outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapPrm",
+          "Value": "0000000000000000",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapEff",
+          "Value": "0000000000000000",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapBnd",
+          "Value": "000001ffffffffff",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.NoNewPrivs",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.Seccomp",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.Seccomp",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "apparmor.profile",
+          "Value": "unconfined",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "selinux.mount.present",
+          "Value": "False",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0017195"
+    },
+    {
+      "ProbeId": "runtime-api",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "runtime-api",
+          "Key": "socket.present",
+          "Value": "/var/run/docker.sock",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/_ping:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/_ping:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.api.endpoint",
+          "Value": "/_ping",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/version:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/version:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.engine.version",
+          "Value": "28.0.4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.engine.api_version",
+          "Value": "1.48",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/info:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/info:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.operating_system",
+          "Value": "Ubuntu 24.04.4 LTS",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.os_type",
+          "Value": "linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.architecture",
+          "Value": "x86_64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.kernel_version",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.ncpu",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.mem_total",
+          "Value": "8323989504",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.server_version",
+          "Value": "28.0.4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.cgroup_driver",
+          "Value": "systemd",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.cgroup_version",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.default_runtime",
+          "Value": "runc",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.security_options_count",
+          "Value": "3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.architecture",
+          "Value": "x86_64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/_ping:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/_ping:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/version:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/version:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/info:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/var/run/docker.sock:/libpod/info:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "container.inspect.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "container.inspect.status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "socket.present",
+          "Value": "/run/docker.sock",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/_ping:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/_ping:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.api.endpoint",
+          "Value": "/_ping",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/version:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/version:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.engine.version",
+          "Value": "28.0.4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.engine.api_version",
+          "Value": "1.48",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/info:outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/info:status",
+          "Value": "200",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.operating_system",
+          "Value": "Ubuntu 24.04.4 LTS",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.os_type",
+          "Value": "linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.architecture",
+          "Value": "x86_64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.kernel_version",
+          "Value": "6.17.0-1010-azure",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.ncpu",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.mem_total",
+          "Value": "8323989504",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.server_version",
+          "Value": "28.0.4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.cgroup_driver",
+          "Value": "systemd",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.cgroup_version",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.default_runtime",
+          "Value": "runc",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "docker.info.security_options_count",
+          "Value": "3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "runtime.architecture",
+          "Value": "x86_64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/_ping:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/_ping:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/version:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/version:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/info:outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "/run/docker.sock:/libpod/info:status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "container.inspect.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "runtime-api",
+          "Key": "container.inspect.status",
+          "Value": "404",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0913267"
+    },
+    {
+      "ProbeId": "kubernetes",
+      "Outcome": "Unavailable",
+      "Evidence": [],
+      "Message": "Kubernetes env/token missing",
+      "Duration": "00:00:00.0000686"
+    },
+    {
+      "ProbeId": "cloud-metadata",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "azure.imds.outcome",
+          "Value": "Timeout",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.machine_type.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.zone.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "oci.metadata.outcome",
+          "Value": "Timeout",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:06.0112623"
+    }
+  ],
   "SecurityWarnings": [
     {
       "Code": "DOCKER_SOCKET_MOUNTED",
       "Message": "Docker-compatible socket is accessible and can imply privileged host control."
     }
   ],
-  "Probes": [
-    {
-      "ProbeId": "runtime-api",
-      "Evidence": [
-        { "Key": "socket.present", "Value": "/var/run/docker.sock" },
-        { "Key": "/var/run/docker.sock:/_ping:outcome", "Value": "Success" }
+  "Classification": {
+    "IsContainerized": {
+      "Value": "True",
+      "Confidence": "Low",
+      "Reasons": [
+        {
+          "Message": "Namespace info visible",
+          "EvidenceKeys": [
+            "ns.pid",
+            "ns.mnt"
+          ]
+        },
+        {
+          "Message": "Container runtime socket present",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "ContainerRuntime": {
+      "Value": "Podman",
+      "Confidence": "Medium",
+      "Reasons": [
+        {
+          "Message": "Libpod API endpoint present",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "RuntimeApi": {
+      "Value": "DockerEngineApi",
+      "Confidence": "Medium",
+      "Reasons": [
+        {
+          "Message": "Runtime API probe outcomes",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "Orchestrator": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No orchestrator markers",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "CloudProvider": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Cloud metadata/env markers",
+          "EvidenceKeys": [
+            "cloud-metadata"
+          ]
+        }
+      ]
+    },
+    "PlatformVendor": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No vendor-specific proofs",
+          "EvidenceKeys": []
+        }
       ]
     }
-  ]
+  },
+  "Host": {
+    "ContainerImageOs": {
+      "Family": "Ubuntu",
+      "Id": "ubuntu",
+      "IdLike": [
+        "debian"
+      ],
+      "Name": "Ubuntu",
+      "PrettyName": "Ubuntu 24.04.4 LTS",
+      "Version": "24.04.4 LTS (Noble Numbat)",
+      "VersionId": "24.04",
+      "VersionCodename": "noble",
+      "BuildId": null,
+      "Variant": null,
+      "VariantId": null,
+      "HomeUrl": "https://www.ubuntu.com/",
+      "SupportUrl": "https://help.ubuntu.com/",
+      "BugReportUrl": "https://bugs.launchpad.net/ubuntu/",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Confidence": "High",
+      "EvidenceReferences": [
+        "proc-files:os.bug_report_url",
+        "proc-files:os.home_url",
+        "proc-files:os.id",
+        "proc-files:os.id_like",
+        "proc-files:os.name",
+        "proc-files:os.pretty_name",
+        "proc-files:os.support_url",
+        "proc-files:os.version",
+        "proc-files:os.version_codename",
+        "proc-files:os.version_id"
+      ]
+    },
+    "VisibleKernel": {
+      "Name": "Linux",
+      "Release": "6.17.0-1010-azure",
+      "Version": "#10~24.04.1-Ubuntu SMP Fri Mar  6 22:00:57 UTC 2026",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Flavor": "Azure",
+      "Compiler": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
+      "Confidence": "Medium",
+      "EvidenceReferences": [
+        "proc-files:kernel.compiler",
+        "proc-files:kernel.flavor",
+        "proc-files:kernel.name",
+        "proc-files:kernel.release",
+        "proc-files:kernel.version"
+      ]
+    },
+    "RuntimeReportedHostOs": {
+      "Family": "Ubuntu",
+      "Name": "Ubuntu 24.04.4 LTS",
+      "Version": "24.04",
+      "KernelVersion": "6.17.0-1010-azure",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Source": "DockerInfo",
+      "Confidence": "High",
+      "EvidenceReferences": [
+        "docker.info.operating_system",
+        "docker.info.kernel_version",
+        "docker.info.architecture"
+      ]
+    },
+    "Hardware": {
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Cpu": {
+        "LogicalProcessorCount": 2,
+        "VisibleProcessorCount": 2,
+        "Vendor": "AuthenticAMD",
+        "ModelName": "AMD EPYC 9V74 80-Core Processor",
+        "Family": "AMD",
+        "FlagsHash": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c",
+        "FlagsCount": 116,
+        "CgroupCpuQuota": null,
+        "CgroupCpuMax": null
+      },
+      "Memory": {
+        "MemTotalBytes": 8323989504,
+        "CgroupMemoryLimitBytes": null,
+        "CgroupMemoryCurrentBytes": null,
+        "CgroupMemoryLimitRaw": null
+      },
+      "CloudMachineType": null
+    },
+    "Fingerprint": {
+      "Algorithm": "CRP-HOST-FP-v1",
+      "Value": "sha256:4ea14e1e2e254175246ddd5f0a803b70f57914c0ec4c4e3d2e92c25b64b560fb",
+      "Stability": "RuntimeApiBacked",
+      "IncludedSignalCount": 12,
+      "ExcludedSensitiveSignalCount": 2,
+      "Components": [
+        {
+          "Name": "architecture.normalized",
+          "Included": true,
+          "RawValueRedacted": "X64"
+        },
+        {
+          "Name": "cpu.family",
+          "Included": true,
+          "RawValueRedacted": "AMD"
+        },
+        {
+          "Name": "cpu.flags.hash",
+          "Included": true,
+          "RawValueRedacted": "sha256:b91b163d336e110f324f7ec36aa576a99ed4fa6a9e23b4a9af1c39515243a72c"
+        },
+        {
+          "Name": "cpu.modelName.normalized",
+          "Included": true,
+          "RawValueRedacted": "AMD EPYC 9V74 80-Core Processor"
+        },
+        {
+          "Name": "cpu.vendor",
+          "Included": true,
+          "RawValueRedacted": "AuthenticAMD"
+        },
+        {
+          "Name": "kernel.flavor",
+          "Included": true,
+          "RawValueRedacted": "Azure"
+        },
+        {
+          "Name": "kernel.release",
+          "Included": true,
+          "RawValueRedacted": "6.17.0-1010-azure"
+        },
+        {
+          "Name": "memory.total.bucket",
+          "Included": true,
+          "RawValueRedacted": "8GiB"
+        },
+        {
+          "Name": "runtime.api.type",
+          "Included": true,
+          "RawValueRedacted": "DockerEngineApi"
+        },
+        {
+          "Name": "runtime.engine.version.majorMinor",
+          "Included": true,
+          "RawValueRedacted": "28.0"
+        },
+        {
+          "Name": "runtime.host.os.normalized",
+          "Included": true,
+          "RawValueRedacted": "Ubuntu"
+        },
+        {
+          "Name": "runtime.host.os.version",
+          "Included": true,
+          "RawValueRedacted": "24.04"
+        },
+        {
+          "Name": "hostname",
+          "Included": false,
+          "RawValueRedacted": "redacted"
+        },
+        {
+          "Name": "container.inspect",
+          "Included": false,
+          "RawValueRedacted": "redacted"
+        }
+      ],
+      "Warnings": [
+        "Fingerprint is diagnostic only and not a security identity."
+      ]
+    }
+  }
 }

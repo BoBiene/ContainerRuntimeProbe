@@ -33,8 +33,17 @@ internal static class Parsing
 
     public static IEnumerable<string> ParseMountInfoSignals(string text)
     {
-        var signals = new[] { "overlay", "kubelet", "containerd", "podman", "/run/secrets/kubernetes.io" };
-        return text.Split('\n').Where(l => signals.Any(s => l.Contains(s, StringComparison.OrdinalIgnoreCase))).Take(30);
+        var results = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var line in text.Split('\n', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (line.Contains("overlay", StringComparison.OrdinalIgnoreCase)) results.Add("overlay");
+            if (line.Contains("kubelet", StringComparison.OrdinalIgnoreCase)) results.Add("kubelet");
+            if (line.Contains("containerd", StringComparison.OrdinalIgnoreCase)) results.Add("containerd");
+            if (line.Contains("podman", StringComparison.OrdinalIgnoreCase)) results.Add("podman");
+            if (line.Contains("/run/secrets/kubernetes.io", StringComparison.OrdinalIgnoreCase)) results.Add("kubernetes-serviceaccount");
+        }
+
+        return results.Take(30);
     }
 
     /// <summary>
