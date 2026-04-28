@@ -18,10 +18,22 @@ public sealed record ClassificationReason(string Message, IReadOnlyList<string> 
 /// <summary>Single classification value with confidence and justification.</summary>
 public sealed record ClassificationResult(string Value, Confidence Confidence, IReadOnlyList<ClassificationReason> Reasons);
 
+/// <summary>Structured host classification dimension.</summary>
+public sealed record HostClassificationResult(
+    ClassificationResult Family,
+    ClassificationResult Type);
+
+/// <summary>Structured environment classification dimension.</summary>
+public sealed record EnvironmentClassificationResult(
+    ClassificationResult Type);
+
 /// <summary>Container runtime report classification dimensions.</summary>
 public sealed record ReportClassification(
     ClassificationResult IsContainerized,
     ClassificationResult ContainerRuntime,
+    ClassificationResult Virtualization,
+    HostClassificationResult Host,
+    EnvironmentClassificationResult Environment,
     ClassificationResult RuntimeApi,
     ClassificationResult Orchestrator,
     ClassificationResult CloudProvider,
