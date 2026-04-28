@@ -593,6 +593,17 @@ internal static class HostParsing
             return OperatingSystemFamily.MacOS;
         }
 
+        foreach (var candidate in new[] { id, fallbackType }
+                     .Concat(idLike ?? [])
+                     .Where(value => !string.IsNullOrWhiteSpace(value))
+                     .Select(value => value!.Trim()))
+        {
+            if (DetectionMaps.DistroFamilyById.TryGetValue(candidate, out var family))
+            {
+                return family;
+            }
+        }
+
         return candidates.Any(value => value.Contains("linux", StringComparison.Ordinal))
             ? OperatingSystemFamily.Linux
             : OperatingSystemFamily.Unknown;
