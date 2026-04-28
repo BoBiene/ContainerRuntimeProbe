@@ -66,7 +66,10 @@ public enum KernelFlavor
     DockerDesktop,
     RaspberryPi,
     Realtime,
-    LowLatency
+    LowLatency,
+    Synology,
+    Ubuntu,
+    Debian
 }
 
 /// <summary>Normalized virtualization environment derived from kernel or platform signals.</summary>
