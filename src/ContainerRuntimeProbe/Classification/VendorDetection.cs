@@ -48,8 +48,8 @@ internal static class VendorDetection
 
         // ── Synology NAS ──────────────────────────────────────────────────────
         // Minimum score of 2 required to avoid false positives from a single weak signal.
-        // "dsm" is intentionally excluded from the kernel flavor check (too short/ambiguous)
-        // and removed from OS name matching to require "synology" or "diskstation" instead.
+        // Note: "dsm" is intentionally not included in OS-name checks because it is short
+        // and ambiguous; require stronger "synology" or "diskstation" text instead.
         var synologyScore = 0;
         var synologyReasons = new List<ClassificationReason>();
 

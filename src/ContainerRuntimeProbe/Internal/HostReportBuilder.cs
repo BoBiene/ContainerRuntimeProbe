@@ -202,8 +202,8 @@ internal static class HostReportBuilder
                 virtualization.EvidenceReferences);
         }
 
-        // When the kernel flavor reveals Ubuntu but the container image OS is not Ubuntu
-        // (e.g., a Debian container running on an Ubuntu host), infer the host from the kernel.
+        // When the kernel flavor reveals Ubuntu or Debian but the container image OS differs,
+        // infer the underlying host from the kernel metadata exposed inside the container.
         if (visibleKernel.Flavor == KernelFlavor.Ubuntu
             && containerImageOs.Family != OperatingSystemFamily.Ubuntu)
         {
