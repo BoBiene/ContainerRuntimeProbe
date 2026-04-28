@@ -66,6 +66,16 @@ public static class ReportRenderer
         sb.AppendLine($"- Architecture: {ValueOrUnknownString(report.Host.VisibleKernel.RawArchitecture ?? report.Host.VisibleKernel.Architecture.ToString())}");
         sb.AppendLine($"- Confidence: {report.Host.VisibleKernel.Confidence}");
         sb.AppendLine();
+        sb.AppendLine("### Virtualization");
+        sb.AppendLine($"- Type: {ValueOrUnknownEnum(report.Host.Virtualization.Kind)}");
+        sb.AppendLine($"- Platform Vendor: {ValueOrUnknownString(report.Host.Virtualization.PlatformVendor)}");
+        sb.AppendLine($"- Confidence: {report.Host.Virtualization.Confidence}");
+        sb.AppendLine();
+        sb.AppendLine("### Underlying Host OS");
+        sb.AppendLine($"- Family: {ValueOrUnknownEnum(report.Host.UnderlyingHostOs.Family)}");
+        sb.AppendLine($"- Version: {ValueOrUnknownString(report.Host.UnderlyingHostOs.Version)}");
+        sb.AppendLine($"- Confidence: {report.Host.UnderlyingHostOs.Confidence}");
+        sb.AppendLine();
         sb.AppendLine("### Runtime-Reported Host OS");
         sb.AppendLine($"- Source: {ValueOrUnknownEnum(report.Host.RuntimeReportedHostOs.Source)}");
         sb.AppendLine($"- OS: {FormatHostOs(report.Host.RuntimeReportedHostOs.Name, report.Host.RuntimeReportedHostOs.Version)}");
@@ -135,5 +145,5 @@ public static class ReportRenderer
 
     /// <summary>Renders a compact one-line textual summary.</summary>
     public static string ToText(ContainerRuntimeReport report)
-        => $"IsContainerized={report.Classification.IsContainerized.Value}, Runtime={report.Classification.ContainerRuntime.Value}, RuntimeApi={report.Classification.RuntimeApi.Value}, Orchestrator={report.Classification.Orchestrator.Value}, Cloud={report.Classification.CloudProvider.Value}, Vendor={report.Classification.PlatformVendor.Value}, HostOS={(report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown")}, HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
+        => $"IsContainerized={report.Classification.IsContainerized.Value}, Runtime={report.Classification.ContainerRuntime.Value}, RuntimeApi={report.Classification.RuntimeApi.Value}, Orchestrator={report.Classification.Orchestrator.Value}, Cloud={report.Classification.CloudProvider.Value}, Vendor={report.Classification.PlatformVendor.Value}, Virtualization={report.Host.Virtualization.Kind}, UnderlyingHost={(report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown ? "Unknown" : report.Host.UnderlyingHostOs.Family.ToString())}, HostOS={(report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown")}, HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
 }

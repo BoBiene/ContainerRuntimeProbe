@@ -54,6 +54,19 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_OverlayMount_DetectsContainerized()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "/proc/self/mountinfo:signal", "overlay")
+            ])
+        ]);
+
+        Assert.Equal("True", report.IsContainerized.Value);
+        Assert.True(report.IsContainerized.Confidence >= Confidence.Low);
+    }
+
+    [Fact]
     public void Classifier_DockerSocketPingSuccess_DockerHighConfidence()
     {
         var report = Classifier.Classify([
@@ -330,6 +343,21 @@ public sealed class ClassifierTests
 
         Assert.Equal("IoTEdge", report.PlatformVendor.Value);
         Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+    }
+
+    [Fact]
+    public void Classifier_Wsl2Kernel_DetectsMicrosoftPlatformVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.flavor", "WSL2"),
+                new EvidenceItem("proc-files", "kernel.release", "5.15.167.4-microsoft-standard-WSL2"),
+                new EvidenceItem("proc-files", "/proc/version", "Linux version 5.15.167.4-microsoft-standard-WSL2")
+            ])
+        ]);
+
+        Assert.Equal("Microsoft", report.PlatformVendor.Value);
+        Assert.Equal(Confidence.High, report.PlatformVendor.Confidence);
     }
 
     // ── Reasons separation ───────────────────────────────────────────────────

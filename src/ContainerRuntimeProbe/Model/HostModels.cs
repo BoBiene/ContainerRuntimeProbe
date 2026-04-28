@@ -69,6 +69,13 @@ public enum KernelFlavor
     LowLatency
 }
 
+/// <summary>Normalized virtualization environment derived from kernel or platform signals.</summary>
+public enum VirtualizationKind
+{
+    Unknown,
+    WSL2
+}
+
 /// <summary>Trusted source for runtime-reported host OS information.</summary>
 public enum RuntimeReportedHostSource
 {
@@ -146,6 +153,20 @@ public sealed record RuntimeReportedHostOsInfo(
     Confidence Confidence,
     IReadOnlyList<string> EvidenceReferences);
 
+/// <summary>Normalized virtualization details derived from local host signals.</summary>
+public sealed record VirtualizationInfo(
+    VirtualizationKind Kind,
+    string? PlatformVendor,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
+/// <summary>Best-effort underlying host OS inferred from virtualization context.</summary>
+public sealed record UnderlyingHostOsInfo(
+    OperatingSystemFamily Family,
+    string? Version,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
 /// <summary>Normalized visible CPU details.</summary>
 public sealed record HostCpuInfo(
     int? LogicalProcessorCount,
@@ -194,6 +215,8 @@ public sealed record HostReport(
     ContainerImageOsInfo ContainerImageOs,
     VisibleKernelInfo VisibleKernel,
     RuntimeReportedHostOsInfo RuntimeReportedHostOs,
+    VirtualizationInfo Virtualization,
+    UnderlyingHostOsInfo UnderlyingHostOs,
     HostHardwareInfo Hardware,
     HostFingerprint? Fingerprint);
 

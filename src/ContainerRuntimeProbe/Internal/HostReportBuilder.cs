@@ -14,10 +14,12 @@ internal static class HostReportBuilder
         var containerImageOs = BuildContainerImageOs(evidence, defaultArchitectureRaw);
         var visibleKernel = BuildVisibleKernel(evidence, defaultArchitectureRaw);
         var runtimeHostOs = BuildRuntimeReportedHostOs(evidence);
+        var virtualization = BuildVirtualization(evidence, visibleKernel);
+        var underlyingHostOs = BuildUnderlyingHostOs(virtualization);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
 
-        return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, hardware, fingerprint);
+        return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, fingerprint);
     }
 
     private static ContainerImageOsInfo BuildContainerImageOs(IReadOnlyList<EvidenceItem> evidence, string defaultArchitectureRaw)
@@ -145,6 +147,62 @@ internal static class HostReportBuilder
             selected.Source,
             confidence,
             selected.EvidenceReferences);
+    }
+
+    private static VirtualizationInfo BuildVirtualization(IReadOnlyList<EvidenceItem> evidence, VisibleKernelInfo visibleKernel)
+    {
+        var release = GetValue(evidence, "kernel.release");
+        var procVersion = GetValue(evidence, "/proc/version");
+        var evidenceReferences = new HashSet<string>(StringComparer.Ordinal);
+
+        if (visibleKernel.Flavor == KernelFlavor.WSL2)
+        {
+            foreach (var reference in GetEvidenceReferences(evidence, "kernel.flavor"))
+            {
+                evidenceReferences.Add(reference);
+            }
+        }
+
+        if (ContainsWsl2Signal(release))
+        {
+            foreach (var reference in GetEvidenceReferences(evidence, "kernel.release"))
+            {
+                evidenceReferences.Add(reference);
+            }
+        }
+
+        if (ContainsWsl2Signal(procVersion))
+        {
+            foreach (var reference in GetEvidenceReferences(evidence, "/proc/version"))
+            {
+                evidenceReferences.Add(reference);
+            }
+        }
+
+        if (evidenceReferences.Count > 0)
+        {
+            return new VirtualizationInfo(
+                VirtualizationKind.WSL2,
+                "Microsoft",
+                Confidence.High,
+                evidenceReferences.OrderBy(value => value, StringComparer.Ordinal).ToArray());
+        }
+
+        return new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, []);
+    }
+
+    private static UnderlyingHostOsInfo BuildUnderlyingHostOs(VirtualizationInfo virtualization)
+    {
+        if (virtualization.Kind == VirtualizationKind.WSL2)
+        {
+            return new UnderlyingHostOsInfo(
+                OperatingSystemFamily.Windows,
+                null,
+                Confidence.Medium,
+                virtualization.EvidenceReferences);
+        }
+
+        return new UnderlyingHostOsInfo(OperatingSystemFamily.Unknown, null, Confidence.Unknown, []);
     }
 
     private static HostHardwareInfo BuildHardware(
@@ -374,4 +432,8 @@ internal static class HostReportBuilder
         var zoneParts = value.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
         return zoneParts.Length > 0 ? zoneParts[^1] : value;
     }
+
+    private static bool ContainsWsl2Signal(string? value)
+        => value?.Contains("microsoft-standard-WSL2", StringComparison.OrdinalIgnoreCase) == true
+            || value?.Contains("WSL2", StringComparison.OrdinalIgnoreCase) == true;
 }
