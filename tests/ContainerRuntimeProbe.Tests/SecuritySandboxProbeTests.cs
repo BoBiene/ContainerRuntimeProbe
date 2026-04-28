@@ -20,7 +20,7 @@ public sealed class SecuritySandboxProbeTests
     public async Task SecuritySandboxProbe_ReturnsProbeResult_WithExpectedOutcome()
     {
         var probe = new SecuritySandboxProbe();
-        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, CancellationToken.None);
+        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, false, CancellationToken.None);
 
         var result = await probe.ExecuteAsync(ctx);
 
@@ -33,7 +33,7 @@ public sealed class SecuritySandboxProbeTests
     public async Task SecuritySandboxProbe_EmitsStatusOutcomeEvidence()
     {
         var probe = new SecuritySandboxProbe();
-        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, CancellationToken.None);
+        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, false, CancellationToken.None);
 
         var result = await probe.ExecuteAsync(ctx);
 
@@ -45,7 +45,7 @@ public sealed class SecuritySandboxProbeTests
     public async Task SecuritySandboxProbe_EmitsSelinuxMountEvidence()
     {
         var probe = new SecuritySandboxProbe();
-        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, CancellationToken.None);
+        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, false, CancellationToken.None);
 
         var result = await probe.ExecuteAsync(ctx);
 
@@ -62,7 +62,7 @@ public sealed class SecuritySandboxProbeTests
         if (!OperatingSystem.IsLinux()) return;
 
         var probe = new SecuritySandboxProbe();
-        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, CancellationToken.None);
+        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, false, CancellationToken.None);
 
         var result = await probe.ExecuteAsync(ctx);
         var statusOutcome = result.Evidence.FirstOrDefault(e => e.Key == "proc.self.status.outcome")?.Value;

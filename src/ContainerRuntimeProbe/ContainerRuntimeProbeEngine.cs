@@ -36,7 +36,7 @@ public sealed class ContainerRuntimeProbeEngine
     public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, FingerprintMode fingerprintMode = FingerprintMode.Safe, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
-        var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, cancellationToken);
+        var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, false, cancellationToken);
         var selected = enabledProbes is null || enabledProbes.Count == 0 ? _probes : _probes.Where(p => enabledProbes.Contains(p.Id)).ToList();
 
         var results = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
@@ -45,6 +45,10 @@ public sealed class ContainerRuntimeProbeEngine
         if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
         {
             warnings.Add(new SecurityWarning("DOCKER_SOCKET_MOUNTED", "Docker-compatible socket is accessible and can imply privileged host control."));
+        }
+        if (results.SelectMany(r => r.Evidence).Any(e => e.ProbeId == "kubernetes" && e.Key == "tls.validation" && e.Value == "Skipped"))
+        {
+            warnings.Add(new SecurityWarning("KUBERNETES_TLS_VALIDATION_SKIPPED", "Kubernetes API TLS certificate validation was explicitly disabled for this probe run."));
         }
 
         var classification = Classifier.Classify(results);

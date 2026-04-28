@@ -36,7 +36,7 @@ public sealed class FakeEndpointIntegrationTests
         });
 
         var probe = new CloudMetadataProbe();
-        var ctxProbe = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), CancellationToken.None);
+        var ctxProbe = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), new Uri($"http://127.0.0.1:{port}"), false, CancellationToken.None);
         var result = await probe.ExecuteAsync(ctxProbe);
 
         Assert.Contains(result.Evidence, e => e.Key == "azure.imds.outcome");
@@ -181,6 +181,7 @@ public sealed class FakeEndpointIntegrationTests
                 AzureImdsBase: null,
                 GcpMetadataBase: null,
                 OciMetadataBase: null,
+                KubernetesSkipTlsValidation: false,
                 CancellationToken: CancellationToken.None);
 
             var result = await probe.ExecuteAsync(probeCtx);
@@ -192,6 +193,7 @@ public sealed class FakeEndpointIntegrationTests
             // /version succeeded
             Assert.Contains(result.Evidence, e => e.Key == "api.version.outcome" && e.Value == "Success");
             Assert.Contains(result.Evidence, e => e.Key == "api.version.body" && e.Value!.Contains("v1.28"));
+            Assert.Contains(result.Evidence, e => e.Key == "tls.validation" && e.Value == "Default");
 
             // Probe must complete without throwing; overall outcome is Success
             Assert.Equal(ProbeOutcome.Success, result.Outcome);
@@ -263,6 +265,7 @@ public sealed class FakeEndpointIntegrationTests
                 AzureImdsBase: null,
                 GcpMetadataBase: null,
                 OciMetadataBase: null,
+                KubernetesSkipTlsValidation: false,
                 CancellationToken: CancellationToken.None);
 
             var result = await probe.ExecuteAsync(probeCtx);
@@ -296,6 +299,7 @@ public sealed class FakeEndpointIntegrationTests
             AzureImdsBase: null,
             GcpMetadataBase: null,
             OciMetadataBase: null,
+            KubernetesSkipTlsValidation: false,
             CancellationToken: CancellationToken.None);
 
         var result = await probe.ExecuteAsync(probeCtx);
@@ -368,6 +372,22 @@ public sealed class FakeEndpointIntegrationTests
         Assert.Equal("Ubuntu 24.04.4 LTS", report.Host.RuntimeReportedHostOs.Name);
         Assert.Equal("6.6.10-generic", report.Host.RuntimeReportedHostOs.KernelVersion);
         Assert.Equal(ArchitectureKind.X64, report.Host.RuntimeReportedHostOs.Architecture);
+    }
+
+    [Fact]
+    public async Task Engine_KubernetesTlsSkip_AddsSecurityWarning()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+        [
+            new FixedProbe("kubernetes",
+            [
+                new EvidenceItem("kubernetes", "tls.validation", "Skipped")
+            ])
+        ]);
+
+        var report = await engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
+
+        Assert.Contains(report.SecurityWarnings, warning => warning.Code == "KUBERNETES_TLS_VALIDATION_SKIPPED");
     }
 
     private static int GetFreePort()

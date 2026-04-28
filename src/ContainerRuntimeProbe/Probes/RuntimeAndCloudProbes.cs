@@ -370,7 +370,18 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         var api = context.KubernetesApiBase ?? new Uri($"https://{host}:{port}");
-        using var client = new HttpClient(new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true }) { BaseAddress = api, Timeout = context.Timeout };
+        var handler = new HttpClientHandler();
+        if (context.KubernetesSkipTlsValidation)
+        {
+            handler.ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator;
+            evidence.Add(new EvidenceItem(Id, "tls.validation", "Skipped"));
+        }
+        else
+        {
+            evidence.Add(new EvidenceItem(Id, "tls.validation", "Default"));
+        }
+
+        using var client = new HttpClient(handler) { BaseAddress = api, Timeout = context.Timeout };
         var token = await File.ReadAllTextAsync(tokenPath, context.CancellationToken).ConfigureAwait(false);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
 

@@ -49,6 +49,7 @@ public sealed record ProbeContext(
     Uri? AzureImdsBase,
     Uri? GcpMetadataBase,
     Uri? OciMetadataBase,
+    bool KubernetesSkipTlsValidation,
     CancellationToken CancellationToken);
 
 /// <summary>Abstraction for an evidence probe.</summary>
