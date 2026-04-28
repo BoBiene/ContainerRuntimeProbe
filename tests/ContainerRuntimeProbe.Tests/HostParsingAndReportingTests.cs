@@ -41,6 +41,9 @@ public sealed class HostParsingAndReportingTests
     [InlineData("Linux version 6.6.10-generic (builder@host) (gcc version 13.2.0) #1 SMP", "6.6.10-generic", KernelFlavor.Generic)]
     [InlineData("Linux version 6.10.14-linuxkit (root@buildkitsandbox) (gcc (Alpine 13.2.1_git20240309) 13.2.1 20240309, GNU ld (GNU Binutils) 2.42) #1 SMP PREEMPT_DYNAMIC", "6.10.14-linuxkit", KernelFlavor.DockerDesktop)]
     [InlineData("Linux version 5.15.167.4-microsoft-standard-WSL2 (Microsoft@Microsoft.com) (gcc version 11.2.0) #1 SMP", "5.15.167.4-microsoft-standard-WSL2", KernelFlavor.WSL2)]
+    [InlineData("Linux version 5.10.55-synology (synology@synology) (gcc (Synology 7.3) 7.3) #1 SMP", "5.10.55+", KernelFlavor.Synology)]
+    [InlineData("Linux version 5.4.0-216-generic (buildd@lcy02-amd64) (gcc version 9.4.0 (Ubuntu 9.4.0-1ubuntu1~20.04.2)) #236-Ubuntu SMP Fri Apr 11 19:53:21 UTC 2025", "5.4.0-216-generic", KernelFlavor.Ubuntu)]
+    [InlineData("Linux version 4.19.0-27-amd64 (debian-kernel@lists.debian.org) (gcc version 8.3.0 (Debian 8.3.0-6)) #1 SMP Debian 4.19.316-1 (2024-06-25)", "4.19.0-27-amd64", KernelFlavor.Debian)]
     public void ParseKernel_ExtractsReleaseAndFlavor(string procVersion, string osRelease, KernelFlavor expectedFlavor)
     {
         var parsed = HostParsing.ParseKernel(procVersion, osRelease, "Linux", "#1 SMP");

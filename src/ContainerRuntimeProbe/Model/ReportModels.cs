@@ -54,5 +54,6 @@ public sealed record ContainerRuntimeReport(
 
 /// <summary>Source-generation context for JSON serialization.</summary>
 [JsonSerializable(typeof(ContainerRuntimeReport))]
+[JsonSerializable(typeof(string[]))]
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 public partial class ReportJsonContext : JsonSerializerContext;

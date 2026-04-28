@@ -48,6 +48,41 @@ public sealed class ClassifierSampleProbeTests
         Assert.True(classification.PlatformVendor.Confidence >= Confidence.Low);
     }
 
+    [Theory]
+    [InlineData("ubuntu-host1.json")]
+    public void UbuntuHostSampleProbes_ReclassifyWithDockerAndUbuntuKernel(string fixtureName)
+    {
+        var fixturePath = Path.Combine(FindSampleProbeDirectory(), fixtureName);
+        var report = JsonSerializer.Deserialize(
+            File.ReadAllText(fixturePath),
+            ReportJsonContext.Default.ContainerRuntimeReport);
+
+        Assert.NotNull(report);
+
+        var classification = Classifier.Classify(report!.Probes);
+
+        Assert.Equal("Docker", classification.ContainerRuntime.Value);
+        // Ubuntu is the host, not a vendor appliance — vendor stays Unknown
+        Assert.Equal("Unknown", classification.PlatformVendor.Value);
+    }
+
+    [Theory]
+    [InlineData("Debian-VM-Intel-CPU-ispone.json")]
+    public void DebianVmSampleProbes_ReclassifyWithDockerAndDebianKernel(string fixtureName)
+    {
+        var fixturePath = Path.Combine(FindSampleProbeDirectory(), fixtureName);
+        var report = JsonSerializer.Deserialize(
+            File.ReadAllText(fixturePath),
+            ReportJsonContext.Default.ContainerRuntimeReport);
+
+        Assert.NotNull(report);
+
+        var classification = Classifier.Classify(report!.Probes);
+
+        Assert.Equal("Docker", classification.ContainerRuntime.Value);
+        Assert.Equal("Unknown", classification.PlatformVendor.Value);
+    }
+
     private static string FindSampleProbeDirectory()
     {
         var directory = new DirectoryInfo(AppContext.BaseDirectory);

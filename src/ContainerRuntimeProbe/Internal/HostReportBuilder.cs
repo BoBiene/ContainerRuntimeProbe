@@ -15,7 +15,7 @@ internal static class HostReportBuilder
         var visibleKernel = BuildVisibleKernel(evidence, defaultArchitectureRaw);
         var runtimeHostOs = BuildRuntimeReportedHostOs(evidence);
         var virtualization = BuildVirtualization(evidence, visibleKernel);
-        var underlyingHostOs = BuildUnderlyingHostOs(virtualization);
+        var underlyingHostOs = BuildUnderlyingHostOs(virtualization, visibleKernel, containerImageOs);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
 
@@ -191,7 +191,7 @@ internal static class HostReportBuilder
         return new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, []);
     }
 
-    private static UnderlyingHostOsInfo BuildUnderlyingHostOs(VirtualizationInfo virtualization)
+    private static UnderlyingHostOsInfo BuildUnderlyingHostOs(VirtualizationInfo virtualization, VisibleKernelInfo visibleKernel, ContainerImageOsInfo containerImageOs)
     {
         if (virtualization.Kind == VirtualizationKind.WSL2)
         {
@@ -200,6 +200,31 @@ internal static class HostReportBuilder
                 null,
                 Confidence.High,
                 virtualization.EvidenceReferences);
+        }
+
+        // When the kernel flavor reveals Ubuntu but the container image OS is not Ubuntu
+        // (e.g., a Debian container running on an Ubuntu host), infer the host from the kernel.
+        if (visibleKernel.Flavor == KernelFlavor.Ubuntu
+            && containerImageOs.Family != OperatingSystemFamily.Ubuntu)
+        {
+            return new UnderlyingHostOsInfo(
+                OperatingSystemFamily.Ubuntu,
+                null,
+                Confidence.Medium,
+                visibleKernel.EvidenceReferences);
+        }
+
+        // Debian kernels carry an explicit "Debian X.Y.Z-patch" stamp in
+        // kernel.version and kernel.compiler. When the container is non-Debian
+        // (e.g., Alpine on a Debian host), surface the host OS from that signal.
+        if (visibleKernel.Flavor == KernelFlavor.Debian
+            && containerImageOs.Family != OperatingSystemFamily.Debian)
+        {
+            return new UnderlyingHostOsInfo(
+                OperatingSystemFamily.Debian,
+                null,
+                Confidence.Medium,
+                visibleKernel.EvidenceReferences);
         }
 
         return new UnderlyingHostOsInfo(OperatingSystemFamily.Unknown, null, Confidence.Unknown, []);

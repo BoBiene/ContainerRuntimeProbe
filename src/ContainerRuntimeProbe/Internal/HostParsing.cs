@@ -693,6 +693,31 @@ internal static class HostParsing
             return KernelFlavor.OracleCloud;
         }
 
+        if (lower.Contains("synology", StringComparison.Ordinal))
+        {
+            // Note: "dsm" is intentionally excluded — too short/ambiguous as a substring match.
+            // Synology kernel images always include "synology" in the compiler string.
+            return KernelFlavor.Synology;
+        }
+
+        // Ubuntu kernels include "Ubuntu SMP" in the version string and
+        // "(Ubuntu ...)" in the compiler string embedded in /proc/version.
+        // Must come after cloud-provider checks so Azure/AWS Ubuntu kernels
+        // keep their cloud-specific flavor.
+        if (lower.Contains("ubuntu", StringComparison.Ordinal))
+        {
+            return KernelFlavor.Ubuntu;
+        }
+
+        // Debian kernels embed "Debian X.Y.Z-patch" in the version string
+        // (e.g. "#1 SMP Debian 4.19.316-1") and "(Debian X.Y.Z-patch)"
+        // in the compiler string. Must come after Ubuntu to avoid cross-match
+        // on Ubuntu kernels that also carry Debian-based GCC packages.
+        if (lower.Contains("debian", StringComparison.Ordinal))
+        {
+            return KernelFlavor.Debian;
+        }
+
         if (lower.Contains("docker desktop", StringComparison.Ordinal))
         {
             return KernelFlavor.DockerDesktop;
