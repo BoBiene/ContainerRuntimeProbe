@@ -1,5 +1,5 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
-ARG TARGETOS
+ARG TARGETOS=linux
 ARG TARGETARCH
 WORKDIR /src
 COPY . .
