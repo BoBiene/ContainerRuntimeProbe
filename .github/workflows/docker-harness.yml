@@ -1,0 +1,16 @@
+name: docker-harness
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'docker/**'
+      - 'src/**'
+      - 'README.md'
+      - '.github/workflows/docker-harness.yml'
+jobs:
+  docker-harness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+      - run: docker run --rm container-runtime-probe:test

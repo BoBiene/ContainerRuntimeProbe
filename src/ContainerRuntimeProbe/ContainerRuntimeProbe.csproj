@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>ContainerRuntimeProbe</AssemblyName>
+    <RootNamespace>ContainerRuntimeProbe</RootNamespace>
+    <PackageId>ContainerRuntimeProbe</PackageId>
+    <Version>0.1.0-preview.2</Version>
+    <Description>Runtime probing library for containerized environments.</Description>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Authors>ContainerRuntimeProbe Contributors</Authors>
+    <PackageTags>container diagnostics runtime docker podman kubernetes ecs azure gcp oci</PackageTags>
+    <PackageProjectUrl>https://github.com/BoBiene/ContainerRuntimeProbe</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../CHANGELOG.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+{
+  "SecurityWarnings": [
+    {
+      "Code": "DOCKER_SOCKET_MOUNTED",
+      "Message": "Docker-compatible socket is accessible and can imply privileged host control."
+    }
+  ],
+  "Probes": [
+    {
+      "ProbeId": "runtime-api",
+      "Evidence": [
+        { "Key": "socket.present", "Value": "/var/run/docker.sock" },
+        { "Key": "/var/run/docker.sock:/_ping:outcome", "Value": "Success" }
+      ]
+    }
+  ]
+}
