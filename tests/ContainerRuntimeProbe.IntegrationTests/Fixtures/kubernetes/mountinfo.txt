@@ -1,0 +1,2 @@
+41 36 0:38 / /var/run/secrets/kubernetes.io/serviceaccount ro,relatime - tmpfs tmpfs rw
+42 36 0:39 / /var/lib/kubelet/pods/123/volumes rw,relatime - ext4 /dev/sda1 rw

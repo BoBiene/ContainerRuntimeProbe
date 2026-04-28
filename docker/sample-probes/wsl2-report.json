@@ -1,0 +1,172 @@
+{
+  "GeneratedAt": "2026-01-01T00:00:00+00:00",
+  "Duration": "00:00:00.1000000",
+  "ProbeToolInfo": {
+    "Version": "0.1.0",
+    "GitCommitHash": null
+  },
+  "Probes": [
+    {
+      "ProbeId": "proc-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.flavor",
+          "Value": "WSL2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "6.6.87.2-microsoft-standard-WSL2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/version",
+          "Value": "Linux version 6.6.87.2-microsoft-standard-WSL2",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0100000"
+    }
+  ],
+  "SecurityWarnings": [],
+  "Classification": {
+    "IsContainerized": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "ContainerRuntime": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "Virtualization": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "Host": {
+      "Family": {
+        "Value": "Unknown",
+        "Confidence": "Unknown",
+        "Reasons": []
+      },
+      "Type": {
+        "Value": "Unknown",
+        "Confidence": "Unknown",
+        "Reasons": []
+      }
+    },
+    "Environment": {
+      "Type": {
+        "Value": "Unknown",
+        "Confidence": "Unknown",
+        "Reasons": []
+      }
+    },
+    "RuntimeApi": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "Orchestrator": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "CloudProvider": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    },
+    "PlatformVendor": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": []
+    }
+  },
+  "Host": {
+    "ContainerImageOs": {
+      "Family": "Unknown",
+      "Id": null,
+      "IdLike": [],
+      "Name": null,
+      "PrettyName": null,
+      "Version": null,
+      "VersionId": null,
+      "VersionCodename": null,
+      "BuildId": null,
+      "Variant": null,
+      "VariantId": null,
+      "HomeUrl": null,
+      "SupportUrl": null,
+      "BugReportUrl": null,
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "VisibleKernel": {
+      "Name": null,
+      "Release": null,
+      "Version": null,
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Flavor": "Unknown",
+      "Compiler": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "RuntimeReportedHostOs": {
+      "Family": "Unknown",
+      "Name": null,
+      "Version": null,
+      "KernelVersion": null,
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Source": "Unknown",
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "Virtualization": {
+      "Kind": "Unknown",
+      "PlatformVendor": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "UnderlyingHostOs": {
+      "Family": "Unknown",
+      "Version": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "Hardware": {
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Cpu": {
+        "LogicalProcessorCount": null,
+        "VisibleProcessorCount": null,
+        "Vendor": null,
+        "ModelName": null,
+        "Family": null,
+        "FlagsHash": null,
+        "FlagsCount": null,
+        "CgroupCpuQuota": null,
+        "CgroupCpuMax": null
+      },
+      "Memory": {
+        "MemTotalBytes": null,
+        "CgroupMemoryLimitBytes": null,
+        "CgroupMemoryCurrentBytes": null,
+        "CgroupMemoryLimitRaw": null
+      },
+      "CloudMachineType": null
+    },
+    "Fingerprint": null
+  }
+}

@@ -1,0 +1,2 @@
+28 23 0:27 / / rw,relatime - overlay overlay rw,lowerdir=/home/user/.local/share/containers/storage/overlay/l,upperdir=/home/user/.local/share/containers/storage/overlay/u,workdir=/home/user/.local/share/containers/storage/overlay/w
+29 23 0:45 / /run/podman/io.podman rw,nosuid,nodev - tmpfs tmpfs rw
