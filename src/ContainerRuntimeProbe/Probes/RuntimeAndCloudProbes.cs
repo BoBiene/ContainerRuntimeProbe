@@ -193,7 +193,7 @@ internal sealed class KubernetesProbe : IProbe
     public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null) { }
 
     /// <summary>Test constructor allowing injection of custom paths and a service-host override.</summary>
-    internal KubernetesProbe(string[] tokenPaths, string[] namespacePaths, string? serviceHostOverride)
+    internal KubernetesProbe(IReadOnlyList<string> tokenPaths, IReadOnlyList<string> namespacePaths, string? serviceHostOverride)
     {
         _tokenPaths = tokenPaths;
         _namespacePaths = namespacePaths;

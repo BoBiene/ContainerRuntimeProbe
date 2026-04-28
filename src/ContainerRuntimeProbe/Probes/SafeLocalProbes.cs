@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -20,7 +21,7 @@ internal static class ProbeIo
             await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
             var buffer = new byte[MaxReadBytes];
             var bytesRead = await fs.ReadAsync(buffer.AsMemory(0, MaxReadBytes), cts.Token).ConfigureAwait(false);
-            var text = System.Text.Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
             // If we read exactly MaxReadBytes, file may have been truncated silently; signal this in the message
             var message = bytesRead == MaxReadBytes ? $"[truncated at {MaxReadBytes} bytes]" : null;
             return (ProbeOutcome.Success, text, message);

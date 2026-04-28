@@ -10,7 +10,7 @@ public sealed class SecuritySandboxProbeTests
     // We validate key structural properties rather than exact values.
 
     [Fact]
-    public async Task SecuritySandboxProbe_HasExpectedProbeId()
+    public void SecuritySandboxProbe_HasExpectedProbeId()
     {
         var probe = new SecuritySandboxProbe();
         Assert.Equal("security-sandbox", probe.Id);
@@ -79,7 +79,7 @@ public sealed class SecuritySandboxProbeTests
     }
 
     [Fact]
-    public async Task SecuritySandboxProbe_IsIncludedInDefaultProbeSet()
+    public void SecuritySandboxProbe_IsIncludedInDefaultProbeSet()
     {
         var engine = new RuntimeProbeEngine();
         Assert.Contains("security-sandbox", engine.ProbeIds);
