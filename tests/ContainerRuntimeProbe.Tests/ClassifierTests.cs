@@ -243,13 +243,29 @@ public sealed class ClassifierTests
     }
 
     [Fact]
-    public void Classifier_SiemensSignalWithCompose_DetectsIE()
+    public void Classifier_SiemensSignalWithCompose_IoTEdgeOnly_NoSiemensSpecific()
     {
-        // Siemens-specific signal + compose evidence → Industrial Edge
+        // iotedge.module key + compose.service but no Siemens-specific indicator
+        // → should classify as "IoTEdge", not "Siemens Industrial Edge"
         var report = Classifier.Classify([
             new ProbeResult("runtime-api", ProbeOutcome.Success, [
                 new EvidenceItem("runtime-api", "iotedge.module", "my-module"),
                 new EvidenceItem("runtime-api", "compose.service", "web")
+            ])
+        ]);
+
+        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
+        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+    }
+
+    [Fact]
+    public void Classifier_SiemensSignalPlusSiemensIndicator_DetectsIE()
+    {
+        // IoTEdge signal + Siemens-specific label → Industrial Edge
+        var report = Classifier.Classify([
+            new ProbeResult("runtime-api", ProbeOutcome.Success, [
+                new EvidenceItem("runtime-api", "iotedge.module", "my-module"),
+                new EvidenceItem("runtime-api", "compose.label.com.siemens.ie.version", "1.5.0")
             ])
         ]);
 
@@ -258,16 +274,62 @@ public sealed class ClassifierTests
     }
 
     [Fact]
-    public void Classifier_SiemensSignalAlone_DetectsIE()
+    public void Classifier_IoTEdgeAlone_DetectsIoTEdge()
     {
-        // Siemens/IoTEdge specific signal alone is sufficient for IE classification
+        // IOTEDGE_MODULEID without any Siemens-specific evidence → "IoTEdge", not "Siemens Industrial Edge"
         var report = Classifier.Classify([
             new ProbeResult("environment", ProbeOutcome.Success, [
-                new EvidenceItem("environment", "env.IOTEDGE_MODULEID", "my-module")
+                new EvidenceItem("environment", "IOTEDGE_MODULEID", "my-module"),
+                new EvidenceItem("environment", "IOTEDGE_DEVICEID", "my-device")
             ])
         ]);
 
-        Assert.Equal("Siemens Industrial Edge", report.PlatformVendor.Value);
+        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+    }
+
+    [Fact]
+    public void Classifier_OpenShift_DetectsOpenShift()
+    {
+        // OPENSHIFT_BUILD_NAME from EnvironmentProbe (bare key, no env. prefix)
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "OPENSHIFT_BUILD_NAME", "my-build"),
+                new EvidenceItem("environment", "OPENSHIFT_BUILD_NAMESPACE", "dev")
+            ])
+        ]);
+
+        Assert.Equal("OpenShift", report.Orchestrator.Value);
+        Assert.True(report.Orchestrator.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
+    public void Classifier_OpenShiftEnvPrefixed_DetectsOpenShift()
+    {
+        // env.OPENSHIFT_BUILD_NAME (prefixed, as might come from cloud-metadata style emission)
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "env.OPENSHIFT_BUILD_NAME", "my-build")
+            ])
+        ]);
+
+        Assert.Equal("OpenShift", report.Orchestrator.Value);
+    }
+
+    [Fact]
+    public void Classifier_IoTEdgeEnvKeys_AppearInEvidence_DoNotOverclaimSiemens()
+    {
+        // IOTEDGE_WORKLOADURI and IOTEDGE_GATEWAYHOSTNAME without any Siemens label → "IoTEdge"
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "IOTEDGE_WORKLOADURI", "http://iotedged:15082/"),
+                new EvidenceItem("environment", "IOTEDGE_GATEWAYHOSTNAME", "gateway.local")
+            ])
+        ]);
+
+        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
+        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
     }
 
     // ── Reasons separation ───────────────────────────────────────────────────
