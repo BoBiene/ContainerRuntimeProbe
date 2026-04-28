@@ -7,6 +7,10 @@ on:
       - 'src/**'
       - 'README.md'
       - '.github/workflows/docker-harness.yml'
+
+permissions:
+  contents: read
+
 jobs:
   docker-harness:
     runs-on: ubuntu-latest
