@@ -4,7 +4,6 @@
     <AssemblyName>ContainerRuntimeProbe.Tool</AssemblyName>
     <RootNamespace>ContainerRuntimeProbe.Tool</RootNamespace>
     <PackageId>ContainerRuntimeProbe.Tool</PackageId>
-    <Version>0.1.0-preview.2</Version>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>container-runtime-probe</ToolCommandName>
     <Description>CLI tool for generating Container Runtime Reports.</Description>
