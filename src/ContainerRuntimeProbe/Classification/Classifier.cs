@@ -18,7 +18,7 @@ internal static class Classifier
         static bool HasEnvKey(List<EvidenceItem> ev, string key) =>
             ev.Any(x => x.Key == key || x.Key == "env." + key);
 
-        static string? GetValue(IEnumerable<EvidenceItem> ev, params string[] keys)
+        static string? GetFirstMatchingValue(IEnumerable<EvidenceItem> ev, params string[] keys)
             => ev.FirstOrDefault(item => keys.Contains(item.Key, StringComparer.Ordinal))?.Value;
 
         static IEnumerable<string> GetValues(IEnumerable<EvidenceItem> ev, params string[] keys)
@@ -46,7 +46,7 @@ internal static class Classifier
                && string.Equals(item.Value, "Success", StringComparison.Ordinal);
 
         static bool IsConsumerCpu(string? cpuModel)
-            // Keep this list conservative and update it as new consumer/workstation families become common.
+            // Keep this list conservative and update it as common consumer/workstation families evolve (reviewed for 2026-era models).
             => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core i", "intel core", "apple m");
 
         static bool IsHomeDns(string? dnsDomain)
@@ -119,14 +119,14 @@ internal static class Classifier
             ? MakeWithConfidence("Windows", Confidence.High, new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" }))
             : MakeWithConfidence("Linux", e.Any(x => x.Key is "kernel.release" or "/proc/version" or "os.id") ? Confidence.High : Confidence.Unknown, new ClassificationReason("Visible kernel does not match WSL2 and remains Linux", new[] { "kernel.release", "/proc/version", "os.id" }));
 
-        var kernelRelease = GetValue(e, "kernel.release");
+        var kernelRelease = GetFirstMatchingValue(e, "kernel.release");
         var kernelMajor = ParseLeadingMajor(kernelRelease);
-        var osId = GetValue(e, "os.id");
-        var osName = GetValue(e, "os.name");
-        var prettyName = GetValue(e, "os.pretty_name");
-        var osVersion = GetValue(e, "os.version_id", "os.version");
-        var kernelCompiler = GetValue(e, "kernel.compiler");
-        var procVersion = GetValue(e, "/proc/version");
+        var osId = GetFirstMatchingValue(e, "os.id");
+        var osName = GetFirstMatchingValue(e, "os.name");
+        var prettyName = GetFirstMatchingValue(e, "os.pretty_name");
+        var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
+        var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
+        var procVersion = GetFirstMatchingValue(e, "/proc/version");
 
         var applianceScore = 0;
         var applianceReasons = new List<ClassificationReason>();
@@ -174,7 +174,7 @@ internal static class Classifier
                 environmentReasons.Add(new("No cloud metadata endpoint succeeded", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome" }));
             }
 
-            var cpuModel = GetValue(e, "cpu.model_name");
+            var cpuModel = GetFirstMatchingValue(e, "cpu.model_name");
             if (IsConsumerCpu(cpuModel))
             {
                 onPremScore += 2;
