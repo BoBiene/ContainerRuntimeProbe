@@ -74,7 +74,7 @@ Important: container image OS is not host OS. The visible kernel is an observed 
 ```bash
 dotnet build ContainerRuntimeProbe.sln -c Release
 dotnet test ContainerRuntimeProbe.sln -c Release
-dotnet pack ContainerRuntimeProbe.sln -c Release -o artifacts/packages
+dotnet pack ContainerRuntimeProbe.sln -c Release --no-build -o artifacts/packages
 ```
 
 ### Fingerprint modes
