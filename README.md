@@ -59,31 +59,31 @@ The default issue target is this repository: `BoBiene/ContainerRuntimeProbe`. Yo
 Run the probe:
 
 ```bash
-docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
 ```
 
 Generate only the prefilled GitHub issue URL:
 
 ```bash
-docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
 ```
 
 Open the generated URL on Linux:
 
 ```bash
-docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs xdg-open
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs xdg-open
 ```
 
 Open the generated URL on Windows PowerShell:
 
 ```powershell
-docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | ForEach-Object { Start-Process $_ }
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | ForEach-Object { Start-Process $_ }
 ```
 
 Open the generated URL on macOS:
 
 ```bash
-docker run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs open
+docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only | xargs open
 ```
 
 ### Docker Compose / Portainer Stack
@@ -127,6 +127,7 @@ spec:
       containers:
         - name: container-runtime-probe
           image: ghcr.io/bobiene/containerruntimeprobe:preview
+          imagePullPolicy: Always
 ```
 
 URL-only variant:
@@ -143,6 +144,7 @@ spec:
       containers:
         - name: container-runtime-probe
           image: ghcr.io/bobiene/containerruntimeprobe:preview
+          imagePullPolicy: Always
           args: ["--url-only"]
 ```
 
@@ -160,8 +162,8 @@ If you use another OCI-compatible runtime, run the same image there and submit t
 Examples:
 
 ```bash
-podman run --rm ghcr.io/bobiene/containerruntimeprobe:preview
-nerdctl run --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
+podman run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
+nerdctl run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview --url-only
 ```
 
 Reports are especially valuable from Podman, containerd-based systems, Docker-in-Docker setups, LXC/LXD environments, CI runners, and vendor-managed appliance platforms.
