@@ -88,3 +88,10 @@
   }
 }
 ```
+
+
+## Sample export
+
+`container-runtime-probe sample` emits a dense compact `crp1;...` line, a GitHub issue prefill URL, and optional sample JSON/Markdown output.
+
+Compact samples are ASCII-only, URL-safe, parser-friendly, and redacted by construction. The full sample JSON wrapper adds richer redacted host, hardware, probe outcome, and signal detail for fixtures and regression tests.

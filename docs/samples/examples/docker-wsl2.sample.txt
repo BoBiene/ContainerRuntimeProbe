@@ -1,0 +1,1 @@
+crp1;cls=c1,rtD,api0,orc0,cl0,pv0;conf=cH,rtL,apiU,orcU,clU,pvU;host=os:deb12,ker:5.15.167.4-ms-wsl2,kf:WSL2,arch:x64,rhos:0;hw=cv:AMD,cf:AMD,lc:3,vc:16,mem:31G,lim:max,flg:sha256:ab12cd34;fp=sha256:01234567,st:KernelOnly,n:8,x:1;p=mk:S,env:S,proc:S,sbx:S,api:U,k8s:U,meta:S;sig=de,cg:docker,mt:overlay,kf:WSL2,wsl,api:0;sec=none
