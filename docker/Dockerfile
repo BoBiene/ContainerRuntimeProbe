@@ -1,9 +1,10 @@
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG TARGETOS=linux
-ARG TARGETARCH
+ARG TARGETARCH=amd64
 WORKDIR /src
 COPY . .
-RUN case "$TARGETARCH" in \
+RUN [ -n "$TARGETARCH" ] || { echo "TARGETARCH must not be empty" >&2; exit 1; } \
+    && case "$TARGETARCH" in \
         amd64) runtime_id="${TARGETOS}-x64" ;; \
         arm64) runtime_id="${TARGETOS}-arm64" ;; \
         *) echo "Unsupported target architecture: $TARGETARCH" >&2; exit 1 ;; \
