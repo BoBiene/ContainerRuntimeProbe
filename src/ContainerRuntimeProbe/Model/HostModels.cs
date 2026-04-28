@@ -14,6 +14,8 @@ public enum OperatingSystemFamily
     Debian,
     Ubuntu,
     Alpine,
+    Arch,
+    OpenWrt,
     RedHatEnterpriseLinux,
     CentOS,
     Fedora,
