@@ -12,6 +12,7 @@ internal static class Classifier
 
         static Confidence ScoreToConfidence(int score) => score switch { >= 8 => Confidence.High, >= 4 => Confidence.Medium, >= 1 => Confidence.Low, _ => Confidence.Unknown };
         ClassificationResult Make(string value, int score, params ClassificationReason[] reasons) => new(value, ScoreToConfidence(score), reasons);
+
         // Helper: match evidence key in both raw (VARNAME) and env-prefixed (env.VARNAME) forms
         static bool HasEnvKey(List<EvidenceItem> ev, string key) =>
             ev.Any(x => x.Key == key || x.Key == "env." + key);
