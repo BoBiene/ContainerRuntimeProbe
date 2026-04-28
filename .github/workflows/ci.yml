@@ -10,7 +10,23 @@ permissions:
   contents: read
 
 jobs:
-  build-and-test:
+  unit-tests:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for MinVer tag resolution
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet build ContainerRuntimeProbe.sln -c Release
+      - run: dotnet test tests/ContainerRuntimeProbe.Tests/ContainerRuntimeProbe.Tests.csproj -c Release --no-build
+
+  integration-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
