@@ -49,12 +49,14 @@ mkdir -p ./crp-packages
 cp ./ContainerRuntimeProbe.Tool.*.nupkg ./crp-packages/
 dotnet tool install --global --prerelease --add-source ./crp-packages ContainerRuntimeProbe.Tool
 container-runtime-probe --format json
+container-runtime-probe sample
 ```
 
 ## Common commands
 ```bash
 container-runtime-probe --help
 container-runtime-probe --format json
+container-runtime-probe sample
 container-runtime-probe --format markdown --output report.md
 container-runtime-probe --list-probes
 container-runtime-probe --fingerprint safe
@@ -92,6 +94,8 @@ This section is for contributors validating the local Docker harness, not the si
 ```bash
 docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
 docker run --rm container-runtime-probe:test
+docker run --rm container-runtime-probe:test sample
+docker run --rm container-runtime-probe:test json > my-report.json
 docker run --rm -v /var/run/docker.sock:/var/run/docker.sock:ro container-runtime-probe:test
 ```
 
@@ -134,3 +138,46 @@ dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj 
 
 ## Versioning
 Current preview: `0.1.0-preview.2`. See `CHANGELOG.md`.
+
+
+## Help improve detection
+
+ContainerRuntimeProbe improves through real-world samples. If you can share a compact redacted runtime sample, run:
+
+```bash
+container-runtime-probe sample
+```
+
+Or from Docker:
+
+```bash
+docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample
+```
+
+For best results, also attach the full redacted report:
+
+```bash
+docker run --rm ghcr.io/bobiene/container-runtime-probe:latest json > my-report.json
+```
+
+Review `my-report.json`, then attach it to the GitHub issue.
+
+To open the prefilled issue directly on Linux:
+
+```bash
+docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | xargs xdg-open
+```
+
+On Windows PowerShell:
+
+```powershell
+docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | ForEach-Object { Start-Process $_ }
+```
+
+On macOS:
+
+```bash
+docker run --rm ghcr.io/bobiene/container-runtime-probe:latest sample --url-only | xargs open
+```
+
+The URL contains a dense redacted `crp1;...` sample line and a short summary. The compact sample is useful for triage and clustering, while the full report is more useful for improving detection rules. You can optionally paste or attach the full report after reviewing it. GitHub login is required to submit the issue, but no GitHub token is needed to generate the URL. `--repo` is optional and only needed for custom forks or alternate repositories.

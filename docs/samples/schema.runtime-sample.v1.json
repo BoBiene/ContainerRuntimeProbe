@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/BoBiene/ContainerRuntimeProbe/schemas/runtime-sample.v1.json",
+  "title": "ContainerRuntimeProbe runtime sample",
+  "type": "object",
+  "required": ["schema", "schemaVersion", "compactFormat", "compactSample", "tool", "sample"],
+  "properties": {
+    "schema": { "type": "string" },
+    "schemaVersion": { "const": "1.0" },
+    "compactFormat": { "const": "crp1" },
+    "compactSample": { "type": "string", "pattern": "^crp1;" },
+    "tool": {
+      "type": "object",
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "const": "ContainerRuntimeProbe" },
+        "version": { "type": "string" }
+      }
+    },
+    "sample": {
+      "type": "object",
+      "required": ["id", "createdAt", "scenarioName", "environmentKind", "actualClassification", "confidence", "host", "importantSignals", "probeOutcomes", "securityWarnings", "redaction"],
+      "properties": {
+        "id": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "scenarioName": { "type": "string" },
+        "environmentKind": { "type": "string" },
+        "expectedClassification": { "type": ["string", "null"] },
+        "actualClassification": { "type": "object" },
+        "confidence": { "type": "object" },
+        "host": { "type": "object" },
+        "importantSignals": { "type": "array" },
+        "probeOutcomes": { "type": "object" },
+        "securityWarnings": { "type": "array" },
+        "redaction": { "type": "object" }
+      }
+    }
+  }
+}

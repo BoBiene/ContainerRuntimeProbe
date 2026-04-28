@@ -1,0 +1,109 @@
+{
+  "schema": "https://github.com/BoBiene/ContainerRuntimeProbe/schemas/runtime-sample.v1.json",
+  "schemaVersion": "1.0",
+  "compactFormat": "crp1",
+  "compactSample": "crp1;cls=c1,rtD,api0,orc0,cl0,pv0;conf=cH,rtL,apiU,orcU,clU,pvU;host=os:deb12,ker:5.15.167.4-ms-wsl2,kf:WSL2,arch:x64,rhos:0;hw=cv:AMD,cf:AMD,lc:3,vc:16,mem:31G,lim:max,flg:sha256:ab12cd34;fp=sha256:01234567,st:KernelOnly,n:8,x:1;p=mk:S,env:S,proc:S,sbx:S,api:U,k8s:U,meta:S;sig=de,cg:docker,mt:overlay,kf:WSL2,wsl,api:0;sec=none",
+  "tool": {
+    "name": "ContainerRuntimeProbe",
+    "version": "0.1.0-preview"
+  },
+  "sample": {
+    "id": "crp-sample-docker-wsl2",
+    "createdAt": "2026-04-28T15:00:00Z",
+    "scenarioName": "docker-wsl2",
+    "userProvidedScenarioName": null,
+    "environmentKind": "DockerDesktopWsl2",
+    "expectedClassification": null,
+    "actualClassification": {
+      "isContainerized": "True",
+      "containerRuntime": "Docker",
+      "runtimeApi": "Unknown",
+      "orchestrator": "Unknown",
+      "cloudProvider": "Unknown",
+      "platformVendor": "Unknown"
+    },
+    "confidence": {
+      "isContainerized": "High",
+      "containerRuntime": "Low",
+      "runtimeApi": "Unknown",
+      "orchestrator": "Unknown",
+      "cloudProvider": "Unknown",
+      "platformVendor": "Unknown"
+    },
+    "host": {
+      "containerImageOs": {
+        "family": "Debian",
+        "id": "debian",
+        "version": "12 (bookworm)",
+        "prettyName": "Debian GNU/Linux 12 (bookworm)",
+        "architecture": "x64"
+      },
+      "visibleKernel": {
+        "name": "Linux",
+        "release": "5.15.167.4-microsoft-standard-WSL2",
+        "normalizedRelease": "5.15.167.4-ms-wsl2",
+        "flavor": "WSL2",
+        "architecture": "x64"
+      },
+      "runtimeReportedHostOs": {
+        "source": "Unknown",
+        "name": null,
+        "version": null,
+        "architecture": "unk"
+      },
+      "hardware": {
+        "architecture": "x64",
+        "cpuVendor": "AMD",
+        "cpuFamily": "AMD",
+        "cpuModelName": "AMD Ryzen 9 6900HX with Radeon Graphics",
+        "logicalProcessorCount": 3,
+        "visibleProcessorCount": 16,
+        "cpuFlagsHash": "sha256:ab12cd34",
+        "memoryTotalBytes": 33275846656,
+        "memoryTotalBucket": "31G",
+        "cgroupMemoryLimitRaw": "max"
+      },
+      "fingerprint": {
+        "algorithm": "CRP-HOST-FP-v1",
+        "value": "sha256:0123456789abcdef",
+        "shortValue": "sha256:01234567",
+        "stability": "KernelOnly",
+        "includedSignalCount": 8,
+        "excludedSensitiveSignalCount": 1
+      }
+    },
+    "importantSignals": [
+      { "key": "marker./.dockerenv", "value": "true", "tag": "de" },
+      { "key": "cgroup.pattern", "value": "docker", "tag": "cg:docker" },
+      { "key": "mount.type", "value": "overlay", "tag": "mt:overlay" },
+      { "key": "kernel.flavor", "value": "WSL2", "tag": "kf:WSL2" },
+      { "key": "kernel.wsl", "value": "true", "tag": "wsl" },
+      { "key": "runtime-api.outcome", "value": "Unavailable", "tag": "api:0" }
+    ],
+    "probeOutcomes": {
+      "markerFiles": "S",
+      "environment": "S",
+      "procFiles": "S",
+      "securitySandbox": "S",
+      "runtimeApi": "U",
+      "kubernetes": "U",
+      "cloudMetadata": "S"
+    },
+    "securityWarnings": [],
+    "redaction": {
+      "mode": "safe",
+      "fullReportContainsSensitiveValues": false,
+      "excludedFromIssueUrl": [
+        "raw mountinfo",
+        "raw cgroup container ids",
+        "hostname",
+        "container id",
+        "cloud instance id",
+        "tokens",
+        "secrets",
+        "raw cpu serial",
+        "raw full metadata documents"
+      ]
+    }
+  }
+}
