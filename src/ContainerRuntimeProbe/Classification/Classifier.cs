@@ -41,6 +41,9 @@ internal static class Classifier
         static bool ContainsAny(string? value, params string[] fragments)
             => !string.IsNullOrWhiteSpace(value) && fragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase));
 
+        static bool ContainsAnySignal(string? value, IEnumerable<string> fragments)
+            => !string.IsNullOrWhiteSpace(value) && fragments.Any(fragment => value.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+
         static bool IsCloudMetadataSuccess(EvidenceItem item)
             => item.Key is "aws.imds.identity.outcome" or "azure.imds.outcome" or "gcp.metadata.outcome" or "oci.metadata.outcome"
                && string.Equals(item.Value, "Success", StringComparison.Ordinal);
@@ -50,21 +53,26 @@ internal static class Classifier
             => ContainsAny(cpuModel, "pentium", "celeron", "ryzen", "athlon", "threadripper", "core i", "intel core", "apple m");
 
         static bool IsHomeDns(string? dnsDomain)
-            => !string.IsNullOrWhiteSpace(dnsDomain)
-               && (dnsDomain.Equals("lan", StringComparison.OrdinalIgnoreCase)
-                   || dnsDomain.EndsWith(".lan", StringComparison.OrdinalIgnoreCase)
-                   || dnsDomain.EndsWith(".home", StringComparison.OrdinalIgnoreCase)
-                   || dnsDomain.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
-                   || dnsDomain.EndsWith("fritz.box", StringComparison.OrdinalIgnoreCase));
+        {
+            if (string.IsNullOrWhiteSpace(dnsDomain))
+            {
+                return false;
+            }
+
+            return DetectionMaps.HomeDnsSignals.Any(signal =>
+                string.Equals(signal, "lan", StringComparison.Ordinal)
+                    ? dnsDomain.Equals(signal, StringComparison.OrdinalIgnoreCase)
+                    : dnsDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
+        }
 
         static bool IsCustomCompiler(string? compiler, string? procVersion)
-            => ContainsAny(compiler, "crosstool", "buildroot", "uclibc", "musl", "synology", "qnap")
-               || ContainsAny(procVersion, "crosstool", "buildroot", "uclibc", "synology", "qnap");
+                => ContainsAnySignal(compiler, DetectionMaps.CustomCompilerSignals)
+                    || ContainsAnySignal(procVersion, DetectionMaps.CustomCompilerSignals);
 
         static bool IsVendorAppliance(string? osId, string? osName, string? prettyName)
-            => ContainsAny(osId, "synology", "qnap", "qts", "quts", "dsm")
-               || ContainsAny(osName, "synology", "qnap", "diskstation", "qts", "quts")
-               || ContainsAny(prettyName, "synology", "qnap", "diskstation", "qts", "quts");
+                => ContainsAnySignal(osId, DetectionMaps.VendorApplianceSignals)
+                    || ContainsAnySignal(osName, DetectionMaps.VendorApplianceSignals)
+                    || ContainsAnySignal(prettyName, DetectionMaps.VendorApplianceSignals);
 
         static bool IsKernelUserspaceMismatch(string? osVersion, int? kernelMajor)
         {

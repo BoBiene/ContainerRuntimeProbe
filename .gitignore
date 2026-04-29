@@ -55,3 +55,7 @@ CodeCoverage/
 *.VisualState.xml
 TestResult.xml
 nunit-*.xml
+
+# Dev-only GPL reference data (downloaded via scripts/fetch-distro-fixtures.ps1).
+# which-distro/os-release is GPL-2.0-or-later and must NOT be committed.
+third_party/
