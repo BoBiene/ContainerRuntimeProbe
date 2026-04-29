@@ -1,5 +1,11 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0
+FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 WORKDIR /src
+RUN apk add --no-cache clang llvm musl-dev zlib-dev zlib-static
 COPY . .
-RUN dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj -c Release -o /app
-ENTRYPOINT ["/bin/bash","-lc","dotnet /app/ContainerRuntimeProbe.Tool.dll --format markdown && echo '---' && dotnet /app/ContainerRuntimeProbe.Tool.dll --format json"]
+RUN dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
+    -c Release -r linux-musl-x64 -p:PublishTrimmed=true -p:PublishAot=true --self-contained -o /app
+
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
+WORKDIR /app
+COPY --from=build /app .
+ENTRYPOINT ["/bin/sh","-c","/app/ContainerRuntimeProbe.Tool --format markdown && echo '---' && /app/ContainerRuntimeProbe.Tool --format json"]
