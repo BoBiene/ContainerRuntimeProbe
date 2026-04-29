@@ -1,4 +1,5 @@
 using System.Threading;
+using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
@@ -31,4 +32,82 @@ public sealed class ProcFilesProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "/proc/version" && item.Value == ProbeOutcome.Unavailable.ToString());
         Assert.Contains(result.Evidence, item => item.Key == "/proc/sys/kernel/osrelease" && item.Value == ProbeOutcome.Unavailable.ToString());
     }
+
+    [Fact]
+    public async Task ProcFilesProbe_ExtractsSynologyKernelAndDmiSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/proc/version"] = "Linux version 5.10.55+ (root@build7) #86009 SMP",
+            ["/proc/sys/kernel/osrelease"] = "5.10.55+\n",
+            ["/proc/sys/kernel/ostype"] = "Linux\n",
+            ["/proc/sys/kernel/version"] = "#86009 SMP Wed Nov 26 18:45:22 CST 2025\n",
+            ["/proc/sys/kernel/syno_hw_version"] = "DS925+\n",
+            ["/proc/sys/kernel/syno_install_flag"] = "0\n",
+            ["/sys/class/dmi/id/sys_vendor"] = "Synology Inc.\n",
+            ["/sys/class/dmi/id/product_name"] = "DS925+\n",
+            ["/sys/class/dmi/id/modalias"] = "dmi:bvnInsydeCorp.:svnSynologyInc.:pnDS925+:pvr1:\n"
+        };
+
+        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+            Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.syno_hw_version" && item.Value == "DS925+");
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.syno_install_flag" && item.Value == "0");
+        Assert.Contains(result.Evidence, item => item.Key == "dmi.sys_vendor" && item.Value == "Synology Inc.");
+        Assert.Contains(result.Evidence, item => item.Key == "dmi.product_name" && item.Value == "DS925+");
+        Assert.Contains(result.Evidence, item => item.Key == "dmi.modalias" && item.Value!.Contains("svnSynologyInc.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ProcFilesProbe_DiscoversPublicKernelSysctls_AndSkipsOtherNames()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/proc/sys/kernel/syno_hw_version"] = "DS925+\n",
+            ["/proc/sys/kernel/syno_hw_revision"] = "rev1\n",
+            ["/proc/sys/kernel/syno_install_flag"] = "0\n"
+        };
+
+        var probe = new ProcFilesProbe(
+            [],
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            path => path == "/proc/sys/kernel"
+                ? [
+                    "/proc/sys/kernel/syno_hw_version",
+                    "/proc/sys/kernel/syno_hw_revision",
+                    "/proc/sys/kernel/syno_install_flag",
+                    "/proc/sys/kernel/syno_serial",
+                    "/proc/sys/kernel/randomize_va_space"
+                ]
+                : []);
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.syno_hw_version" && item.Value == "DS925+");
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.syno_hw_revision" && item.Value == "rev1");
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.syno_install_flag" && item.Value == "0");
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "kernel.syno_serial");
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "kernel.randomize_va_space");
+        Assert.Contains(result.Evidence, item => item.Key == "kernel.architecture" && item.Value == NormalizeArchitectureRaw(RuntimeInformation.OSArchitecture));
+    }
+
+    private static string NormalizeArchitectureRaw(Architecture architecture)
+        => architecture switch
+        {
+            Architecture.X64 => "x86_64",
+            Architecture.X86 => "x86",
+            Architecture.Arm64 => "arm64",
+            Architecture.Arm => "arm",
+            Architecture.S390x => "s390x",
+            _ => architecture.ToString().ToLowerInvariant()
+        };
 }

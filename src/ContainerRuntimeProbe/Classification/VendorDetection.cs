@@ -52,6 +52,10 @@ internal static class VendorDetection
         // and removed from OS name matching to require "synology" or "diskstation" instead.
         var synologyScore = 0;
         var synologyReasons = new List<ClassificationReason>();
+        var synoHwVersion = FirstValue(e, "kernel.syno_hw_version");
+        var dmiSysVendor = FirstValue(e, "dmi.sys_vendor");
+        var dmiProductName = FirstValue(e, "dmi.product_name");
+        var dmiModalias = FirstValue(e, "dmi.modalias");
 
         if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "Synology", StringComparison.OrdinalIgnoreCase)))
         {
@@ -65,6 +69,24 @@ internal static class VendorDetection
         {
             synologyScore += 2;
             synologyReasons.Add(new("OS release identifies Synology distribution", ["os.id", "os.name", "os.pretty_name"]));
+        }
+
+        if (!string.IsNullOrWhiteSpace(synoHwVersion))
+        {
+            synologyScore += 5;
+            synologyReasons.Add(new("Synology kernel sysctl exposed host hardware model", ["kernel.syno_hw_version"]));
+        }
+
+        if (ContainsAny(dmiSysVendor, "synology") || ContainsAny(dmiModalias, "svnsynologyinc."))
+        {
+            synologyScore += 4;
+            synologyReasons.Add(new("DMI vendor identifies a Synology system", ["dmi.sys_vendor", "dmi.modalias"]));
+        }
+
+        if (ContainsAny(dmiProductName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station"))
+        {
+            synologyScore += 2;
+            synologyReasons.Add(new("DMI product name identifies a Synology appliance line", ["dmi.product_name"]));
         }
 
         if (synologyScore >= 2)

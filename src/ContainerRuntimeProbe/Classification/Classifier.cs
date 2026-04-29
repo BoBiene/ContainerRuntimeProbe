@@ -165,6 +165,7 @@ internal static class Classifier
         var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
         var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
         var procVersion = GetFirstMatchingValue(e, "/proc/version");
+        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
 
         var applianceScore = 0;
         var applianceReasons = new List<ClassificationReason>();
@@ -193,6 +194,8 @@ internal static class Classifier
             ? MakeWithConfidence(HostTypeKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
             : applianceScore >= 5
                 ? Make(HostTypeKind.Appliance, applianceScore, applianceReasons.ToArray())
+                : vendor.Value is PlatformVendorKind.Synology or PlatformVendorKind.SiemensIndustrialEdge or PlatformVendorKind.IoTEdge
+                    ? MakeWithConfidence(HostTypeKind.Appliance, vendor.Confidence, vendor.Reasons.ToArray())
                 : kernelMajor is >= 5
                     ? MakeWithConfidence(HostTypeKind.StandardLinux, osId is null ? Confidence.Medium : Confidence.High, new ClassificationReason("Modern kernel and userspace do not show appliance mismatch signals", new[] { "kernel.release", "os.id", "os.version_id" }))
                     : MakeWithConfidence(HostTypeKind.Unknown, Confidence.Low, new ClassificationReason("Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance", new[] { "kernel.release", "os.version_id", "kernel.compiler" }));
@@ -325,10 +328,6 @@ internal static class Classifier
         // OCI: metadata server succeeded
         else if (e.Any(x => x.Key == "oci.metadata.outcome" && x.Value == "Success")) { cloud = CloudProviderKind.OracleCloud; cloudScore = 7; }
         var cloudProvider = Make(cloud, cloudScore, new ClassificationReason("Cloud metadata/env markers", new[] { "cloud-metadata" }));
-
-        // ── PlatformVendor ───────────────────────────────────────────────────────
-        // Delegated to VendorDetection for independent maintainability and testability.
-        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
 
         return new ReportClassification(
             isContainerized,
