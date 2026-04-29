@@ -215,6 +215,7 @@ internal static class Classifier
         if (e.Any(x => x.Key.Contains("/libpod/", StringComparison.OrdinalIgnoreCase))) AddRuntime(ContainerRuntimeKind.Podman, 6, "Libpod API endpoint present", "runtime-api");
         if (e.Any(x => x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true && x.Key.EndsWith(":body", StringComparison.OrdinalIgnoreCase))) AddRuntime(ContainerRuntimeKind.Podman, 4, "Podman in API response body", "runtime-api");
         if (e.Any(x => x.Key == "socket.present" && x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true)) AddRuntime(ContainerRuntimeKind.Podman, 2, "Podman socket path present", "runtime-api");
+        if (e.Any(x => x.Key is "container" or "CONTAINER" && (x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true || x.Value?.Contains("libpod", StringComparison.OrdinalIgnoreCase) == true))) AddRuntime(ContainerRuntimeKind.Podman, 4, "Environment reports Podman container runtime", "environment");
 
         // Docker: _ping on docker.sock or Docker in version body
         if (e.Any(x => x.Key.Contains("/_ping", StringComparison.OrdinalIgnoreCase) && x.Key.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) && x.Value == "Success")) AddRuntime(ContainerRuntimeKind.Docker, 6, "Docker /_ping succeeded", "runtime-api");

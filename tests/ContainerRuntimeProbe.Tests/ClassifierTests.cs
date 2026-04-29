@@ -100,6 +100,21 @@ public sealed class ClassifierTests
         Assert.True(report.RuntimeApi.Confidence >= Confidence.High);
     }
 
+    [Fact]
+    public void Classifier_PodmanEnvironmentHintWithoutRuntimeApi_DetectsPodmanRuntime()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "container", "podman")
+            ]),
+            new ProbeResult("runtime-api", ProbeOutcome.Unavailable, [])
+        ]);
+
+        Assert.Equal(ContainerRuntimeKind.Podman, report.ContainerRuntime.Value);
+        Assert.True(report.ContainerRuntime.Confidence >= Confidence.Low);
+        Assert.Equal(RuntimeApiKind.Unknown, report.RuntimeApi.Value);
+    }
+
     // ── Orchestrator scenarios ───────────────────────────────────────────────
 
     [Fact]
