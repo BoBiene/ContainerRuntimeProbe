@@ -34,7 +34,7 @@ All high priority issues resolved. ✅
 ### Medium
 
 - [x] **4. Public probe-context overrides** — `ProbeExecutionOptions` now exposes Kubernetes and metadata endpoint overrides on the public engine API.
-- [ ] **5. AppArmor vs SELinux parsing** — `SecuritySandboxProbe` still relies on a `:` heuristic that should be made robust.
+- [x] **5. AppArmor vs SELinux parsing** — `SecuritySandboxProbe` now validates SELinux context shape explicitly and records `/sys/fs/selinux/enforce` evidence separately.
 - [ ] **6. Stronger OnPrem classification** — current on-prem scoring still needs better non-cloud signals.
 - [ ] **7. Runtime harness coverage** — CI still lacks Podman/rootless/privileged/host-network container runs.
 - [ ] **8. Parallel `/proc` reads** — `ProcFilesProbe` still reads the proc/sys file set sequentially.
