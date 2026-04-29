@@ -1,4 +1,4 @@
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
@@ -14,7 +14,7 @@ RUN target_os="${TARGETOS:-linux}" \
     && dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
         -c Release -r "$runtime_id" -p:PublishTrimmed=true -p:PublishAot=true --self-contained -o /app
 
-FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine
+FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 WORKDIR /app
 COPY --from=build /app .
 ENTRYPOINT ["/app/ContainerRuntimeProbe.Tool"]
