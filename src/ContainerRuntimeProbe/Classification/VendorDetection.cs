@@ -14,7 +14,7 @@ internal static class VendorDetection
     /// <summary>Scoring thresholds — keep consistent with the main ScoreToConfidence table in Classifier.</summary>
     private static Confidence Score(int s) => s switch { >= 8 => Confidence.High, >= 4 => Confidence.Medium, >= 1 => Confidence.Low, _ => Confidence.Unknown };
 
-    private static ClassificationResult Make(string value, int score, params ClassificationReason[] reasons)
+    private static ClassificationResult<PlatformVendorKind> Make(PlatformVendorKind value, int score, params ClassificationReason[] reasons)
         => new(value, Score(score), reasons);
 
     private static bool ContainsAny(string? value, params string[] fragments)
@@ -30,7 +30,7 @@ internal static class VendorDetection
     /// Each vendor requires a minimum score of 2 to prevent single-weak-signal false positives,
     /// except Microsoft (WSL2) which is a deterministic high-confidence signal.
     /// </summary>
-    internal static ClassificationResult Detect(
+    internal static ClassificationResult<PlatformVendorKind> Detect(
         IReadOnlyList<EvidenceItem> e,
         string? osId,
         string? osName,
@@ -44,7 +44,7 @@ internal static class VendorDetection
             || e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value));
 
         if (wsl2)
-            return Make("Microsoft", 8, new ClassificationReason("WSL2 kernel fingerprint detected", ["kernel.flavor", "kernel.release", "/proc/version"]));
+            return Make(PlatformVendorKind.Microsoft, 8, new ClassificationReason("WSL2 kernel fingerprint detected", ["kernel.flavor", "kernel.release", "/proc/version"]));
 
         // ── Synology NAS ──────────────────────────────────────────────────────
         // Minimum score of 2 required to avoid false positives from a single weak signal.
@@ -68,7 +68,7 @@ internal static class VendorDetection
         }
 
         if (synologyScore >= 2)
-            return Make("Synology", synologyScore, synologyReasons.ToArray());
+            return Make(PlatformVendorKind.Synology, synologyScore, synologyReasons.ToArray());
 
         // ── Apple / Docker Desktop ────────────────────────────────────────────
         // Requires score >= 2 to prevent a stray "Intel Core" CPU name from firing alone.
@@ -103,7 +103,7 @@ internal static class VendorDetection
         }
 
         if (appleScore >= 2)
-            return Make("Apple", appleScore, appleReasons.ToArray());
+            return Make(PlatformVendorKind.Apple, appleScore, appleReasons.ToArray());
 
         // ── Siemens Industrial Edge / IoTEdge ─────────────────────────────────
         var iotedgeScore = 0;
@@ -134,12 +134,12 @@ internal static class VendorDetection
                     ieReasons.Add(new("Docker Compose corroboration", ["runtime-api"]));
                 }
 
-                return Make("Siemens Industrial Edge", ieScore, ieReasons.ToArray());
+                return Make(PlatformVendorKind.SiemensIndustrialEdge, ieScore, ieReasons.ToArray());
             }
 
-            return Make("IoTEdge", iotedgeScore, iotedgeReasons.ToArray());
+            return Make(PlatformVendorKind.IoTEdge, iotedgeScore, iotedgeReasons.ToArray());
         }
 
-        return Make(KnownValues.Unknown, 0, new ClassificationReason("No vendor-specific proofs", []));
+        return Make(PlatformVendorKind.Unknown, 0, new ClassificationReason("No vendor-specific proofs", []));
     }
 }

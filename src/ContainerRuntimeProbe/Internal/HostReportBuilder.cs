@@ -307,9 +307,9 @@ internal static class HostReportBuilder
         AddIncluded("cpu.modelName.normalized", HostParsing.NormalizeModelName(hardware.Cpu.ModelName));
         AddIncluded("cpu.flags.hash", hardware.Cpu.FlagsHash);
         AddIncluded("memory.total.bucket", HostParsing.NormalizeMemoryBucket(hardware.Memory.MemTotalBytes));
-        AddIncluded("runtime.api.type", classification.RuntimeApi.Value != KnownValues.Unknown ? classification.RuntimeApi.Value : null);
+        AddIncluded("runtime.api.type", classification.RuntimeApi.Value != RuntimeApiKind.Unknown ? ClassificationValueFormatter.Format(classification.RuntimeApi.Value) : null);
         AddIncluded("runtime.engine.version.majorMinor", HostParsing.NormalizeVersionMajorMinor(GetValue(evidence, "runtime.engine.version")));
-        AddIncluded("cloud.provider", classification.CloudProvider.Value != KnownValues.Unknown ? classification.CloudProvider.Value : null);
+        AddIncluded("cloud.provider", classification.CloudProvider.Value != CloudProviderKind.Unknown ? ClassificationValueFormatter.Format(classification.CloudProvider.Value) : null);
         AddIncluded("cloud.machine.type", hardware.CloudMachineType);
         AddIncluded("cloud.region.bucket", NormalizeRegionBucket(GetValue(evidence, "cloud.region")));
         AddIncluded("kubernetes.node.containerRuntimeVersion.majorMinor", HostParsing.NormalizeVersionMajorMinor(GetValue(evidence, "kubernetes.nodeInfo.containerRuntimeVersion")));

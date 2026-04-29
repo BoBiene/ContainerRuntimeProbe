@@ -54,16 +54,16 @@ public static class ReportRenderer
         }
         
         sb.AppendLine("## Summary");
-        sb.AppendLine($"- IsContainerized: {report.Classification.IsContainerized.Value} ({report.Classification.IsContainerized.Confidence})");
-        sb.AppendLine($"- ContainerRuntime: {report.Classification.ContainerRuntime.Value} ({report.Classification.ContainerRuntime.Confidence})");
-        sb.AppendLine($"- Virtualization: {report.Classification.Virtualization.Value} ({report.Classification.Virtualization.Confidence})");
-        sb.AppendLine($"- HostFamily: {report.Classification.Host.Family.Value} ({report.Classification.Host.Family.Confidence})");
-        sb.AppendLine($"- HostType: {report.Classification.Host.Type.Value} ({report.Classification.Host.Type.Confidence})");
-        sb.AppendLine($"- EnvironmentType: {report.Classification.Environment.Type.Value} ({report.Classification.Environment.Type.Confidence})");
-        sb.AppendLine($"- RuntimeApi: {report.Classification.RuntimeApi.Value} ({report.Classification.RuntimeApi.Confidence})");
-        sb.AppendLine($"- Orchestrator: {report.Classification.Orchestrator.Value} ({report.Classification.Orchestrator.Confidence})");
-        sb.AppendLine($"- CloudProvider: {report.Classification.CloudProvider.Value} ({report.Classification.CloudProvider.Confidence})");
-        sb.AppendLine($"- PlatformVendor: {report.Classification.PlatformVendor.Value} ({report.Classification.PlatformVendor.Confidence})");
+        sb.AppendLine($"- IsContainerized: {ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value)} ({report.Classification.IsContainerized.Confidence})");
+        sb.AppendLine($"- ContainerRuntime: {ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value)} ({report.Classification.ContainerRuntime.Confidence})");
+        sb.AppendLine($"- Virtualization: {ClassificationValueFormatter.Format(report.Classification.Virtualization.Value)} ({report.Classification.Virtualization.Confidence})");
+        sb.AppendLine($"- HostFamily: {ValueOrUnknownEnum(report.Classification.Host.Family.Value)} ({report.Classification.Host.Family.Confidence})");
+        sb.AppendLine($"- HostType: {ClassificationValueFormatter.Format(report.Classification.Host.Type.Value)} ({report.Classification.Host.Type.Confidence})");
+        sb.AppendLine($"- EnvironmentType: {ClassificationValueFormatter.Format(report.Classification.Environment.Type.Value)} ({report.Classification.Environment.Type.Confidence})");
+        sb.AppendLine($"- RuntimeApi: {ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value)} ({report.Classification.RuntimeApi.Confidence})");
+        sb.AppendLine($"- Orchestrator: {ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value)} ({report.Classification.Orchestrator.Confidence})");
+        sb.AppendLine($"- CloudProvider: {ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value)} ({report.Classification.CloudProvider.Confidence})");
+        sb.AppendLine($"- PlatformVendor: {ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value)} ({report.Classification.PlatformVendor.Confidence})");
         sb.AppendLine();
         sb.AppendLine("## Host OS / Node");
         sb.AppendLine("### Container Image OS");
@@ -153,6 +153,8 @@ public static class ReportRenderer
     /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
     public static string ToText(ContainerRuntimeReport report)
     {
+        static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
+
         // ContainerOS: what /etc/os-release inside the container says.
         var containerOs = report.Host.ContainerImageOs.PrettyName
                        ?? report.Host.ContainerImageOs.Id
@@ -194,16 +196,16 @@ public static class ReportRenderer
         // (key, value, optional confidence)
         (string Key, string Value, Confidence? Conf)[] fields =
         [
-            ("IsContainerized", report.Classification.IsContainerized.Value,   report.Classification.IsContainerized.Confidence),
-            ("Runtime",         report.Classification.ContainerRuntime.Value,   report.Classification.ContainerRuntime.Confidence),
-            ("Virtualization",  report.Classification.Virtualization.Value,     report.Classification.Virtualization.Confidence),
-            ("HostFamily",      report.Classification.Host.Family.Value,        report.Classification.Host.Family.Confidence),
-            ("HostType",        report.Classification.Host.Type.Value,          report.Classification.Host.Type.Confidence),
-            ("Environment",     report.Classification.Environment.Type.Value,   report.Classification.Environment.Type.Confidence),
-            ("RuntimeApi",      report.Classification.RuntimeApi.Value,         report.Classification.RuntimeApi.Confidence),
-            ("Orchestrator",    report.Classification.Orchestrator.Value,       report.Classification.Orchestrator.Confidence),
-            ("Cloud",           report.Classification.CloudProvider.Value,      report.Classification.CloudProvider.Confidence),
-            ("Vendor",          report.Classification.PlatformVendor.Value,     report.Classification.PlatformVendor.Confidence),
+            ("IsContainerized", ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value),   report.Classification.IsContainerized.Confidence),
+            ("Runtime",         ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value),   report.Classification.ContainerRuntime.Confidence),
+            ("Virtualization",  ClassificationValueFormatter.Format(report.Classification.Virtualization.Value),     report.Classification.Virtualization.Confidence),
+            ("HostFamily",      ValueOrUnknownEnum(report.Classification.Host.Family.Value),                        report.Classification.Host.Family.Confidence),
+            ("HostType",        ClassificationValueFormatter.Format(report.Classification.Host.Type.Value),          report.Classification.Host.Type.Confidence),
+            ("Environment",     ClassificationValueFormatter.Format(report.Classification.Environment.Type.Value),   report.Classification.Environment.Type.Confidence),
+            ("RuntimeApi",      ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value),         report.Classification.RuntimeApi.Confidence),
+            ("Orchestrator",    ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value),       report.Classification.Orchestrator.Confidence),
+            ("Cloud",           ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value),      report.Classification.CloudProvider.Confidence),
+            ("Vendor",          ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value),     report.Classification.PlatformVendor.Confidence),
             ("UnderlyingHost",  underlyingHost,                                 null),
             ("HostOS",          hostOs,                                         runtimeHost.Confidence),
             ("HostKernelOS",    kernelHostOs,                                   report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),

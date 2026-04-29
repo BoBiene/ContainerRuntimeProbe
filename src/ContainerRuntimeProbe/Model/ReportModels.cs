@@ -18,29 +18,189 @@ public sealed record ProbeToolMetadata(string Version);
 /// <summary>Reason object including evidence references used for an inferred classification.</summary>
 public sealed record ClassificationReason(string Message, IReadOnlyList<string> EvidenceKeys);
 
+/// <summary>Classifies whether the current process appears to run in a container.</summary>
+public enum ContainerizationKind
+{
+    /// <summary>The available evidence is not sufficient for a determination.</summary>
+    Unknown,
+
+    /// <summary>Evidence indicates the current process is not containerized.</summary>
+    @False,
+
+    /// <summary>Evidence indicates the current process is containerized.</summary>
+    @True
+}
+
+/// <summary>Classifies the detected container runtime implementation.</summary>
+public enum ContainerRuntimeKind
+{
+    /// <summary>No runtime could be inferred.</summary>
+    Unknown,
+
+    /// <summary>Docker Engine runtime.</summary>
+    Docker,
+
+    /// <summary>Podman runtime.</summary>
+    Podman,
+
+    /// <summary>containerd runtime.</summary>
+    Containerd,
+
+    /// <summary>CRI-O runtime.</summary>
+    CriO
+}
+
+/// <summary>Classifies the visible virtualization environment.</summary>
+public enum VirtualizationClassificationKind
+{
+    /// <summary>No reliable virtualization signal is available.</summary>
+    Unknown,
+
+    /// <summary>No virtualization fingerprint was detected.</summary>
+    None,
+
+    /// <summary>The kernel fingerprint matches WSL2.</summary>
+    WSL2
+}
+
+/// <summary>Classifies the broader host type derived from host signals.</summary>
+public enum HostTypeKind
+{
+    /// <summary>The host type could not be inferred.</summary>
+    Unknown,
+
+    /// <summary>A conventional Linux host without appliance mismatch signals.</summary>
+    StandardLinux,
+
+    /// <summary>A vendor appliance or similarly specialized Linux host.</summary>
+    Appliance,
+
+    /// <summary>A Windows host surfaced through WSL2.</summary>
+    WSL2
+}
+
+/// <summary>Classifies the broader hosting environment.</summary>
+public enum EnvironmentTypeKind
+{
+    /// <summary>The environment could not be inferred.</summary>
+    Unknown,
+
+    /// <summary>The host appears to run in a cloud environment.</summary>
+    Cloud,
+
+    /// <summary>The host appears to run outside managed cloud infrastructure.</summary>
+    OnPrem
+}
+
+/// <summary>Classifies the API surface exposed by a detected runtime.</summary>
+public enum RuntimeApiKind
+{
+    /// <summary>No runtime API could be inferred.</summary>
+    Unknown,
+
+    /// <summary>Docker Engine API.</summary>
+    DockerEngineApi,
+
+    /// <summary>Podman Libpod API.</summary>
+    PodmanLibpodApi,
+
+    /// <summary>Kubernetes API.</summary>
+    KubernetesApi
+}
+
+/// <summary>Classifies the detected container orchestrator.</summary>
+public enum OrchestratorKind
+{
+    /// <summary>No orchestrator could be inferred.</summary>
+    Unknown,
+
+    /// <summary>Kubernetes or a compatible control plane.</summary>
+    Kubernetes,
+
+    /// <summary>AWS ECS.</summary>
+    AwsEcs,
+
+    /// <summary>Google Cloud Run.</summary>
+    CloudRun,
+
+    /// <summary>Azure Container Apps.</summary>
+    AzureContainerApps,
+
+    /// <summary>HashiCorp Nomad.</summary>
+    Nomad,
+
+    /// <summary>OpenShift.</summary>
+    OpenShift,
+
+    /// <summary>Docker Compose.</summary>
+    DockerCompose
+}
+
+/// <summary>Classifies the detected cloud provider.</summary>
+public enum CloudProviderKind
+{
+    /// <summary>No cloud provider could be inferred.</summary>
+    Unknown,
+
+    /// <summary>Amazon Web Services.</summary>
+    AWS,
+
+    /// <summary>Microsoft Azure.</summary>
+    Azure,
+
+    /// <summary>Google Cloud Platform.</summary>
+    GoogleCloud,
+
+    /// <summary>Oracle Cloud Infrastructure.</summary>
+    OracleCloud
+}
+
+/// <summary>Classifies a higher-level platform vendor or appliance family.</summary>
+public enum PlatformVendorKind
+{
+    /// <summary>No platform vendor could be inferred.</summary>
+    Unknown,
+
+    /// <summary>Microsoft platform signals, typically WSL2.</summary>
+    Microsoft,
+
+    /// <summary>Synology platform signals.</summary>
+    Synology,
+
+    /// <summary>Apple platform signals, typically Docker Desktop on macOS.</summary>
+    Apple,
+
+    /// <summary>Siemens Industrial Edge signals.</summary>
+    SiemensIndustrialEdge,
+
+    /// <summary>Azure IoT Edge signals without Siemens-specific corroboration.</summary>
+    IoTEdge
+}
+
 /// <summary>Single classification value with confidence and justification.</summary>
-public sealed record ClassificationResult(string Value, Confidence Confidence, IReadOnlyList<ClassificationReason> Reasons);
+public sealed record ClassificationResult<TValue>(TValue Value, Confidence Confidence, IReadOnlyList<ClassificationReason> Reasons)
+    where TValue : struct, Enum;
 
 /// <summary>Structured host classification dimension.</summary>
 public sealed record HostClassificationResult(
-    ClassificationResult Family,
-    ClassificationResult Type);
+    ClassificationResult<OperatingSystemFamily> Family,
+    ClassificationResult<HostTypeKind> Type);
 
 /// <summary>Structured environment classification dimension.</summary>
 public sealed record EnvironmentClassificationResult(
-    ClassificationResult Type);
+    ClassificationResult<EnvironmentTypeKind> Type);
 
 /// <summary>Container runtime report classification dimensions.</summary>
 public sealed record ReportClassification(
-    ClassificationResult IsContainerized,
-    ClassificationResult ContainerRuntime,
-    ClassificationResult Virtualization,
+    ClassificationResult<ContainerizationKind> IsContainerized,
+    ClassificationResult<ContainerRuntimeKind> ContainerRuntime,
+    ClassificationResult<VirtualizationClassificationKind> Virtualization,
     HostClassificationResult Host,
     EnvironmentClassificationResult Environment,
-    ClassificationResult RuntimeApi,
-    ClassificationResult Orchestrator,
-    ClassificationResult CloudProvider,
-    ClassificationResult PlatformVendor);
+    ClassificationResult<RuntimeApiKind> RuntimeApi,
+    ClassificationResult<OrchestratorKind> Orchestrator,
+    ClassificationResult<CloudProviderKind> CloudProvider,
+    ClassificationResult<PlatformVendorKind> PlatformVendor);
 
 /// <summary>Top-level report returned by the probe engine.</summary>
 public sealed record ContainerRuntimeReport(
@@ -54,6 +214,16 @@ public sealed record ContainerRuntimeReport(
 
 /// <summary>Source-generation context for JSON serialization.</summary>
 [JsonSerializable(typeof(ContainerRuntimeReport))]
+[JsonSerializable(typeof(ClassificationResult<ContainerizationKind>))]
+[JsonSerializable(typeof(ClassificationResult<ContainerRuntimeKind>))]
+[JsonSerializable(typeof(ClassificationResult<VirtualizationClassificationKind>))]
+[JsonSerializable(typeof(ClassificationResult<OperatingSystemFamily>))]
+[JsonSerializable(typeof(ClassificationResult<HostTypeKind>))]
+[JsonSerializable(typeof(ClassificationResult<EnvironmentTypeKind>))]
+[JsonSerializable(typeof(ClassificationResult<RuntimeApiKind>))]
+[JsonSerializable(typeof(ClassificationResult<OrchestratorKind>))]
+[JsonSerializable(typeof(ClassificationResult<CloudProviderKind>))]
+[JsonSerializable(typeof(ClassificationResult<PlatformVendorKind>))]
 [JsonSerializable(typeof(string[]))]
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 public partial class ReportJsonContext : JsonSerializerContext;
