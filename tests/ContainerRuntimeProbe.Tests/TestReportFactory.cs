@@ -13,15 +13,15 @@ internal static class TestReportFactory
             [new ProbeResult("p", ProbeOutcome.Success, [new EvidenceItem("p", "k", "v")])],
             [],
             new ReportClassification(
-                new("True", Confidence.High, []),
-                new("Docker", Confidence.Medium, []),
-                new("None", Confidence.Medium, []),
-                new(new("Linux", Confidence.High, []), new("StandardLinux", Confidence.High, [])),
-                new(new("Cloud", Confidence.Medium, [])),
-                new("DockerEngineApi", Confidence.Medium, []),
-                new("Unknown", Confidence.Unknown, []),
-                new("Azure", Confidence.Medium, []),
-                new("Unknown", Confidence.Unknown, [])),
+                new(ContainerizationKind.@True, Confidence.High, []),
+                new(ContainerRuntimeKind.Docker, Confidence.Medium, []),
+                new(VirtualizationClassificationKind.None, Confidence.Medium, []),
+                new(new(OperatingSystemFamily.Linux, Confidence.High, []), new(HostTypeKind.StandardLinux, Confidence.High, [])),
+                new(new(EnvironmentTypeKind.Cloud, Confidence.Medium, [])),
+                new(RuntimeApiKind.DockerEngineApi, Confidence.Medium, []),
+                new(OrchestratorKind.Unknown, Confidence.Unknown, []),
+                new(CloudProviderKind.Azure, Confidence.Medium, []),
+                new(PlatformVendorKind.Unknown, Confidence.Unknown, [])),
             new HostReport(
                 new ContainerImageOsInfo(
                     OperatingSystemFamily.Debian,
@@ -49,7 +49,12 @@ internal static class TestReportFactory
                     ArchitectureKind.X64,
                     "x86_64",
                     KernelFlavor.Azure,
-                    "gcc-13",
+                       new KernelCompilerInfo(
+                           "gcc",
+                           "13.3.0",
+                           "gcc (Ubuntu 13.3.0) 13.3.0",
+                           "Ubuntu",
+                           null),
                     Confidence.Medium,
                     ["proc-files:kernel.release"]),
                 new RuntimeReportedHostOsInfo(
@@ -70,6 +75,9 @@ internal static class TestReportFactory
                 new UnderlyingHostOsInfo(
                     OperatingSystemFamily.Unknown,
                     null,
+                    null,
+                    null,
+                    UnderlyingHostOsSource.Unknown,
                     Confidence.Unknown,
                     []),
                 new HostHardwareInfo(

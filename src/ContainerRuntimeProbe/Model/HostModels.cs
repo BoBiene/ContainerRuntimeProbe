@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using ContainerRuntimeProbe.Abstractions;
 
 namespace ContainerRuntimeProbe.Model;
@@ -90,6 +91,14 @@ public enum VirtualizationKind
     WSL2
 }
 
+/// <summary>Heuristic source for inferred underlying host OS information.</summary>
+public enum UnderlyingHostOsSource
+{
+    Unknown,
+    VisibleKernel,
+    Virtualization
+}
+
 /// <summary>Trusted source for runtime-reported host OS information.</summary>
 public enum RuntimeReportedHostSource
 {
@@ -143,6 +152,15 @@ public sealed record ContainerImageOsInfo(
     Confidence Confidence,
     IReadOnlyList<string> EvidenceReferences);
 
+/// <summary>Structured compiler metadata extracted from the visible kernel build string.</summary>
+[JsonConverter(typeof(KernelCompilerInfoJsonConverter))]
+public sealed record KernelCompilerInfo(
+    string? Name,
+    string? Version,
+    string? Raw,
+    string? DistributionHint,
+    string? DistributionVersionHint);
+
 /// <summary>Normalized visible kernel details observed from inside the container.</summary>
 public sealed record VisibleKernelInfo(
     string? Name,
@@ -151,7 +169,7 @@ public sealed record VisibleKernelInfo(
     ArchitectureKind Architecture,
     string? RawArchitecture,
     KernelFlavor Flavor,
-    string? Compiler,
+    KernelCompilerInfo? Compiler,
     Confidence Confidence,
     IReadOnlyList<string> EvidenceReferences);
 
@@ -177,7 +195,10 @@ public sealed record VirtualizationInfo(
 /// <summary>Best-effort underlying host OS inferred from virtualization context.</summary>
 public sealed record UnderlyingHostOsInfo(
     OperatingSystemFamily Family,
+    string? Name,
     string? Version,
+    string? VersionHint,
+    UnderlyingHostOsSource Source,
     Confidence Confidence,
     IReadOnlyList<string> EvidenceReferences);
 

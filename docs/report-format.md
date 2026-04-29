@@ -5,6 +5,17 @@
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
 - `Classification`
+  - each dimension is a `ClassificationResult<TEnum>` carrying `Value`, `Confidence`, and `Reasons[]`
+  - `Host.Family` uses `OperatingSystemFamily`
+  - `Host.Type` uses `HostTypeKind`
+  - `IsContainerized` uses `ContainerizationKind`
+  - `ContainerRuntime` uses `ContainerRuntimeKind`
+  - `Virtualization` uses `VirtualizationClassificationKind`
+  - `Environment.Type` uses `EnvironmentTypeKind`
+  - `RuntimeApi` uses `RuntimeApiKind`
+  - `Orchestrator` uses `OrchestratorKind`
+  - `CloudProvider` uses `CloudProviderKind`
+  - `PlatformVendor` uses `PlatformVendorKind`
 - `Host`
 
 ## Host object
@@ -36,6 +47,8 @@
 - Runtime-reported host OS is the highest-confidence host/node view when Docker, Podman, Kubernetes NodeInfo, or cloud metadata is available.
 - Hardware is visibility-limited; cgroup limits may differ from physical host capacity.
 - Fingerprints are diagnostic correlation helpers only and must not be treated as host identity.
+- JSON uses the enum names emitted by `System.Text.Json`. Examples: `Containerd`, `AwsEcs`, `CloudRun`, `AzureContainerApps`, and `SiemensIndustrialEdge`.
+- Markdown and text renderers keep user-facing labels such as `containerd`, `AWS ECS`, `Cloud Run`, and `Siemens Industrial Edge`.
 
 ## JSON structure (contract)
 ```json

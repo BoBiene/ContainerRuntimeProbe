@@ -15,7 +15,7 @@ internal static class HostReportBuilder
         var visibleKernel = BuildVisibleKernel(evidence, defaultArchitectureRaw);
         var runtimeHostOs = BuildRuntimeReportedHostOs(evidence);
         var virtualization = BuildVirtualization(evidence, visibleKernel);
-        var underlyingHostOs = BuildUnderlyingHostOs(virtualization, visibleKernel, containerImageOs);
+        var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
 
@@ -57,6 +57,19 @@ internal static class HostReportBuilder
         var release = GetValue(evidence, "kernel.release");
         var architectureRaw = GetValue(evidence, "kernel.architecture") ?? GetValue(evidence, "runtime.architecture") ?? defaultArchitectureRaw;
         var flavor = Enum.TryParse<KernelFlavor>(GetValue(evidence, "kernel.flavor"), ignoreCase: true, out var parsedFlavor) ? parsedFlavor : KernelFlavor.Unknown;
+        var compilerRaw = GetValue(evidence, "kernel.compiler.raw") ?? GetValue(evidence, "kernel.compiler");
+        var parsedCompiler = HostParsing.ParseKernelCompiler(compilerRaw);
+        KernelCompilerInfo? compiler = null;
+        if (parsedCompiler is not null || !string.IsNullOrWhiteSpace(compilerRaw))
+        {
+            compiler = new KernelCompilerInfo(
+                GetValue(evidence, "kernel.compiler.name") ?? parsedCompiler?.Name,
+                GetValue(evidence, "kernel.compiler.version") ?? parsedCompiler?.Version,
+                compilerRaw,
+                GetValue(evidence, "kernel.compiler.distribution_hint") ?? parsedCompiler?.DistributionHint,
+                GetValue(evidence, "kernel.compiler.distribution_version_hint") ?? parsedCompiler?.DistributionVersionHint);
+        }
+
         return new VisibleKernelInfo(
             GetValue(evidence, "kernel.name"),
             release,
@@ -64,7 +77,7 @@ internal static class HostReportBuilder
             HostParsing.NormalizeArchitecture(architectureRaw),
             architectureRaw,
             flavor,
-            GetValue(evidence, "kernel.compiler"),
+            compiler,
             string.IsNullOrWhiteSpace(release) ? Confidence.Unknown : Confidence.Medium,
             GetEvidenceReferences(evidence, "kernel."));
     }
@@ -191,43 +204,34 @@ internal static class HostReportBuilder
         return new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, []);
     }
 
-    private static UnderlyingHostOsInfo BuildUnderlyingHostOs(VirtualizationInfo virtualization, VisibleKernelInfo visibleKernel, ContainerImageOsInfo containerImageOs)
+    private static UnderlyingHostOsInfo BuildUnderlyingHostOs(RuntimeReportedHostOsInfo runtimeReportedHostOs, VirtualizationInfo virtualization, VisibleKernelInfo visibleKernel)
     {
         if (virtualization.Kind == VirtualizationKind.WSL2)
         {
             return new UnderlyingHostOsInfo(
                 OperatingSystemFamily.Windows,
+                "Windows host via WSL2 virtualization",
                 null,
+                null,
+                UnderlyingHostOsSource.Virtualization,
                 Confidence.High,
                 virtualization.EvidenceReferences);
         }
 
-        // When the kernel flavor reveals Ubuntu but the container image OS is not Ubuntu
-        // (e.g., a Debian container running on an Ubuntu host), infer the host from the kernel.
-        if (visibleKernel.Flavor == KernelFlavor.Ubuntu
-            && containerImageOs.Family != OperatingSystemFamily.Ubuntu)
+        if (runtimeReportedHostOs.Family == OperatingSystemFamily.Unknown
+            && TryMapKernelFlavorToOperatingSystemFamily(visibleKernel.Flavor, out var family))
         {
             return new UnderlyingHostOsInfo(
-                OperatingSystemFamily.Ubuntu,
+                family,
+                $"{visibleKernel.Flavor} kernel flavor",
                 null,
+                visibleKernel.Compiler?.DistributionVersionHint,
+                UnderlyingHostOsSource.VisibleKernel,
                 Confidence.Medium,
                 visibleKernel.EvidenceReferences);
         }
 
-        // Debian kernels carry an explicit "Debian X.Y.Z-patch" stamp in
-        // kernel.version and kernel.compiler. When the container is non-Debian
-        // (e.g., Alpine on a Debian host), surface the host OS from that signal.
-        if (visibleKernel.Flavor == KernelFlavor.Debian
-            && containerImageOs.Family != OperatingSystemFamily.Debian)
-        {
-            return new UnderlyingHostOsInfo(
-                OperatingSystemFamily.Debian,
-                null,
-                Confidence.Medium,
-                visibleKernel.EvidenceReferences);
-        }
-
-        return new UnderlyingHostOsInfo(OperatingSystemFamily.Unknown, null, Confidence.Unknown, []);
+        return new UnderlyingHostOsInfo(OperatingSystemFamily.Unknown, null, null, null, UnderlyingHostOsSource.Unknown, Confidence.Unknown, []);
     }
 
     private static HostHardwareInfo BuildHardware(
@@ -303,9 +307,9 @@ internal static class HostReportBuilder
         AddIncluded("cpu.modelName.normalized", HostParsing.NormalizeModelName(hardware.Cpu.ModelName));
         AddIncluded("cpu.flags.hash", hardware.Cpu.FlagsHash);
         AddIncluded("memory.total.bucket", HostParsing.NormalizeMemoryBucket(hardware.Memory.MemTotalBytes));
-        AddIncluded("runtime.api.type", classification.RuntimeApi.Value != "Unknown" ? classification.RuntimeApi.Value : null);
+        AddIncluded("runtime.api.type", classification.RuntimeApi.Value != RuntimeApiKind.Unknown ? ClassificationValueFormatter.Format(classification.RuntimeApi.Value) : null);
         AddIncluded("runtime.engine.version.majorMinor", HostParsing.NormalizeVersionMajorMinor(GetValue(evidence, "runtime.engine.version")));
-        AddIncluded("cloud.provider", classification.CloudProvider.Value != "Unknown" ? classification.CloudProvider.Value : null);
+        AddIncluded("cloud.provider", classification.CloudProvider.Value != CloudProviderKind.Unknown ? ClassificationValueFormatter.Format(classification.CloudProvider.Value) : null);
         AddIncluded("cloud.machine.type", hardware.CloudMachineType);
         AddIncluded("cloud.region.bucket", NormalizeRegionBucket(GetValue(evidence, "cloud.region")));
         AddIncluded("kubernetes.node.containerRuntimeVersion.majorMinor", HostParsing.NormalizeVersionMajorMinor(GetValue(evidence, "kubernetes.nodeInfo.containerRuntimeVersion")));
@@ -434,6 +438,18 @@ internal static class HostReportBuilder
 
     private static long? GetNullableLong(IReadOnlyList<EvidenceItem> evidence, string key)
         => HostParsing.ParseNullableLong(GetValue(evidence, key));
+
+    private static bool TryMapKernelFlavorToOperatingSystemFamily(KernelFlavor flavor, out OperatingSystemFamily family)
+    {
+        family = flavor switch
+        {
+            KernelFlavor.Ubuntu => OperatingSystemFamily.Ubuntu,
+            KernelFlavor.Debian => OperatingSystemFamily.Debian,
+            _ => OperatingSystemFamily.Unknown
+        };
+
+        return family != OperatingSystemFamily.Unknown;
+    }
 
     private static string? NormalizeRegionBucket(string? region)
     {

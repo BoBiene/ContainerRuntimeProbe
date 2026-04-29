@@ -2,6 +2,10 @@
 ## Summary
 - IsContainerized: True (Low)
 - ContainerRuntime: Unknown (Unknown)
+- Virtualization: None (Medium)
+- HostFamily: Linux (High)
+- HostType: StandardLinux (High)
+- EnvironmentType: Unknown (Low)
 - RuntimeApi: Unknown (Unknown)
 - Orchestrator: Unknown (Unknown)
 - CloudProvider: Unknown (Unknown)
@@ -20,8 +24,25 @@
 - Name: Linux
 - Release: 6.17.0-1010-azure
 - Flavor: Azure
+- Compiler: gcc-13 13.3.0
+- Compiler Raw: gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1
+- Compiler Distribution Hint: Unknown
+- Compiler Distribution Version Hint: Unknown
 - Architecture: x86_64
 - Confidence: Medium
+
+### Virtualization
+- Type: Unknown
+- Platform Vendor: Unknown
+- Confidence: Unknown
+
+### Underlying Host OS
+- Family: Unknown
+- Name: Unknown
+- Version: Unknown
+- Version Hint: Unknown
+- Source: Unknown
+- Confidence: Unknown
 
 ### Runtime-Reported Host OS
 - Source: Unknown
@@ -32,7 +53,7 @@
 
 ### Host Hardware Signals
 - CPU: AMD EPYC 9V74 80-Core Processor, 2 logical processors
-- Memory: 7.75 GB visible, cgroup limit: Unknown
+- Memory: 7,75 GB visible, cgroup limit: Unknown
 - Machine Type: Unknown
 
 ### Host Fingerprint
@@ -88,7 +109,7 @@
 - cpu.present: 0-1
 - cpu.present.count: 2
 - memory.mem_total_bytes: 8323989504
-- memory.mem_available_bytes: 5530607616
+- memory.mem_available_bytes: 5529255936
 - /sys/fs/cgroup/memory.max: Unavailable
 - /sys/fs/cgroup/memory.current: Unavailable
 - /sys/fs/cgroup/memory/memory.limit_in_bytes: Unavailable
@@ -123,4 +144,3 @@
 - gcp.metadata.zone.outcome: Unavailable
 - gcp.metadata.outcome: Unavailable
 - oci.metadata.outcome: Timeout
-

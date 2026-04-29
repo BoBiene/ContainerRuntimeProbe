@@ -23,9 +23,9 @@ public sealed class ClassifierSampleProbeTests
 
         var classification = Classifier.Classify(report!.Probes);
 
-        Assert.Equal("WSL2", classification.Virtualization.Value);
-        Assert.Equal("Microsoft", classification.PlatformVendor.Value);
-        Assert.Equal("WSL2", classification.Host.Type.Value);
+        Assert.Equal(VirtualizationClassificationKind.WSL2, classification.Virtualization.Value);
+        Assert.Equal(PlatformVendorKind.Microsoft, classification.PlatformVendor.Value);
+        Assert.Equal(HostTypeKind.WSL2, classification.Host.Type.Value);
     }
 
     [Theory]
@@ -43,8 +43,8 @@ public sealed class ClassifierSampleProbeTests
 
         var classification = Classifier.Classify(report!.Probes);
 
-        Assert.Equal("containerd", classification.ContainerRuntime.Value);
-        Assert.Equal("Apple", classification.PlatformVendor.Value);
+        Assert.Equal(ContainerRuntimeKind.Containerd, classification.ContainerRuntime.Value);
+        Assert.Equal(PlatformVendorKind.Apple, classification.PlatformVendor.Value);
         Assert.True(classification.PlatformVendor.Confidence >= Confidence.Low);
     }
 
@@ -61,9 +61,9 @@ public sealed class ClassifierSampleProbeTests
 
         var classification = Classifier.Classify(report!.Probes);
 
-        Assert.Equal("Docker", classification.ContainerRuntime.Value);
+        Assert.Equal(ContainerRuntimeKind.Docker, classification.ContainerRuntime.Value);
         // Ubuntu is the host, not a vendor appliance — vendor stays Unknown
-        Assert.Equal("Unknown", classification.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Unknown, classification.PlatformVendor.Value);
     }
 
     [Theory]
@@ -79,8 +79,8 @@ public sealed class ClassifierSampleProbeTests
 
         var classification = Classifier.Classify(report!.Probes);
 
-        Assert.Equal("Docker", classification.ContainerRuntime.Value);
-        Assert.Equal("Unknown", classification.PlatformVendor.Value);
+        Assert.Equal(ContainerRuntimeKind.Docker, classification.ContainerRuntime.Value);
+        Assert.Equal(PlatformVendorKind.Unknown, classification.PlatformVendor.Value);
     }
 
     private static string FindSampleProbeDirectory()

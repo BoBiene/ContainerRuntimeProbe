@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Rendering;
@@ -251,12 +252,12 @@ public static class RuntimeSampleRenderer
             EnvironmentKind: environmentKind,
             ExpectedClassification: options.Expected,
             ActualClassification: new RuntimeSampleClassification(
-                report.Classification.IsContainerized.Value,
-                report.Classification.ContainerRuntime.Value,
-                report.Classification.RuntimeApi.Value,
-                report.Classification.Orchestrator.Value,
-                report.Classification.CloudProvider.Value,
-                report.Classification.PlatformVendor.Value),
+                ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value),
+                ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value),
+                ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value),
+                ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value),
+                ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value),
+                ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value)),
             Confidence: new RuntimeSampleClassificationConfidence(
                 report.Classification.IsContainerized.Confidence.ToString(),
                 report.Classification.ContainerRuntime.Confidence.ToString(),
@@ -276,7 +277,14 @@ public static class RuntimeSampleRenderer
                     host.VisibleKernel.Release,
                     NormalizeKernelRelease(host.VisibleKernel.Release, 48),
                     NormalizeUnknown(host.VisibleKernel.Flavor.ToString()),
-                    NormalizeArchitecture(host.VisibleKernel.Architecture)),
+                    NormalizeArchitecture(host.VisibleKernel.Architecture),
+                    host.VisibleKernel.Compiler is null
+                        ? null
+                        : new RuntimeSampleKernelCompiler(
+                            host.VisibleKernel.Compiler.Name,
+                            host.VisibleKernel.Compiler.Version,
+                            host.VisibleKernel.Compiler.DistributionHint,
+                            host.VisibleKernel.Compiler.DistributionVersionHint)),
                 new RuntimeSampleRuntimeReportedHostOs(
                     NormalizeUnknown(host.RuntimeReportedHostOs.Source.ToString()),
                     host.RuntimeReportedHostOs.Name,
@@ -347,7 +355,7 @@ public static class RuntimeSampleRenderer
             new CompactHostSection(
                 ShortOsToken(host.ContainerImageOs),
                 NormalizeKernelRelease(host.VisibleKernel.Release, 48),
-                host.VisibleKernel.Flavor == "Unknown" ? "Unknown" : host.VisibleKernel.Flavor,
+                host.VisibleKernel.Flavor == KnownValues.Unknown ? KnownValues.Unknown : host.VisibleKernel.Flavor,
                 host.VisibleKernel.Architecture == "unk" ? host.ContainerImageOs.Architecture : host.VisibleKernel.Architecture,
                 ShortRuntimeHostOs(host.RuntimeReportedHostOs)),
             new CompactHardwareSection(
@@ -360,7 +368,7 @@ public static class RuntimeSampleRenderer
                 host.Hardware.CpuFlagsHash),
             new CompactFingerprintSection(
                 host.Fingerprint?.ShortValue ?? "sha256:0",
-                host.Fingerprint?.Stability ?? "Unknown",
+                host.Fingerprint?.Stability ?? KnownValues.Unknown,
                 host.Fingerprint?.IncludedSignalCount ?? 0,
                 host.Fingerprint?.ExcludedSensitiveSignalCount ?? 0),
             [
@@ -479,6 +487,7 @@ public static class RuntimeSampleRenderer
         sb.AppendLine($"- Cloud: {payload.ActualClassification.CloudProvider}");
         sb.AppendLine($"- Platform Vendor: {payload.ActualClassification.PlatformVendor}");
         sb.AppendLine($"- Kernel Flavor: {payload.Host.VisibleKernel.Flavor}");
+        sb.AppendLine($"- Kernel Build: {FormatSampleKernelBuild(payload.Host.VisibleKernel.Compiler)}");
         sb.AppendLine($"- Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? "sha256:0"}");
         if (!string.IsNullOrWhiteSpace(expected))
         {
@@ -489,15 +498,16 @@ public static class RuntimeSampleRenderer
         {
             sb.AppendLine();
             sb.AppendLine("### Host OS / Node Signals");
-            sb.AppendLine($"- Container Image OS: {payload.Host.ContainerImageOs.PrettyName ?? payload.Host.ContainerImageOs.Id ?? "Unknown"}");
-            sb.AppendLine($"- Visible Kernel: {payload.Host.VisibleKernel.Release ?? "Unknown"}");
-            sb.AppendLine($"- Runtime-Reported Host OS: {payload.Host.RuntimeReportedHostOs.Name ?? "Unknown"}");
+            sb.AppendLine($"- Container Image OS: {payload.Host.ContainerImageOs.PrettyName ?? payload.Host.ContainerImageOs.Id ?? KnownValues.Unknown}");
+            sb.AppendLine($"- Visible Kernel: {payload.Host.VisibleKernel.Release ?? KnownValues.Unknown}");
+            sb.AppendLine($"- Kernel Build: {FormatSampleKernelBuild(payload.Host.VisibleKernel.Compiler)}");
+            sb.AppendLine($"- Runtime-Reported Host OS: {payload.Host.RuntimeReportedHostOs.Name ?? KnownValues.Unknown}");
             sb.AppendLine();
             sb.AppendLine("### Hardware Signals");
-            sb.AppendLine($"- CPU Vendor: {payload.Host.Hardware.CpuVendor ?? "Unknown"}");
-            sb.AppendLine($"- CPU Family: {payload.Host.Hardware.CpuFamily ?? "Unknown"}");
-            sb.AppendLine($"- Visible CPUs: {payload.Host.Hardware.VisibleProcessorCount?.ToString() ?? "Unknown"}");
-            sb.AppendLine($"- Memory Bucket: {payload.Host.Hardware.MemoryTotalBucket ?? "Unknown"}");
+            sb.AppendLine($"- CPU Vendor: {payload.Host.Hardware.CpuVendor ?? KnownValues.Unknown}");
+            sb.AppendLine($"- CPU Family: {payload.Host.Hardware.CpuFamily ?? KnownValues.Unknown}");
+            sb.AppendLine($"- Visible CPUs: {payload.Host.Hardware.VisibleProcessorCount?.ToString() ?? KnownValues.Unknown}");
+            sb.AppendLine($"- Memory Bucket: {payload.Host.Hardware.MemoryTotalBucket ?? KnownValues.Unknown}");
             sb.AppendLine();
             sb.AppendLine("### Important Signals");
             foreach (var signal in payload.ImportantSignals)
@@ -539,10 +549,11 @@ public static class RuntimeSampleRenderer
         =>
         [
             $"- Scenario: {scenarioName}",
-            $"- ContainerRuntime: {report.Classification.ContainerRuntime.Value} ({report.Classification.ContainerRuntime.Confidence})",
+            $"- ContainerRuntime: {ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value)} ({report.Classification.ContainerRuntime.Confidence})",
             $"- KernelFlavor: {payload.Host.VisibleKernel.Flavor}",
-            $"- PlatformVendor: {report.Classification.PlatformVendor.Value}",
-            $"- CloudProvider: {report.Classification.CloudProvider.Value}",
+            $"- KernelBuild: {FormatSampleKernelBuild(payload.Host.VisibleKernel.Compiler)}",
+            $"- PlatformVendor: {ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value)}",
+            $"- CloudProvider: {ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value)}",
             $"- Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? "sha256:0"}"
         ];
 
@@ -635,6 +646,25 @@ public static class RuntimeSampleRenderer
         Add(1, "runtime-api.outcome", NormalizeRuntimeApiSignal(report.Classification.RuntimeApi.Value), NormalizeRuntimeApiSignal(report.Classification.RuntimeApi.Value));
 
         return signals.OrderBy(item => item.priority).ThenBy(item => item.signal.Tag, StringComparer.Ordinal).Select(item => item.signal).ToArray();
+    }
+
+    private static string FormatSampleKernelBuild(RuntimeSampleKernelCompiler? compiler)
+    {
+        if (compiler is null)
+        {
+            return KnownValues.Unknown;
+        }
+
+        var tool = string.Join(' ', new[] { compiler.Name, compiler.Version }.Where(value => !string.IsNullOrWhiteSpace(value)));
+        if (!string.IsNullOrWhiteSpace(compiler.DistributionHint))
+        {
+            var hint = string.IsNullOrWhiteSpace(compiler.DistributionVersionHint)
+                ? $"{compiler.DistributionHint} toolchain hint"
+                : $"{compiler.DistributionHint} {compiler.DistributionVersionHint} toolchain hint";
+            return string.IsNullOrWhiteSpace(tool) ? hint : $"{tool} ({hint})";
+        }
+
+        return string.IsNullOrWhiteSpace(tool) ? KnownValues.Unknown : tool;
     }
 
     private static IReadOnlyList<string> NormalizeCgroupPatterns(IReadOnlyList<EvidenceItem> evidence)
@@ -761,53 +791,53 @@ public static class RuntimeSampleRenderer
 
     private static string InferEnvironmentKind(ContainerRuntimeReport report)
     {
-        if (report.Classification.PlatformVendor.Value == "Siemens Industrial Edge") return "SiemensIndustrialEdge";
-        if (report.Classification.Orchestrator.Value == "Azure Container Apps") return "AzureContainerApps";
-        if (report.Classification.Orchestrator.Value == "AWS ECS") return "Ecs";
-        if (report.Classification.Orchestrator.Value == "Cloud Run") return "CloudRun";
-        if (report.Classification.Orchestrator.Value == "Kubernetes") return "Kubernetes";
-        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == "Apple") return "DockerDesktop";
-        if (report.Classification.ContainerRuntime.Value == "Podman") return "Podman";
-        if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "DockerDesktopWsl2";
-        if (report.Classification.ContainerRuntime.Value == "Docker") return "DockerLinux";
-        return "Unknown";
+        if (report.Classification.PlatformVendor.Value == PlatformVendorKind.SiemensIndustrialEdge) return "SiemensIndustrialEdge";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.AzureContainerApps) return "AzureContainerApps";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.AwsEcs) return "Ecs";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.CloudRun) return "CloudRun";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.Kubernetes) return "Kubernetes";
+        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == PlatformVendorKind.Apple) return "DockerDesktop";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Podman) return "Podman";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "DockerDesktopWsl2";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker) return "DockerLinux";
+        return KnownValues.Unknown;
     }
 
     private static string InferScenarioName(ContainerRuntimeReport report)
     {
-        if (report.Classification.PlatformVendor.Value == "Siemens Industrial Edge") return "siemens-industrial-edge";
-        if (report.Classification.Orchestrator.Value == "Azure Container Apps") return "azure-container-apps";
-        if (report.Classification.Orchestrator.Value == "Cloud Run") return "google-cloud-run";
-        if (report.Classification.Orchestrator.Value == "AWS ECS")
+        if (report.Classification.PlatformVendor.Value == PlatformVendorKind.SiemensIndustrialEdge) return "siemens-industrial-edge";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.AzureContainerApps) return "azure-container-apps";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.CloudRun) return "google-cloud-run";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.AwsEcs)
         {
             var hasFargate = report.Probes.SelectMany(probe => probe.Evidence)
                 .Any(item => item.Key is "env.AWS_EXECUTION_ENV" or "AWS_EXECUTION_ENV" && item.Value?.Contains("fargate", StringComparison.OrdinalIgnoreCase) == true);
             return hasFargate ? "aws-ecs-fargate" : "aws-ecs";
         }
 
-        if (report.Classification.Orchestrator.Value == "Kubernetes")
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.Kubernetes)
         {
-            return report.Classification.ContainerRuntime.Value == "containerd"
+            return report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Containerd
                 ? "kubernetes-containerd"
                 : "kubernetes";
         }
 
-        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == "Apple") return "docker-desktop";
-        if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "docker-wsl2";
-        if (report.Classification.ContainerRuntime.Value == "Docker" && report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop) return "docker-desktop";
-        if (report.Classification.ContainerRuntime.Value == "Docker" && report.Classification.CloudProvider.Value == "Azure") return "docker-azure";
-        if (report.Classification.ContainerRuntime.Value == "Podman") return "podman";
+        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == PlatformVendorKind.Apple) return "docker-desktop";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "docker-wsl2";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop) return "docker-desktop";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Classification.CloudProvider.Value == CloudProviderKind.Azure) return "docker-azure";
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Podman) return "podman";
         return "unknown-runtime";
     }
 
     private static string NormalizeScenario(string value)
         => string.Join('-', value.Trim().ToLowerInvariant().Split([' ', '_'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
 
-    private static string NormalizeRuntimeApiSignal(string runtimeApi)
+    private static string NormalizeRuntimeApiSignal(RuntimeApiKind runtimeApi)
         => runtimeApi switch
         {
-            "DockerEngineApi" => "api:docker",
-            "PodmanLibpodApi" => "api:podman",
+            RuntimeApiKind.DockerEngineApi => "api:docker",
+            RuntimeApiKind.PodmanLibpodApi => "api:podman",
             _ => "api:0"
         };
 
@@ -1005,7 +1035,7 @@ public static class RuntimeSampleRenderer
     }
 
     private static string NormalizeUnknown(string value)
-        => string.Equals(value, "Unknown", StringComparison.OrdinalIgnoreCase) ? "Unknown" : value;
+        => string.Equals(value, KnownValues.Unknown, StringComparison.OrdinalIgnoreCase) ? KnownValues.Unknown : value;
 
     private static string MapProbeOutcome(ContainerRuntimeReport report, string probeId)
     {

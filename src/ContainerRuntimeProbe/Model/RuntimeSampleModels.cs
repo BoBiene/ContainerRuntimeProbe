@@ -95,7 +95,15 @@ public sealed record RuntimeSampleVisibleKernel(
     string? Release,
     string? NormalizedRelease,
     string Flavor,
-    string Architecture);
+    string Architecture,
+    RuntimeSampleKernelCompiler? Compiler);
+
+/// <summary>Visible kernel compiler sample view.</summary>
+public sealed record RuntimeSampleKernelCompiler(
+    string? Name,
+    string? Version,
+    string? DistributionHint,
+    string? DistributionVersionHint);
 
 /// <summary>Runtime or platform reported host OS sample view.</summary>
 public sealed record RuntimeSampleRuntimeReportedHostOs(

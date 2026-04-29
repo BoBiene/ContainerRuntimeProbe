@@ -29,18 +29,18 @@ public sealed class RuntimeSampleRendererTests
         var report = TestReportFactory.CreateSampleReport() with
         {
             Classification = new ReportClassification(
-                new ClassificationResult("True", Confidence.High, []),
-                new ClassificationResult("Docker", Confidence.Low, []),
-                new ClassificationResult("WSL2", Confidence.High, []),
+                new(ContainerizationKind.@True, Confidence.High, []),
+                new(ContainerRuntimeKind.Docker, Confidence.Low, []),
+                new(VirtualizationClassificationKind.WSL2, Confidence.High, []),
                 new HostClassificationResult(
-                    new ClassificationResult("Windows", Confidence.High, []),
-                    new ClassificationResult("WSL2", Confidence.High, [])),
+                    new(OperatingSystemFamily.Windows, Confidence.High, []),
+                    new(HostTypeKind.WSL2, Confidence.High, [])),
                 new EnvironmentClassificationResult(
-                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, [])),
+                    new(EnvironmentTypeKind.Unknown, Confidence.Unknown, [])),
+                new(RuntimeApiKind.Unknown, Confidence.Unknown, []),
+                new(OrchestratorKind.Unknown, Confidence.Unknown, []),
+                new(CloudProviderKind.Unknown, Confidence.Unknown, []),
+                new(PlatformVendorKind.Unknown, Confidence.Unknown, [])),
             Host = TestReportFactory.CreateSampleReport().Host with
             {
                 VisibleKernel = TestReportFactory.CreateSampleReport().Host.VisibleKernel with
@@ -75,18 +75,18 @@ public sealed class RuntimeSampleRendererTests
         var report = TestReportFactory.CreateSampleReport() with
         {
             Classification = new ReportClassification(
-                new ClassificationResult("True", Confidence.High, []),
-                new ClassificationResult("Docker", Confidence.Low, []),
-                new ClassificationResult("WSL2", Confidence.High, []),
+                new(ContainerizationKind.@True, Confidence.High, []),
+                new(ContainerRuntimeKind.Docker, Confidence.Low, []),
+                new(VirtualizationClassificationKind.WSL2, Confidence.High, []),
                 new HostClassificationResult(
-                    new ClassificationResult("Windows", Confidence.High, []),
-                    new ClassificationResult("WSL2", Confidence.High, [])),
+                    new(OperatingSystemFamily.Windows, Confidence.High, []),
+                    new(HostTypeKind.WSL2, Confidence.High, [])),
                 new EnvironmentClassificationResult(
-                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Microsoft", Confidence.High, [])),
+                    new(EnvironmentTypeKind.Unknown, Confidence.Unknown, [])),
+                new(RuntimeApiKind.Unknown, Confidence.Unknown, []),
+                new(OrchestratorKind.Unknown, Confidence.Unknown, []),
+                new(CloudProviderKind.Unknown, Confidence.Unknown, []),
+                new(PlatformVendorKind.Microsoft, Confidence.High, [])),
             Host = TestReportFactory.CreateSampleReport().Host with
             {
                 VisibleKernel = TestReportFactory.CreateSampleReport().Host.VisibleKernel with
@@ -109,18 +109,18 @@ public sealed class RuntimeSampleRendererTests
         var report = TestReportFactory.CreateSampleReport() with
         {
             Classification = new ReportClassification(
-                new ClassificationResult("True", Confidence.High, []),
-                new ClassificationResult("containerd", Confidence.Low, []),
-                new ClassificationResult("None", Confidence.Medium, []),
+                new(ContainerizationKind.@True, Confidence.High, []),
+                new(ContainerRuntimeKind.Containerd, Confidence.Low, []),
+                new(VirtualizationClassificationKind.None, Confidence.Medium, []),
                 new HostClassificationResult(
-                    new ClassificationResult("Linux", Confidence.High, []),
-                    new ClassificationResult("StandardLinux", Confidence.High, [])),
+                    new(OperatingSystemFamily.Linux, Confidence.High, []),
+                    new(HostTypeKind.StandardLinux, Confidence.High, [])),
                 new EnvironmentClassificationResult(
-                    new ClassificationResult("Unknown", Confidence.Unknown, [])),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Unknown", Confidence.Unknown, []),
-                new ClassificationResult("Apple", Confidence.Low, [])),
+                    new(EnvironmentTypeKind.Unknown, Confidence.Unknown, [])),
+                new(RuntimeApiKind.Unknown, Confidence.Unknown, []),
+                new(OrchestratorKind.Unknown, Confidence.Unknown, []),
+                new(CloudProviderKind.Unknown, Confidence.Unknown, []),
+                new(PlatformVendorKind.Apple, Confidence.Low, [])),
             Host = TestReportFactory.CreateSampleReport().Host with
             {
                 VisibleKernel = TestReportFactory.CreateSampleReport().Host.VisibleKernel with

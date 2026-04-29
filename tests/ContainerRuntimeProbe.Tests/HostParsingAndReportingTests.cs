@@ -227,15 +227,15 @@ public sealed class HostParsingAndReportingTests
             ],
             [],
             new ReportClassification(
-                new("True", Confidence.High, []),
-                new("Docker", Confidence.High, []),
-                new("None", Confidence.Medium, []),
-                new(new("Linux", Confidence.High, []), new("StandardLinux", Confidence.High, [])),
-                new(new("Cloud", Confidence.Medium, [])),
-                new("DockerEngineApi", Confidence.High, []),
-                new("Unknown", Confidence.Unknown, []),
-                new("Azure", Confidence.Medium, []),
-                new("Unknown", Confidence.Unknown, [])),
+                new(ContainerizationKind.@True, Confidence.High, []),
+                new(ContainerRuntimeKind.Docker, Confidence.High, []),
+                new(VirtualizationClassificationKind.None, Confidence.Medium, []),
+                new(new(OperatingSystemFamily.Linux, Confidence.High, []), new(HostTypeKind.StandardLinux, Confidence.High, [])),
+                new(new(EnvironmentTypeKind.Cloud, Confidence.Medium, [])),
+                new(RuntimeApiKind.DockerEngineApi, Confidence.High, []),
+                new(OrchestratorKind.Unknown, Confidence.Unknown, []),
+                new(CloudProviderKind.Azure, Confidence.Medium, []),
+                new(PlatformVendorKind.Unknown, Confidence.Unknown, [])),
             TestReportFactory.CreateSampleReport().Host);
 
         var host = HostReportBuilder.Build(report.Probes, report.Classification, FingerprintMode.Safe);

@@ -17,10 +17,10 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("True", report.IsContainerized.Value);
+        Assert.Equal(ContainerizationKind.@True, report.IsContainerized.Value);
         // /.dockerenv alone → Low or Medium confidence (score=4 = Medium; acceptable per spec)
         Assert.True(report.IsContainerized.Confidence is Confidence.Low or Confidence.Medium);
-        Assert.Equal("Unknown", report.ContainerRuntime.Value);
+        Assert.Equal(ContainerRuntimeKind.Unknown, report.ContainerRuntime.Value);
         Assert.Equal(Confidence.Unknown, report.ContainerRuntime.Confidence);
     }
 
@@ -34,7 +34,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("False", report.IsContainerized.Value);
+        Assert.Equal(ContainerizationKind.@False, report.IsContainerized.Value);
         Assert.Equal(Confidence.High, report.IsContainerized.Confidence);
     }
 
@@ -49,7 +49,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Docker", report.ContainerRuntime.Value);
+        Assert.Equal(ContainerRuntimeKind.Docker, report.ContainerRuntime.Value);
         Assert.True(report.ContainerRuntime.Confidence >= Confidence.Low);
     }
 
@@ -62,7 +62,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("True", report.IsContainerized.Value);
+        Assert.Equal(ContainerizationKind.@True, report.IsContainerized.Value);
         Assert.True(report.IsContainerized.Confidence >= Confidence.Low);
     }
 
@@ -77,9 +77,9 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Docker", report.ContainerRuntime.Value);
+        Assert.Equal(ContainerRuntimeKind.Docker, report.ContainerRuntime.Value);
         Assert.True(report.ContainerRuntime.Confidence >= Confidence.Medium);
-        Assert.Equal("DockerEngineApi", report.RuntimeApi.Value);
+        Assert.Equal(RuntimeApiKind.DockerEngineApi, report.RuntimeApi.Value);
         Assert.True(report.RuntimeApi.Confidence >= Confidence.Medium);
     }
 
@@ -94,9 +94,9 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Podman", report.ContainerRuntime.Value);
+        Assert.Equal(ContainerRuntimeKind.Podman, report.ContainerRuntime.Value);
         Assert.True(report.ContainerRuntime.Confidence >= Confidence.Medium);
-        Assert.Equal("PodmanLibpodApi", report.RuntimeApi.Value);
+        Assert.Equal(RuntimeApiKind.PodmanLibpodApi, report.RuntimeApi.Value);
         Assert.True(report.RuntimeApi.Confidence >= Confidence.High);
     }
 
@@ -110,7 +110,7 @@ public sealed class ClassifierTests
             new ProbeResult("kubernetes", ProbeOutcome.Success, [new EvidenceItem("kubernetes", "serviceaccount.token", "present")])
         ]);
 
-        Assert.Equal("Kubernetes", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.Kubernetes, report.Orchestrator.Value);
         Assert.True(report.Orchestrator.Confidence >= Confidence.High);
     }
 
@@ -120,7 +120,7 @@ public sealed class ClassifierTests
         var report = Classifier.Classify([
             new ProbeResult("cloud-metadata", ProbeOutcome.Success, [new EvidenceItem("cloud", "env.K_SERVICE", "svc")])
         ]);
-        Assert.Equal("Cloud Run", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.CloudRun, report.Orchestrator.Value);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Azure Container Apps", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.AzureContainerApps, report.Orchestrator.Value);
         Assert.True(report.Orchestrator.Confidence >= Confidence.Medium);
     }
 
@@ -147,7 +147,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Nomad", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.Nomad, report.Orchestrator.Value);
     }
 
     // ── CloudProvider scenarios ──────────────────────────────────────────────
@@ -161,7 +161,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("AWS", report.CloudProvider.Value);
+        Assert.Equal(CloudProviderKind.AWS, report.CloudProvider.Value);
         Assert.True(report.CloudProvider.Confidence >= Confidence.High);
     }
 
@@ -173,8 +173,8 @@ public sealed class ClassifierTests
                 new EvidenceItem("cloud-metadata", "ecsx.task.outcome", "Success")
             ])
         ]);
-        Assert.Equal("Unknown", report.CloudProvider.Value);
-        Assert.Equal("Unknown", report.Orchestrator.Value);
+        Assert.Equal(CloudProviderKind.Unknown, report.CloudProvider.Value);
+        Assert.Equal(OrchestratorKind.Unknown, report.Orchestrator.Value);
 
         // Only exact "ecs." prefix keys contribute - verify AWS cloud from env
         var reportWithEnv = Classifier.Classify([
@@ -183,8 +183,8 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("AWS", reportWithEnv.CloudProvider.Value);
-        Assert.Equal("AWS ECS", reportWithEnv.Orchestrator.Value);
+        Assert.Equal(CloudProviderKind.AWS, reportWithEnv.CloudProvider.Value);
+        Assert.Equal(OrchestratorKind.AwsEcs, reportWithEnv.Orchestrator.Value);
     }
 
     [Fact]
@@ -196,7 +196,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Azure", report.CloudProvider.Value);
+        Assert.Equal(CloudProviderKind.Azure, report.CloudProvider.Value);
         Assert.True(report.CloudProvider.Confidence >= Confidence.High);
     }
 
@@ -212,7 +212,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Unknown", report.CloudProvider.Value);
+        Assert.Equal(CloudProviderKind.Unknown, report.CloudProvider.Value);
     }
 
     [Fact]
@@ -224,7 +224,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("GoogleCloud", report.CloudProvider.Value);
+        Assert.Equal(CloudProviderKind.GoogleCloud, report.CloudProvider.Value);
         Assert.True(report.CloudProvider.Confidence >= Confidence.High);
     }
 
@@ -238,8 +238,8 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Cloud Run", report.Orchestrator.Value);
-        Assert.Equal("Unknown", report.CloudProvider.Value);
+        Assert.Equal(OrchestratorKind.CloudRun, report.Orchestrator.Value);
+        Assert.Equal(CloudProviderKind.Unknown, report.CloudProvider.Value);
     }
 
     // ── PlatformVendor / Siemens IE scenarios ────────────────────────────────
@@ -254,7 +254,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Unknown", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Unknown, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -269,8 +269,8 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
-        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.IoTEdge, report.PlatformVendor.Value);
+        Assert.NotEqual(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Siemens Industrial Edge", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
     }
 
@@ -298,7 +298,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Apple", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Apple, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
     }
 
@@ -311,7 +311,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Unknown", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Unknown, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -325,9 +325,9 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.IoTEdge, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
-        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+        Assert.NotEqual(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -341,7 +341,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("OpenShift", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.OpenShift, report.Orchestrator.Value);
         Assert.True(report.Orchestrator.Confidence >= Confidence.Medium);
     }
 
@@ -355,7 +355,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("OpenShift", report.Orchestrator.Value);
+        Assert.Equal(OrchestratorKind.OpenShift, report.Orchestrator.Value);
     }
 
     [Fact]
@@ -369,8 +369,8 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("IoTEdge", report.PlatformVendor.Value);
-        Assert.NotEqual("Siemens Industrial Edge", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.IoTEdge, report.PlatformVendor.Value);
+        Assert.NotEqual(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -384,12 +384,12 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Microsoft", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Microsoft, report.PlatformVendor.Value);
         Assert.Equal(Confidence.High, report.PlatformVendor.Confidence);
-        Assert.Equal("WSL2", report.Virtualization.Value);
-        Assert.Equal("Windows", report.Host.Family.Value);
-        Assert.Equal("WSL2", report.Host.Type.Value);
-        Assert.Equal("Unknown", report.Environment.Type.Value);
+        Assert.Equal(VirtualizationClassificationKind.WSL2, report.Virtualization.Value);
+        Assert.Equal(OperatingSystemFamily.Windows, report.Host.Family.Value);
+        Assert.Equal(HostTypeKind.WSL2, report.Host.Type.Value);
+        Assert.Equal(EnvironmentTypeKind.Unknown, report.Environment.Type.Value);
     }
 
     [Fact]
@@ -410,10 +410,10 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Linux", report.Host.Family.Value);
-        Assert.Equal("Appliance", report.Host.Type.Value);
+        Assert.Equal(OperatingSystemFamily.Linux, report.Host.Family.Value);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
         Assert.Equal(Confidence.High, report.Host.Type.Confidence);
-        Assert.Equal("OnPrem", report.Environment.Type.Value);
+        Assert.Equal(EnvironmentTypeKind.OnPrem, report.Environment.Type.Value);
         Assert.Equal(Confidence.Medium, report.Environment.Type.Confidence);
     }
 
@@ -431,9 +431,9 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Linux", report.Host.Family.Value);
-        Assert.Equal("StandardLinux", report.Host.Type.Value);
-        Assert.Equal("Cloud", report.Environment.Type.Value);
+        Assert.Equal(OperatingSystemFamily.Linux, report.Host.Family.Value);
+        Assert.Equal(HostTypeKind.StandardLinux, report.Host.Type.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
         Assert.Equal(Confidence.High, report.Environment.Type.Confidence);
     }
 
@@ -451,7 +451,7 @@ public sealed class ClassifierTests
         ]);
 
         // Socket access alone is no longer enough to classify the current process as containerized.
-        Assert.Equal("Unknown", report.IsContainerized.Value);
+        Assert.Equal(ContainerizationKind.Unknown, report.IsContainerized.Value);
 
         // IsContainerized reasons should only reflect container evidence, not runtime API body details
         var containerReasonsText = string.Join("|", report.IsContainerized.Reasons.Select(r => r.Message));
@@ -477,7 +477,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Synology", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
     }
 
@@ -493,7 +493,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal("Synology", report.PlatformVendor.Value);
+        Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
     }
 }
