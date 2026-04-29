@@ -1,6 +1,7 @@
 {
   "GeneratedAt": "2026-04-28T14:46:59.1362784+00:00",
   "Duration": "00:00:06.0972349",
+  "ProbeToolInfo": null,
   "Probes": [
     {
       "ProbeId": "marker-files",
@@ -470,10 +471,10 @@
       "Confidence": "Low",
       "Reasons": [
         {
-          "Message": "Namespace info visible",
+          "Message": "Overlay mount detected",
           "EvidenceKeys": [
-            "ns.pid",
-            "ns.mnt"
+            "/proc/self/mountinfo",
+            "/proc/1/mountinfo"
           ]
         }
       ]
@@ -487,6 +488,66 @@
           "EvidenceKeys": []
         }
       ]
+    },
+    "Virtualization": {
+      "Value": "None",
+      "Confidence": "Medium",
+      "Reasons": [
+        {
+          "Message": "No WSL2 kernel fingerprint detected",
+          "EvidenceKeys": [
+            "kernel.release",
+            "/proc/version"
+          ]
+        }
+      ]
+    },
+    "Host": {
+      "Family": {
+        "Value": "Linux",
+        "Confidence": "High",
+        "Reasons": [
+          {
+            "Message": "Visible kernel does not match WSL2 and remains Linux",
+            "EvidenceKeys": [
+              "kernel.release",
+              "/proc/version",
+              "os.id"
+            ]
+          }
+        ]
+      },
+      "Type": {
+        "Value": "StandardLinux",
+        "Confidence": "High",
+        "Reasons": [
+          {
+            "Message": "Modern kernel and userspace do not show appliance mismatch signals",
+            "EvidenceKeys": [
+              "kernel.release",
+              "os.id",
+              "os.version_id"
+            ]
+          }
+        ]
+      }
+    },
+    "Environment": {
+      "Type": {
+        "Value": "Unknown",
+        "Confidence": "Low",
+        "Reasons": [
+          {
+            "Message": "No cloud metadata endpoint succeeded",
+            "EvidenceKeys": [
+              "aws.imds.identity.outcome",
+              "azure.imds.outcome",
+              "gcp.metadata.outcome",
+              "oci.metadata.outcome"
+            ]
+          }
+        ]
+      }
     },
     "RuntimeApi": {
       "Value": "Unknown",
@@ -574,7 +635,13 @@
       "Architecture": "X64",
       "RawArchitecture": "x86_64",
       "Flavor": "Azure",
-      "Compiler": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
+      "Compiler": {
+        "Name": "gcc-13",
+        "Version": "13.3.0",
+        "Raw": "gcc-13 (Ubuntu 13.3.0-6ubuntu2~24.04.1",
+        "DistributionHint": null,
+        "DistributionVersionHint": null
+      },
       "Confidence": "Medium",
       "EvidenceReferences": [
         "proc-files:kernel.compiler",
@@ -591,6 +658,21 @@
       "KernelVersion": null,
       "Architecture": "Unknown",
       "RawArchitecture": null,
+      "Source": "Unknown",
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "Virtualization": {
+      "Kind": "Unknown",
+      "PlatformVendor": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "UnderlyingHostOs": {
+      "Family": "Unknown",
+      "Name": null,
+      "Version": null,
+      "VersionHint": null,
       "Source": "Unknown",
       "Confidence": "Unknown",
       "EvidenceReferences": []

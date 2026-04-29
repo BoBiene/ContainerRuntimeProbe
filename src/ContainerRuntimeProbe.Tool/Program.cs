@@ -1,6 +1,9 @@
 using ContainerRuntimeProbe;
+using ContainerRuntimeProbe.Classification;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Rendering;
+using System.Text.Json;
 
 return await MainAsync(args);
 
@@ -17,6 +20,7 @@ static async Task<int> MainAsync(string[] args)
     var timeout = TimeSpan.FromSeconds(2);
     var output = string.Empty;
     var fullReport = string.Empty;
+    var reportInput = string.Empty;
     IReadOnlySet<string>? probes = null;
     var listProbes = false;
     var fingerprintMode = FingerprintMode.Safe;
@@ -64,6 +68,7 @@ static async Task<int> MainAsync(string[] args)
                 case "--body-only": bodyOnly = true; break;
                 case "--sample-only": sampleOnly = true; break;
                 case "--full-report": fullReport = GetRequiredValue(args, ref i, "--full-report"); break;
+                case "--report-input": reportInput = GetRequiredValue(args, ref i, "--report-input"); break;
                 case "--include-sensitive": includeSensitive = bool.Parse(GetRequiredValue(args, ref i, "--include-sensitive")); break;
                 case "--timeout": timeout = TimeSpan.Parse(GetRequiredValue(args, ref i, "--timeout")); break;
                 case "--probe": probes = GetRequiredValue(args, ref i, "--probe").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase); break;
@@ -95,7 +100,19 @@ static async Task<int> MainAsync(string[] args)
             return 0;
         }
 
-        var report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode).ConfigureAwait(false);
+        ContainerRuntimeReport report;
+        if (!string.IsNullOrWhiteSpace(reportInput))
+        {
+            var reportJson = await File.ReadAllTextAsync(reportInput).ConfigureAwait(false);
+            report = JsonSerializer.Deserialize(reportJson, ReportJsonContext.Default.ContainerRuntimeReport)
+                ?? throw new InvalidOperationException($"Could not deserialize report from '{reportInput}'.");
+            report = NormalizeImportedReport(report);
+        }
+        else
+        {
+            report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode).ConfigureAwait(false);
+        }
+
         if (!string.IsNullOrWhiteSpace(fullReport))
         {
             await File.WriteAllTextAsync(fullReport, ReportRenderer.ToJson(report)).ConfigureAwait(false);
@@ -214,6 +231,18 @@ static bool IsCommandToken(string arg)
        || string.Equals(arg, "markdown", StringComparison.OrdinalIgnoreCase)
        || string.Equals(arg, "text", StringComparison.OrdinalIgnoreCase);
 
+static ContainerRuntimeReport NormalizeImportedReport(ContainerRuntimeReport report)
+{
+    var classification = Classifier.Classify(report.Probes);
+    var importedFingerprintMode = report.Host?.Fingerprint is null ? FingerprintMode.None : FingerprintMode.Safe;
+    var host = HostReportBuilder.Build(report.Probes, classification, importedFingerprintMode);
+    return report with
+    {
+        Classification = classification,
+        Host = host
+    };
+}
+
 static void PrintHelp()
 {
     Console.WriteLine("container-runtime-probe [sample|json|markdown|text] [options]");
@@ -224,6 +253,7 @@ static void PrintHelp()
     Console.WriteLine("  --format json|markdown|text               Report format");
     Console.WriteLine("  --format compact|json|markdown            Sample format when using sample");
     Console.WriteLine("  --output <path>");
+    Console.WriteLine("  --report-input <path>     Render from an existing report JSON file instead of probing the current environment");
     Console.WriteLine("  --timeout <timespan>      e.g. 00:00:02");
     Console.WriteLine("  --include-sensitive <bool>");
     Console.WriteLine("  --probe <id1,id2>");
