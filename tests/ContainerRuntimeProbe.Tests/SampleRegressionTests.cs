@@ -5,20 +5,14 @@ namespace ContainerRuntimeProbe.Tests;
 
 public sealed class SampleRegressionTests
 {
-    [Fact]
+    [SkippableFact]
     public void ExampleSamples_AreSupported_AndCompactSamplesParse()
     {
         var examplesDirectory = FindExamplesDirectory();
-        if (examplesDirectory is null)
-        {
-            return; // no fixtures directory found — skip silently
-        }
+        Skip.If(examplesDirectory is null, "Examples directory not found");
 
-        var jsonFiles = Directory.GetFiles(examplesDirectory, "*.sample.json", SearchOption.TopDirectoryOnly);
-        if (jsonFiles.Length == 0)
-        {
-            return; // no committed fixtures — skip silently
-        }
+        var jsonFiles = Directory.GetFiles(examplesDirectory!, "*.sample.json", SearchOption.TopDirectoryOnly);
+        Skip.If(jsonFiles.Length == 0, "No committed sample fixtures found");
 
         foreach (var jsonFile in jsonFiles)
         {
