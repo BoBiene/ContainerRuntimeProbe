@@ -447,6 +447,13 @@ internal static class HostParsing
         string? prettyName,
         string? fallbackType = null)
     {
+        // Step 1: Explicit ID lookup — takes priority over all heuristics.
+        // This ensures e.g. "suse-microos"→OpenSuse, "nixos"→NixOS, "bazzite"→Fedora.
+        if (!string.IsNullOrWhiteSpace(id) && DetectionMaps.DistroFamilyById.TryGetValue(id.Trim(), out var exactFamily))
+        {
+            return exactFamily;
+        }
+
         var candidates = new[] { id, name, prettyName, fallbackType }
             .Concat(idLike ?? [])
             .Where(value => !string.IsNullOrWhiteSpace(value))

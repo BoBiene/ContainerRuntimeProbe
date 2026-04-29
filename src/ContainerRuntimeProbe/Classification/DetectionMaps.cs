@@ -9,9 +9,16 @@ internal static class DetectionMaps
     internal static readonly IReadOnlyDictionary<string, OperatingSystemFamily> DistroFamilyById =
         new Dictionary<string, OperatingSystemFamily>(StringComparer.OrdinalIgnoreCase)
         {
+            // Ubuntu
             ["ubuntu"] = OperatingSystemFamily.Ubuntu,
             ["ubuntu-core"] = OperatingSystemFamily.Ubuntu,
             ["ubuntu_kylin"] = OperatingSystemFamily.Ubuntu,
+            ["zorin"] = OperatingSystemFamily.Ubuntu,
+            ["pika"] = OperatingSystemFamily.Ubuntu,
+            ["trisquel"] = OperatingSystemFamily.Ubuntu,
+            ["bodhi"] = OperatingSystemFamily.Ubuntu,
+            ["vanillaos"] = OperatingSystemFamily.Ubuntu,
+            // Debian
             ["debian"] = OperatingSystemFamily.Debian,
             ["linuxmint"] = OperatingSystemFamily.Debian,
             ["pop"] = OperatingSystemFamily.Debian,
@@ -19,29 +26,66 @@ internal static class DetectionMaps
             ["neon"] = OperatingSystemFamily.Debian,
             ["kali"] = OperatingSystemFamily.Debian,
             ["raspbian"] = OperatingSystemFamily.Debian,
+            ["devuan"] = OperatingSystemFamily.Debian,
+            ["parrot"] = OperatingSystemFamily.Debian,
+            ["pureos"] = OperatingSystemFamily.Debian,
+            ["tails"] = OperatingSystemFamily.Debian,
+            // Alpine
             ["alpine"] = OperatingSystemFamily.Alpine,
+            // Arch
             ["arch"] = OperatingSystemFamily.Arch,
             ["manjaro"] = OperatingSystemFamily.Arch,
+            ["steamos"] = OperatingSystemFamily.Arch,
+            ["endeavouros"] = OperatingSystemFamily.Arch,
+            ["garuda"] = OperatingSystemFamily.Arch,
+            ["rebornos"] = OperatingSystemFamily.Arch,
+            ["cachyos"] = OperatingSystemFamily.Arch,
+            ["blackarch"] = OperatingSystemFamily.Arch,
+            // Amazon Linux
             ["amzn"] = OperatingSystemFamily.AmazonLinux,
             ["amazon"] = OperatingSystemFamily.AmazonLinux,
+            // Azure Linux / Mariner
             ["azurelinux"] = OperatingSystemFamily.AzureLinux,
             ["mariner"] = OperatingSystemFamily.Mariner,
+            // OpenWrt
             ["openwrt"] = OperatingSystemFamily.OpenWrt,
+            // RHEL family
             ["rhel"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["eurolinux"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["miraclelinux"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["scientific"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["tencentos"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["clearos"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["xcpng"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["xcp-ng"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            ["xenenterprise"] = OperatingSystemFamily.RedHatEnterpriseLinux,
+            // CentOS
             ["centos"] = OperatingSystemFamily.CentOS,
+            // Fedora (including Universal Blue immutable variants)
             ["fedora"] = OperatingSystemFamily.Fedora,
+            ["fedoraremixforwsl"] = OperatingSystemFamily.Fedora,
+            ["bluefin"] = OperatingSystemFamily.Fedora,
+            ["aurora"] = OperatingSystemFamily.Fedora,
+            ["bazzite"] = OperatingSystemFamily.Fedora,
+            ["nobara"] = OperatingSystemFamily.Fedora,
+            ["ultramarine"] = OperatingSystemFamily.Fedora,
+            // Rocky / Alma
             ["rocky"] = OperatingSystemFamily.RockyLinux,
             ["almalinux"] = OperatingSystemFamily.AlmaLinux,
             ["alma"] = OperatingSystemFamily.AlmaLinux,
+            // SUSE / openSUSE
             ["opensuse"] = OperatingSystemFamily.OpenSuse,
             ["opensuse-leap"] = OperatingSystemFamily.OpenSuse,
             ["opensuse-tumbleweed"] = OperatingSystemFamily.OpenSuse,
+            ["suse-microos"] = OperatingSystemFamily.OpenSuse,
             ["sles"] = OperatingSystemFamily.Suse,
             ["sled"] = OperatingSystemFamily.Suse,
             ["suse"] = OperatingSystemFamily.Suse,
+            // Oracle Linux
             ["ol"] = OperatingSystemFamily.OracleLinux,
             ["oracle"] = OperatingSystemFamily.OracleLinux,
             ["oraclelinux"] = OperatingSystemFamily.OracleLinux,
+            // Container-optimized / immutable
             ["wolfi"] = OperatingSystemFamily.Wolfi,
             ["busybox"] = OperatingSystemFamily.BusyBox,
             ["distroless"] = OperatingSystemFamily.Distroless,
@@ -52,10 +96,21 @@ internal static class DetectionMaps
             ["talos"] = OperatingSystemFamily.Talos,
             ["cos"] = OperatingSystemFamily.ContainerOptimizedOS,
             ["container-optimized-os"] = OperatingSystemFamily.ContainerOptimizedOS,
+            ["coreos"] = OperatingSystemFamily.CoreOS,
+            // Independent / unique families
+            ["nixos"] = OperatingSystemFamily.NixOS,
+            ["void"] = OperatingSystemFamily.VoidLinux,
+            ["gentoo"] = OperatingSystemFamily.Gentoo,
+            ["openeuler"] = OperatingSystemFamily.OpenEuler,
+            ["clear-linux-os"] = OperatingSystemFamily.ClearLinux,
+            // Embedded
+            ["buildroot"] = OperatingSystemFamily.Embedded,
+            // Windows
             ["windows"] = OperatingSystemFamily.Windows,
             ["windowsserver"] = OperatingSystemFamily.WindowsServer,
             ["windowsservercore"] = OperatingSystemFamily.WindowsServerCore,
             ["windowsnanoserver"] = OperatingSystemFamily.WindowsNanoServer,
+            // macOS
             ["macos"] = OperatingSystemFamily.MacOS,
             ["darwin"] = OperatingSystemFamily.MacOS
         };
