@@ -2,6 +2,7 @@ FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
 ARG TARGETOS
 ARG TARGETARCH
 WORKDIR /src
+RUN apk add --no-cache clang llvm musl-dev zlib-dev zlib-static
 COPY . .
 RUN target_os="${TARGETOS:-linux}" \
     && target_arch="${TARGETARCH:-amd64}" \
@@ -11,7 +12,7 @@ RUN target_os="${TARGETOS:-linux}" \
         *) echo "Unsupported target architecture: $target_arch" >&2; exit 1 ;; \
     esac \
     && dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
-        -c Release -r "$runtime_id" -p:PublishTrimmed=true --self-contained true -o /app
+        -c Release -r "$runtime_id" -p:PublishTrimmed=true -p:PublishAot=true --self-contained -o /app
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:8.0-alpine
 WORKDIR /app

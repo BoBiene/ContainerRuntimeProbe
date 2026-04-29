@@ -12,6 +12,7 @@
     <PackageTags>container diagnostics cli runtime docker podman kubernetes</PackageTags>
     <PackageProjectUrl>https://github.com/BoBiene/ContainerRuntimeProbe</PackageProjectUrl>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PublishAot>true</PublishAot>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ContainerRuntimeProbe\ContainerRuntimeProbe.csproj" />
