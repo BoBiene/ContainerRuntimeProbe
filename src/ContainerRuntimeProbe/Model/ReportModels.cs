@@ -12,8 +12,8 @@ public sealed record ProbeResult(string ProbeId, ProbeOutcome Outcome, IReadOnly
 /// <summary>Security warning surfaced at report level.</summary>
 public sealed record SecurityWarning(string Code, string Message);
 
-/// <summary>Probe tool version and source control information.</summary>
-public sealed record ProbeToolMetadata(string Version, string? GitCommitHash = null);
+/// <summary>Probe tool version and source control information. Version uses semver with 7-char git hash as build metadata (e.g. <c>1.2.3+a1b2c3d</c>).</summary>
+public sealed record ProbeToolMetadata(string Version);
 
 /// <summary>Reason object including evidence references used for an inferred classification.</summary>
 public sealed record ClassificationReason(string Message, IReadOnlyList<string> EvidenceKeys);

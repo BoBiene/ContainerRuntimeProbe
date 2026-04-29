@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Rendering;
@@ -48,10 +49,6 @@ public static class ReportRenderer
         {
             sb.AppendLine("## Probe Tool Information");
             sb.AppendLine($"- Version: {report.ProbeToolInfo.Version}");
-            if (!string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash))
-            {
-                sb.AppendLine($"- Git Commit: {report.ProbeToolInfo.GitCommitHash}");
-            }
             sb.AppendLine();
         }
         
@@ -160,34 +157,81 @@ public static class ReportRenderer
         }
     }
 
-    /// <summary>Renders a compact one-line textual summary.</summary>
+    /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
     public static string ToText(ContainerRuntimeReport report)
     {
-        var hostName = report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown";
+        // ContainerOS: what /etc/os-release inside the container says.
+        var containerOs = report.Host.ContainerImageOs.PrettyName
+                       ?? report.Host.ContainerImageOs.Id
+                       ?? "Unknown";
+
+        // HostOS: what the container runtime (Docker, etc.) reports as the host — no fallback to container OS.
+        var runtimeHost = report.Host.RuntimeReportedHostOs;
+        string hostOs;
+        if (string.IsNullOrWhiteSpace(runtimeHost.Name))
+        {
+            hostOs = "Unknown";
+        }
+        else if (!string.IsNullOrWhiteSpace(runtimeHost.Version)
+                 && !runtimeHost.Name.Contains(runtimeHost.Version, StringComparison.OrdinalIgnoreCase))
+        {
+            hostOs = $"{runtimeHost.Name} {runtimeHost.Version}";
+        }
+        else
+        {
+            hostOs = runtimeHost.Name;
+        }
+
         var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
             ? "Unknown"
             : report.Host.UnderlyingHostOs.Family.ToString();
-        
-        var toolInfo = report.ProbeToolInfo is not null 
-            ? $"ProbeToolVersion={report.ProbeToolInfo.Version}, " +
-              (string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash) 
-                  ? "" 
-                  : $"GitCommit={report.ProbeToolInfo.GitCommitHash}, ")
-            : "";
 
-        return $"{toolInfo}" +
-               $"IsContainerized={report.Classification.IsContainerized.Value}, " +
-               $"Runtime={report.Classification.ContainerRuntime.Value}, " +
-               $"Virtualization={report.Classification.Virtualization.Value}, " +
-               $"HostFamily={report.Classification.Host.Family.Value}, " +
-               $"HostType={report.Classification.Host.Type.Value}, " +
-               $"Environment={report.Classification.Environment.Type.Value}, " +
-               $"RuntimeApi={report.Classification.RuntimeApi.Value}, " +
-               $"Orchestrator={report.Classification.Orchestrator.Value}, " +
-               $"Cloud={report.Classification.CloudProvider.Value}, " +
-               $"Vendor={report.Classification.PlatformVendor.Value}, " +
-               $"UnderlyingHost={underlyingHost}, " +
-               $"HostOS={hostName}, " +
-               $"HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
+        var kernel = report.Host.VisibleKernel;
+        var kernelVersion = string.IsNullOrWhiteSpace(kernel.Release)
+            ? (string.IsNullOrWhiteSpace(kernel.Name) ? "Unknown" : kernel.Name)
+            : string.IsNullOrWhiteSpace(kernel.Name)
+                ? kernel.Release
+                : $"{kernel.Name} {kernel.Release}";
+
+        // (key, value, optional confidence)
+        (string Key, string Value, Confidence? Conf)[] fields =
+        [
+            ("IsContainerized", report.Classification.IsContainerized.Value,   report.Classification.IsContainerized.Confidence),
+            ("Runtime",         report.Classification.ContainerRuntime.Value,   report.Classification.ContainerRuntime.Confidence),
+            ("Virtualization",  report.Classification.Virtualization.Value,     report.Classification.Virtualization.Confidence),
+            ("HostFamily",      report.Classification.Host.Family.Value,        report.Classification.Host.Family.Confidence),
+            ("HostType",        report.Classification.Host.Type.Value,          report.Classification.Host.Type.Confidence),
+            ("Environment",     report.Classification.Environment.Type.Value,   report.Classification.Environment.Type.Confidence),
+            ("RuntimeApi",      report.Classification.RuntimeApi.Value,         report.Classification.RuntimeApi.Confidence),
+            ("Orchestrator",    report.Classification.Orchestrator.Value,       report.Classification.Orchestrator.Confidence),
+            ("Cloud",           report.Classification.CloudProvider.Value,      report.Classification.CloudProvider.Confidence),
+            ("Vendor",          report.Classification.PlatformVendor.Value,     report.Classification.PlatformVendor.Confidence),
+            ("UnderlyingHost",  underlyingHost,                                 null),
+            ("HostOS",          hostOs,                                         runtimeHost.Confidence),
+            ("ContainerOS",     containerOs,                                    null),
+            ("Kernel",          kernelVersion,                                  kernel.Confidence),
+            ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
+        ];
+
+        var maxKeyLen = fields.Max(f => f.Key.Length);
+        var sb = new StringBuilder();
+
+        if (report.ProbeToolInfo is not null)
+        {
+            // Version already has a 7-char build-metadata hash (shortened at source).
+            var header = $"Container Runtime Report  v{report.ProbeToolInfo.Version}";
+            sb.AppendLine(header);
+            sb.AppendLine(new string('-', header.Length));
+        }
+
+        foreach (var (key, value, conf) in fields)
+        {
+            var confSuffix = conf is not null && conf != Confidence.Unknown
+                ? $"  [{conf}]"
+                : string.Empty;
+            sb.AppendLine($"{key.PadRight(maxKeyLen)} : {value}{confSuffix}");
+        }
+
+        return sb.ToString().TrimEnd();
     }
 }

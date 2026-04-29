@@ -210,7 +210,7 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
-        Assert.Contains("HostFingerprint=sha256:", text, StringComparison.Ordinal);
+        Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
     }
 
     private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence)
