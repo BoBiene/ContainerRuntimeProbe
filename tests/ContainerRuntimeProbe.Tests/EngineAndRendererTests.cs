@@ -1,6 +1,7 @@
 using ContainerRuntimeProbe.Rendering;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
+using System.Threading;
 
 namespace ContainerRuntimeProbe.Tests;
 
@@ -39,6 +40,22 @@ public sealed class EngineAndRendererTests
     }
 
     [Fact]
+    public async Task RunAsync_ExecutesProbesConcurrently_AndPreservesOrder()
+    {
+        var allStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var startedCount = 0;
+        var engine = new ContainerRuntimeProbeEngine(
+        [
+            new CoordinatedProbe("first", allStarted, () => Interlocked.Increment(ref startedCount), expectedStartedCount: 2),
+            new CoordinatedProbe("second", allStarted, () => Interlocked.Increment(ref startedCount), expectedStartedCount: 2)
+        ]);
+
+        var report = await engine.RunAsync(TimeSpan.FromSeconds(1), includeSensitive: false);
+
+        Assert.Equal(["first", "second"], report.Probes.Select(probe => probe.ProbeId));
+    }
+
+    [Fact]
     public async Task RunAsync_AddsWarning_WhenKubernetesTlsValidationIsSkipped()
     {
         var engine = new ContainerRuntimeProbeEngine(
@@ -60,5 +77,25 @@ public sealed class EngineAndRendererTests
 
         public Task<ProbeResult> ExecuteAsync(ProbeContext context)
             => Task.FromResult(new ProbeResult(id, ProbeOutcome.Success, evidence));
+    }
+
+    private sealed class CoordinatedProbe(
+        string id,
+        TaskCompletionSource<bool> allStarted,
+        Func<int> signalStarted,
+        int expectedStartedCount) : IProbe
+    {
+        public string Id => id;
+
+        public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
+        {
+            if (signalStarted() == expectedStartedCount)
+            {
+                allStarted.TrySetResult(true);
+            }
+
+            await allStarted.Task.WaitAsync(TimeSpan.FromSeconds(1), context.CancellationToken);
+            return new ProbeResult(id, ProbeOutcome.Success, []);
+        }
     }
 }

@@ -42,12 +42,7 @@ public sealed class ContainerRuntimeProbeEngine
         var sw = Stopwatch.StartNew();
         var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, cancellationToken, kubernetesTlsVerificationMode);
         var selected = enabledProbes is null || enabledProbes.Count == 0 ? _probes : _probes.Where(p => enabledProbes.Contains(p.Id)).ToList();
-
-        var results = new List<ProbeResult>();
-        foreach (var probe in selected)
-        {
-            results.Add(await probe.ExecuteAsync(context).ConfigureAwait(false));
-        }
+        var results = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
 
         var warnings = new List<SecurityWarning>();
         if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
