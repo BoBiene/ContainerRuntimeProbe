@@ -10,7 +10,35 @@ on:
 jobs:
   docker-harness:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: docker-default
+            runtime: docker
+            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+            run-command: docker run --rm container-runtime-probe:test
+          - name: docker-privileged
+            runtime: docker
+            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+            run-command: docker run --rm --privileged container-runtime-probe:test
+          - name: docker-host-network
+            runtime: docker
+            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
+            run-command: docker run --rm --network host container-runtime-probe:test
+          - name: podman-rootless
+            runtime: podman
+            build-command: podman build -f docker/Dockerfile.test -t container-runtime-probe:test .
+            run-command: podman run --rm container-runtime-probe:test
+    name: docker-harness (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
-      - run: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
-      - run: docker run --rm container-runtime-probe:test
+      - name: Install Podman
+        if: matrix.runtime == 'podman'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+      - name: Build harness image
+        run: ${{ matrix.build-command }}
+      - name: Run harness container
+        run: ${{ matrix.run-command }}

@@ -36,7 +36,7 @@ All high priority issues resolved. ✅
 - [x] **4. Public probe-context overrides** — `ProbeExecutionOptions` now exposes Kubernetes and metadata endpoint overrides on the public engine API.
 - [x] **5. AppArmor vs SELinux parsing** — `SecuritySandboxProbe` now validates SELinux context shape explicitly and records `/sys/fs/selinux/enforce` evidence separately.
 - [x] **6. Stronger OnPrem classification** — on-prem scoring now leans on corporate DNS, host-type corroboration, and visible default routes instead of giving cloud-metadata probe presence two free points.
-- [ ] **7. Runtime harness coverage** — CI still lacks Podman/rootless/privileged/host-network container runs.
+- [x] **7. Runtime harness coverage** — `docker-harness.yml` now fans out across default Docker, `--privileged`, `--network host`, and rootless Podman runs.
 - [x] **8. Parallel `/proc` reads** — `ProcFilesProbe` now starts the proc/sys file reads concurrently while preserving stable processing order.
 
 ### Nice To Have
