@@ -161,11 +161,31 @@ public static class ReportRenderer
         }
     }
 
-    /// <summary>Renders a compact one-line textual summary.</summary>
     /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
     public static string ToText(ContainerRuntimeReport report)
     {
-        var hostName = report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown";
+        // ContainerOS: what /etc/os-release inside the container says.
+        var containerOs = report.Host.ContainerImageOs.PrettyName
+                       ?? report.Host.ContainerImageOs.Id
+                       ?? "Unknown";
+
+        // HostOS: what the container runtime (Docker, etc.) reports as the host — no fallback to container OS.
+        var runtimeHost = report.Host.RuntimeReportedHostOs;
+        string hostOs;
+        if (string.IsNullOrWhiteSpace(runtimeHost.Name))
+        {
+            hostOs = "Unknown";
+        }
+        else if (!string.IsNullOrWhiteSpace(runtimeHost.Version)
+                 && !runtimeHost.Name.Contains(runtimeHost.Version, StringComparison.OrdinalIgnoreCase))
+        {
+            hostOs = $"{runtimeHost.Name} {runtimeHost.Version}";
+        }
+        else
+        {
+            hostOs = runtimeHost.Name;
+        }
+
         var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
             ? "Unknown"
             : report.Host.UnderlyingHostOs.Family.ToString();
@@ -184,7 +204,8 @@ public static class ReportRenderer
             ("Cloud",           report.Classification.CloudProvider.Value,      report.Classification.CloudProvider.Confidence),
             ("Vendor",          report.Classification.PlatformVendor.Value,     report.Classification.PlatformVendor.Confidence),
             ("UnderlyingHost",  underlyingHost,                                 null),
-            ("HostOS",          hostName,                                       null),
+            ("HostOS",          hostOs,                                         runtimeHost.Confidence),
+            ("ContainerOS",     containerOs,                                    null),
             ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
         ];
 
