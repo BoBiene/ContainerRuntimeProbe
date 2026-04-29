@@ -49,10 +49,6 @@ public static class ReportRenderer
         {
             sb.AppendLine("## Probe Tool Information");
             sb.AppendLine($"- Version: {report.ProbeToolInfo.Version}");
-            if (!string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash))
-            {
-                sb.AppendLine($"- Git Commit: {report.ProbeToolInfo.GitCommitHash}");
-            }
             sb.AppendLine();
         }
         
@@ -190,6 +186,13 @@ public static class ReportRenderer
             ? "Unknown"
             : report.Host.UnderlyingHostOs.Family.ToString();
 
+        var kernel = report.Host.VisibleKernel;
+        var kernelVersion = string.IsNullOrWhiteSpace(kernel.Release)
+            ? (string.IsNullOrWhiteSpace(kernel.Name) ? "Unknown" : kernel.Name)
+            : string.IsNullOrWhiteSpace(kernel.Name)
+                ? kernel.Release
+                : $"{kernel.Name} {kernel.Release}";
+
         // (key, value, optional confidence)
         (string Key, string Value, Confidence? Conf)[] fields =
         [
@@ -206,6 +209,7 @@ public static class ReportRenderer
             ("UnderlyingHost",  underlyingHost,                                 null),
             ("HostOS",          hostOs,                                         runtimeHost.Confidence),
             ("ContainerOS",     containerOs,                                    null),
+            ("Kernel",          kernelVersion,                                  kernel.Confidence),
             ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
         ];
 
@@ -214,12 +218,8 @@ public static class ReportRenderer
 
         if (report.ProbeToolInfo is not null)
         {
-            // Shorten semver build-metadata hash to 7 chars for readability.
-            var ver = report.ProbeToolInfo.Version;
-            var plus = ver.IndexOf('+');
-            if (plus >= 0 && ver.Length - plus - 1 > 7)
-                ver = ver[..(plus + 8)];
-            var header = $"Container Runtime Report  v{ver}";
+            // Version already has a 7-char build-metadata hash (shortened at source).
+            var header = $"Container Runtime Report  v{report.ProbeToolInfo.Version}";
             sb.AppendLine(header);
             sb.AppendLine(new string('-', header.Length));
         }
