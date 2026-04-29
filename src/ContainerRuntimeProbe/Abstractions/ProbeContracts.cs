@@ -39,6 +39,19 @@ public enum ProbeOutcome
     Error
 }
 
+/// <summary>Controls how the Kubernetes probe validates HTTPS certificates.</summary>
+public enum KubernetesTlsVerificationMode
+{
+    /// <summary>
+    /// Favor connectivity over strict trust validation by skipping certificate verification.
+    /// This is the default so in-cluster probing works with self-signed or private CA deployments.
+    /// </summary>
+    Compatibility,
+
+    /// <summary>Use the platform trust store and fail HTTPS requests with invalid certificates.</summary>
+    Strict
+}
+
 /// <summary>Context passed to each probe execution.</summary>
 public sealed record ProbeContext(
     TimeSpan Timeout,
@@ -49,7 +62,8 @@ public sealed record ProbeContext(
     Uri? AzureImdsBase,
     Uri? GcpMetadataBase,
     Uri? OciMetadataBase,
-    CancellationToken CancellationToken);
+    CancellationToken CancellationToken,
+    KubernetesTlsVerificationMode KubernetesTlsVerificationMode = KubernetesTlsVerificationMode.Compatibility);
 
 /// <summary>Abstraction for an evidence probe.</summary>
 public interface IProbe

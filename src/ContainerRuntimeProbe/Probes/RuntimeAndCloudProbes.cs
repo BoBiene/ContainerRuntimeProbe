@@ -353,7 +353,15 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         var api = context.KubernetesApiBase ?? new Uri($"https://{host}:{port}");
-        using var client = new HttpClient(new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true }) { BaseAddress = api, Timeout = context.Timeout };
+        if (string.Equals(api.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            var tlsVerification = context.KubernetesTlsVerificationMode == KubernetesTlsVerificationMode.Strict
+                ? "strict"
+                : "compatibility-skip-validation";
+            evidence.Add(new EvidenceItem(Id, "api.tls.verification", tlsVerification));
+        }
+
+        using var client = new HttpClient(CreateHttpClientHandler(context.KubernetesTlsVerificationMode)) { BaseAddress = api, Timeout = context.Timeout };
         var token = await File.ReadAllTextAsync(tokenPath, context.CancellationToken).ConfigureAwait(false);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
 
@@ -376,6 +384,17 @@ internal sealed class KubernetesProbe : IProbe
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static HttpClientHandler CreateHttpClientHandler(KubernetesTlsVerificationMode tlsVerificationMode)
+    {
+        var handler = new HttpClientHandler();
+        if (tlsVerificationMode == KubernetesTlsVerificationMode.Compatibility)
+        {
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+        }
+
+        return handler;
     }
 
     private async Task ProbeNodeInfoAsync(HttpClient client, List<EvidenceItem> evidence, string podJson, CancellationToken ct)

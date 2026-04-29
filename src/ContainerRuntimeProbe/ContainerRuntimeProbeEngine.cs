@@ -34,9 +34,13 @@ public sealed class ContainerRuntimeProbeEngine
 
     /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
     public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes = null, FingerprintMode fingerprintMode = FingerprintMode.Safe, CancellationToken cancellationToken = default)
+        => await RunAsync(timeout, includeSensitive, enabledProbes, fingerprintMode, KubernetesTlsVerificationMode.Compatibility, cancellationToken).ConfigureAwait(false);
+
+    /// <summary>Executes selected probes and returns a complete container runtime report.</summary>
+    public async Task<ContainerRuntimeReport> RunAsync(TimeSpan timeout, bool includeSensitive, IReadOnlySet<string>? enabledProbes, FingerprintMode fingerprintMode, KubernetesTlsVerificationMode kubernetesTlsVerificationMode, CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();
-        var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, cancellationToken);
+        var context = new ProbeContext(timeout, includeSensitive, enabledProbes, null, null, null, null, null, cancellationToken, kubernetesTlsVerificationMode);
         var selected = enabledProbes is null || enabledProbes.Count == 0 ? _probes : _probes.Where(p => enabledProbes.Contains(p.Id)).ToList();
 
         var results = new List<ProbeResult>();
@@ -49,6 +53,11 @@ public sealed class ContainerRuntimeProbeEngine
         if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
         {
             warnings.Add(new SecurityWarning("DOCKER_SOCKET_MOUNTED", "Docker-compatible socket is accessible and can imply privileged host control."));
+        }
+
+        if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "api.tls.verification" && e.Value == "compatibility-skip-validation"))
+        {
+            warnings.Add(new SecurityWarning("KUBERNETES_TLS_VALIDATION_SKIPPED", "Kubernetes API TLS certificate validation was skipped for compatibility. Use strict Kubernetes TLS mode to enforce platform trust validation."));
         }
 
         var classification = Classifier.Classify(results);

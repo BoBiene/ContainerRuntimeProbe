@@ -1,4 +1,5 @@
 using ContainerRuntimeProbe;
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Classification;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -24,6 +25,7 @@ static async Task<int> MainAsync(string[] args)
     IReadOnlySet<string>? probes = null;
     var listProbes = false;
     var fingerprintMode = FingerprintMode.Safe;
+    var kubernetesTlsMode = KubernetesTlsVerificationMode.Compatibility;
     var repo = "BoBiene/ContainerRuntimeProbe";
     var scenario = string.Empty;
     var expected = string.Empty;
@@ -75,6 +77,7 @@ static async Task<int> MainAsync(string[] args)
                 case "--output": output = GetRequiredValue(args, ref i, "--output"); break;
                 case "--list-probes": listProbes = true; break;
                 case "--fingerprint": fingerprintMode = Enum.Parse<FingerprintMode>(GetRequiredValue(args, ref i, "--fingerprint"), ignoreCase: true); break;
+                case "--kubernetes-tls": kubernetesTlsMode = Enum.Parse<KubernetesTlsVerificationMode>(GetRequiredValue(args, ref i, "--kubernetes-tls"), ignoreCase: true); break;
                 default:
                     Console.Error.WriteLine($"Invalid argument: {arg}");
                     PrintHelp();
@@ -110,7 +113,7 @@ static async Task<int> MainAsync(string[] args)
         }
         else
         {
-            report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode).ConfigureAwait(false);
+            report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode, kubernetesTlsMode).ConfigureAwait(false);
         }
 
         if (!string.IsNullOrWhiteSpace(fullReport))
@@ -259,6 +262,7 @@ static void PrintHelp()
     Console.WriteLine("  --probe <id1,id2>");
     Console.WriteLine("  --list-probes");
     Console.WriteLine("  --fingerprint none|safe|extended");
+    Console.WriteLine("  --kubernetes-tls compatibility|strict");
     Console.WriteLine("  --repo OWNER/REPO         Optional sample issue target (default BoBiene/ContainerRuntimeProbe)");
     Console.WriteLine("  --scenario <name>");
     Console.WriteLine("  --expected <text>");
