@@ -113,7 +113,15 @@ static async Task<int> MainAsync(string[] args)
         }
         else
         {
-            report = await engine.RunAsync(timeout, includeSensitive, probes, fingerprintMode, kubernetesTlsMode).ConfigureAwait(false);
+            report = await engine.RunAsync(
+                timeout,
+                includeSensitive,
+                new ProbeExecutionOptions
+                {
+                    EnabledProbes = probes,
+                    FingerprintMode = fingerprintMode,
+                    KubernetesTlsVerificationMode = kubernetesTlsMode
+                }).ConfigureAwait(false);
         }
 
         if (!string.IsNullOrWhiteSpace(fullReport))

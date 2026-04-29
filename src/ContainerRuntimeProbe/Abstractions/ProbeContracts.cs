@@ -65,6 +65,34 @@ public sealed record ProbeContext(
     CancellationToken CancellationToken,
     KubernetesTlsVerificationMode KubernetesTlsVerificationMode = KubernetesTlsVerificationMode.Compatibility);
 
+/// <summary>Optional execution settings for the probe engine.</summary>
+public sealed class ProbeExecutionOptions
+{
+    /// <summary>Restricts execution to the specified probe identifiers.</summary>
+    public IReadOnlySet<string>? EnabledProbes { get; init; }
+
+    /// <summary>Controls host fingerprint generation in the final report.</summary>
+    public Model.FingerprintMode FingerprintMode { get; init; } = Model.FingerprintMode.Safe;
+
+    /// <summary>Overrides the Kubernetes API base URI used by the Kubernetes probe.</summary>
+    public Uri? KubernetesApiBase { get; init; }
+
+    /// <summary>Overrides the AWS IMDS base URI used by the cloud metadata probe.</summary>
+    public Uri? AwsImdsBase { get; init; }
+
+    /// <summary>Overrides the Azure IMDS base URI used by the cloud metadata probe.</summary>
+    public Uri? AzureImdsBase { get; init; }
+
+    /// <summary>Overrides the GCP metadata base URI used by the cloud metadata probe.</summary>
+    public Uri? GcpMetadataBase { get; init; }
+
+    /// <summary>Overrides the OCI metadata base URI used by the cloud metadata probe.</summary>
+    public Uri? OciMetadataBase { get; init; }
+
+    /// <summary>Controls how the Kubernetes probe validates HTTPS certificates.</summary>
+    public KubernetesTlsVerificationMode KubernetesTlsVerificationMode { get; init; } = KubernetesTlsVerificationMode.Compatibility;
+}
+
 /// <summary>Abstraction for an evidence probe.</summary>
 public interface IProbe
 {

@@ -47,6 +47,57 @@ public sealed class FakeEndpointIntegrationTests
     }
 
     [Fact]
+    public async Task Engine_RunAsync_UsesConfiguredCloudMetadataOverrides()
+    {
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource();
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var ctx = await listener.GetContextAsync();
+                    ctx.Response.StatusCode = 200;
+                    await using var sw = new StreamWriter(ctx.Response.OutputStream);
+                    await sw.WriteAsync("{}");
+                    ctx.Response.Close();
+                }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+            }
+        });
+
+        try
+        {
+            var engine = new ContainerRuntimeProbeEngine([new CloudMetadataProbe()]);
+            var report = await engine.RunAsync(
+                TimeSpan.FromSeconds(1),
+                includeSensitive: false,
+                new ProbeExecutionOptions
+                {
+                    EnabledProbes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "cloud-metadata" },
+                    AwsImdsBase = new Uri($"http://127.0.0.1:{port}"),
+                    AzureImdsBase = new Uri($"http://127.0.0.1:{port}"),
+                    GcpMetadataBase = new Uri($"http://127.0.0.1:{port}"),
+                    OciMetadataBase = new Uri($"http://127.0.0.1:{port}")
+                });
+
+            Assert.Contains(report.Probes.SelectMany(probe => probe.Evidence), e => e.Key == "azure.imds.outcome");
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+        }
+    }
+
+    [Fact]
     public async Task CloudMetadataProbe_FansOutMetadataRequestsConcurrently()
     {
         using var listener = new HttpListener();

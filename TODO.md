@@ -33,7 +33,7 @@ All high priority issues resolved. ✅
 
 ### Medium
 
-- [ ] **4. Public probe-context overrides** — library callers still cannot override IMDS/Kubernetes endpoints through the main engine API.
+- [x] **4. Public probe-context overrides** — `ProbeExecutionOptions` now exposes Kubernetes and metadata endpoint overrides on the public engine API.
 - [ ] **5. AppArmor vs SELinux parsing** — `SecuritySandboxProbe` still relies on a `:` heuristic that should be made robust.
 - [ ] **6. Stronger OnPrem classification** — current on-prem scoring still needs better non-cloud signals.
 - [ ] **7. Runtime harness coverage** — CI still lacks Podman/rootless/privileged/host-network container runs.
