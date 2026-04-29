@@ -64,24 +64,45 @@ jobs:
             -p:PublishTrimmed=true --self-contained true \
             -o artifacts/cli/${{ matrix.rid }}
       - name: Prepare asset
+        id: prepare_asset
         run: |
           BIN=artifacts/cli/${{ matrix.rid }}/ContainerRuntimeProbe.Tool
           [[ "${{ matrix.rid }}" == win-* ]] && BIN="${BIN}.exe"
           ASSET="artifacts/container-runtime-probe-${{ matrix.asset_suffix }}"
           cp "$BIN" "$ASSET"
-          echo "asset=$ASSET" >> "$GITHUB_ENV"
+          echo "asset=$ASSET" >> "$GITHUB_OUTPUT"
       - name: Upload binary to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.asset }}
+          files: ${{ steps.prepare_asset.outputs.asset }}
 
-  docker-release:
-    runs-on: ubuntu-latest
+  docker-release-arch:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux/amd64
+            suffix: amd64
+            runs_on: ubuntu-latest
+            setup_qemu: false
+            arm64_publish_aot: false
+          - platform: linux/arm64
+            suffix: arm64
+            runs_on: ubuntu-24.04-arm
+            setup_qemu: false
+            arm64_publish_aot: true
+          - platform: linux/arm/v7
+            suffix: armv7
+            runs_on: ubuntu-latest
+            setup_qemu: true
+            arm64_publish_aot: false
+    runs-on: ${{ matrix.runs_on }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for MinVer tag resolution
       - name: Set up QEMU
+        if: ${{ matrix.setup_qemu }}
         uses: docker/setup-qemu-action@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -102,11 +123,53 @@ jobs:
         with:
           context: .
           file: docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: ${{ matrix.platform }}
+          build-args: |
+            ARM64_PUBLISH_AOT=${{ matrix.arm64_publish_aot }}
           push: true
           tags: |
-            ${{ steps.image.outputs.name }}:latest
-            ${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}
-            ${{ steps.image.outputs.name }}:${{ github.ref_name }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ steps.image.outputs.name }}:latest-${{ matrix.suffix }}
+            ${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-${{ matrix.suffix }}
+            ${{ steps.image.outputs.name }}:${{ github.ref_name }}-${{ matrix.suffix }}
+          cache-from: type=gha,scope=docker-release-${{ matrix.suffix }}
+          cache-to: type=gha,mode=max,scope=docker-release-${{ matrix.suffix }}
+
+  docker-release-manifest:
+    needs: docker-release-arch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Compute image name
+        id: image
+        run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+      - name: Extract version from tag
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - name: Create latest manifest
+        run: |
+          docker buildx imagetools create \
+            -t "${{ steps.image.outputs.name }}:latest" \
+            "${{ steps.image.outputs.name }}:latest-amd64" \
+            "${{ steps.image.outputs.name }}:latest-arm64" \
+            "${{ steps.image.outputs.name }}:latest-armv7"
+      - name: Create version manifest
+        run: |
+          docker buildx imagetools create \
+            -t "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}" \
+            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-amd64" \
+            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-arm64" \
+            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-armv7"
+      - name: Create ref manifest
+        run: |
+          docker buildx imagetools create \
+            -t "${{ steps.image.outputs.name }}:${{ github.ref_name }}" \
+            "${{ steps.image.outputs.name }}:${{ github.ref_name }}-amd64" \
+            "${{ steps.image.outputs.name }}:${{ github.ref_name }}-arm64" \
+            "${{ steps.image.outputs.name }}:${{ github.ref_name }}-armv7"

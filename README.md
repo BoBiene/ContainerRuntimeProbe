@@ -62,6 +62,9 @@ Run the probe:
 docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
 ```
 
+Published container images target `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
+`linux/arm64` Native AOT is only enabled when the image is built on a real arm64 runner; standard CI builds publish arm64 as a trimmed self-contained binary instead. `linux/386` is not currently published.
+
 Generate only the prefilled GitHub issue URL:
 
 ```bash
