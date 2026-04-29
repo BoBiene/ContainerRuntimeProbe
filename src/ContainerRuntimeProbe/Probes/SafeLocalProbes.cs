@@ -82,6 +82,9 @@ internal sealed class EnvironmentProbe : IProbe
 internal sealed class ProcFilesProbe : IProbe
 {
     public string Id => "proc-files";
+    private readonly IReadOnlyList<string> _files;
+    private readonly Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> _readFileAsync;
+
     private static readonly string[] Files =
     [
         "/proc/1/cgroup", "/proc/self/cgroup",
@@ -95,6 +98,16 @@ internal sealed class ProcFilesProbe : IProbe
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
 
+    public ProcFilesProbe() : this(Files, ProbeIo.ReadFileAsync) { }
+
+    internal ProcFilesProbe(
+        IReadOnlyList<string> files,
+        Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync)
+    {
+        _files = files;
+        _readFileAsync = readFileAsync;
+    }
+
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
     {
         var sw = Stopwatch.StartNew();
@@ -106,13 +119,14 @@ internal sealed class ProcFilesProbe : IProbe
         string? kernelOsRelease = null;
         string? kernelOsType = null;
         string? kernelVersion = null;
+        var readTasks = _files.ToDictionary(file => file, file => _readFileAsync(file, context.Timeout, context.CancellationToken));
 
-        foreach (var file in Files)
+        foreach (var file in _files)
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
 
-            var (outcome, text, msg) = await ProbeIo.ReadFileAsync(file, context.Timeout, context.CancellationToken).ConfigureAwait(false);
+            var (outcome, text, msg) = await readTasks[file].ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
             {
                 if (outcome != ProbeOutcome.Unavailable)
