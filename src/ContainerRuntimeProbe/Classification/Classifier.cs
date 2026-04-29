@@ -59,10 +59,18 @@ internal static class Classifier
                 return false;
             }
 
+            var normalizedDomain = dnsDomain.Trim().TrimEnd('.');
+            if (normalizedDomain.Equals("cluster.local", StringComparison.OrdinalIgnoreCase)
+                || normalizedDomain.EndsWith(".cluster.local", StringComparison.OrdinalIgnoreCase)
+                || normalizedDomain.Equals("dns.podman", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             return DetectionMaps.HomeDnsSignals.Any(signal =>
                 string.Equals(signal, "lan", StringComparison.Ordinal)
-                    ? dnsDomain.Equals(signal, StringComparison.OrdinalIgnoreCase)
-                    : dnsDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
+                    ? normalizedDomain.Equals(signal, StringComparison.OrdinalIgnoreCase)
+                    : normalizedDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
         }
 
         static bool IsCustomCompiler(string? compiler, string? procVersion)
@@ -95,6 +103,9 @@ internal static class Classifier
             && x.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true);
         if (hasDockerCgroupSignal) { containerScore += 3; containerReasons.Add(new("Cgroup contains docker path", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
         if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && string.Equals(x.Value, "overlay", StringComparison.OrdinalIgnoreCase))) { containerScore += 3; containerReasons.Add(new("Overlay mount detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
+        if (HasEnvKey(e, "KUBERNETES_SERVICE_HOST")) { containerScore += 2; containerReasons.Add(new("Kubernetes service environment detected", new[] { "KUBERNETES_SERVICE_HOST" })); }
+        if (e.Any(x => x.Key == "serviceaccount.token")) { containerScore += 3; containerReasons.Add(new("Kubernetes service account token mounted", new[] { "serviceaccount.token" })); }
+        if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && x.Value is "kubelet" or "kubernetes-serviceaccount")) { containerScore += 3; containerReasons.Add(new("Kubernetes mount signal detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
         var containerEvidenceAvailable =
             probes.Any(probe => probe.ProbeId == "marker-files")
             || probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success);
