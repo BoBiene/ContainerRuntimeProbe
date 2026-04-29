@@ -493,6 +493,53 @@ public sealed class ClassifierTests
         Assert.Equal(Confidence.High, report.Environment.Type.Confidence);
     }
 
+    [Fact]
+    public void Classifier_CorporateDnsAndDefaultRoute_DetectsOnPremWithoutConsumerCpuHints()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-58-generic"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04"),
+                new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) Silver 4314 CPU"),
+                new EvidenceItem("proc-files", "dns-search", "corp.example.com"),
+                new EvidenceItem("proc-files", "default-route-device", "eno1")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "oci.metadata.outcome", "Unavailable")
+            ])
+        ]);
+
+        Assert.Equal(HostTypeKind.StandardLinux, report.Host.Type.Value);
+        Assert.Equal(EnvironmentTypeKind.OnPrem, report.Environment.Type.Value);
+        Assert.Equal(Confidence.Medium, report.Environment.Type.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_InternalDnsWithoutOtherSignals_RemainsUnknown()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-58-generic"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04"),
+                new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) Silver 4314 CPU"),
+                new EvidenceItem("proc-files", "dns-search", "compute.internal")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "oci.metadata.outcome", "Unavailable")
+            ])
+        ]);
+
+        Assert.Equal(EnvironmentTypeKind.Unknown, report.Environment.Type.Value);
+    }
+
     // ── Reasons separation ───────────────────────────────────────────────────
 
     [Fact]

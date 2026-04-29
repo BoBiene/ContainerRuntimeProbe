@@ -1,5 +1,6 @@
 using System.Net;
 using System.Text;
+using System.Diagnostics;
 using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
@@ -43,6 +44,115 @@ public sealed class FakeEndpointIntegrationTests
         cts.Cancel();
         listener.Stop();
         await server;
+    }
+
+    [Fact]
+    public async Task Engine_RunAsync_UsesConfiguredCloudMetadataOverrides()
+    {
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource();
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var ctx = await listener.GetContextAsync();
+                    ctx.Response.StatusCode = 200;
+                    await using var sw = new StreamWriter(ctx.Response.OutputStream);
+                    await sw.WriteAsync("{}");
+                    ctx.Response.Close();
+                }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+            }
+        });
+
+        try
+        {
+            var engine = new ContainerRuntimeProbeEngine([new CloudMetadataProbe()]);
+            var report = await engine.RunAsync(
+                TimeSpan.FromSeconds(1),
+                includeSensitive: false,
+                new ProbeExecutionOptions
+                {
+                    EnabledProbes = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "cloud-metadata" },
+                    AwsImdsBase = new Uri($"http://127.0.0.1:{port}"),
+                    AzureImdsBase = new Uri($"http://127.0.0.1:{port}"),
+                    GcpMetadataBase = new Uri($"http://127.0.0.1:{port}"),
+                    OciMetadataBase = new Uri($"http://127.0.0.1:{port}")
+                });
+
+            Assert.Contains(report.Probes.SelectMany(probe => probe.Evidence), e => e.Key == "azure.imds.outcome");
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+        }
+    }
+
+    [Fact]
+    public async Task CloudMetadataProbe_FansOutMetadataRequestsConcurrently()
+    {
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(15));
+        var pendingRequests = new List<Task>();
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                try
+                {
+                    var ctx = await listener.GetContextAsync();
+                    pendingRequests.Add(HandleCloudMetadataRequestAsync(ctx));
+                }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+            }
+
+            await Task.WhenAll(pendingRequests);
+        });
+
+        try
+        {
+            var probe = new CloudMetadataProbe();
+            var probeContext = new ProbeContext(
+                TimeSpan.FromSeconds(5),
+                false,
+                null,
+                null,
+                new Uri($"http://127.0.0.1:{port}"),
+                new Uri($"http://127.0.0.1:{port}"),
+                new Uri($"http://127.0.0.1:{port}"),
+                new Uri($"http://127.0.0.1:{port}"),
+                CancellationToken.None);
+
+            var stopwatch = Stopwatch.StartNew();
+            var result = await probe.ExecuteAsync(probeContext);
+            stopwatch.Stop();
+
+            Assert.True(stopwatch.Elapsed < TimeSpan.FromMilliseconds(1200), $"Expected concurrent fan-out, got {stopwatch.Elapsed}.");
+            Assert.Contains(result.Evidence, e => e.Key == "aws.imds.identity.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "azure.imds.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "gcp.metadata.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "oci.metadata.outcome" && e.Value == "Success");
+        }
+        finally
+        {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+        }
     }
 
     // ── Compose label extraction unit tests (no HTTP, pure JSON parsing) ─────
@@ -377,6 +487,42 @@ public sealed class FakeEndpointIntegrationTests
         var p = ((IPEndPoint)l.LocalEndpoint).Port;
         l.Stop();
         return p;
+    }
+
+    private static async Task HandleCloudMetadataRequestAsync(HttpListenerContext context)
+    {
+        await Task.Delay(250).ConfigureAwait(false);
+
+        var request = context.Request;
+        var path = request.Url?.AbsolutePath ?? string.Empty;
+        var statusCode = 200;
+        var body = path switch
+        {
+            "/latest/api/token" when string.Equals(request.HttpMethod, "PUT", StringComparison.OrdinalIgnoreCase) => "fake-token",
+            "/latest/dynamic/instance-identity/document" => """
+                {"instanceType":"c7g.large","region":"eu-central-1","availabilityZone":"eu-central-1a","architecture":"arm64"}
+                """,
+            "/metadata/instance" => """
+                {"compute":{"vmSize":"Standard_D4s_v5","location":"westeurope","zone":"2","osType":"Linux"}}
+                """,
+            "/computeMetadata/v1/instance/machine-type" => "projects/123456/machineTypes/e2-standard-4",
+            "/computeMetadata/v1/instance/zone" => "projects/123456/zones/europe-west3-b",
+            "/opc/v2/instance/" => """
+                {"shape":"VM.Standard.E4.Flex","region":"eu-frankfurt-1","availabilityDomain":"Uocm:EU-FRANKFURT-1-AD-1"}
+                """,
+            _ => "{}"
+        };
+
+        if (path is not "/latest/api/token" and not "/latest/dynamic/instance-identity/document" and not "/metadata/instance" and not "/computeMetadata/v1/instance/machine-type" and not "/computeMetadata/v1/instance/zone" and not "/opc/v2/instance/")
+        {
+            statusCode = 404;
+        }
+
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+        var bytes = Encoding.UTF8.GetBytes(body);
+        await context.Response.OutputStream.WriteAsync(bytes);
+        context.Response.Close();
     }
 
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe

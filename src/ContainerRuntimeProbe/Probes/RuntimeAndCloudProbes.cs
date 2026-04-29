@@ -213,35 +213,35 @@ internal sealed class RuntimeApiProbe : IProbe
     private void AddDockerVersionEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", GetString(doc.RootElement, "Version"));
-        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", JsonHelper.GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", JsonHelper.GetString(doc.RootElement, "ApiVersion"));
     }
 
     private void AddDockerInfoEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, Id, "docker.info.operating_system", GetString(doc.RootElement, "OperatingSystem"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.os_type", GetString(doc.RootElement, "OSType"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.architecture", GetString(doc.RootElement, "Architecture"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.kernel_version", GetString(doc.RootElement, "KernelVersion"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.ncpu", GetString(doc.RootElement, "NCPU"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.mem_total", GetString(doc.RootElement, "MemTotal"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.server_version", GetString(doc.RootElement, "ServerVersion"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_driver", GetString(doc.RootElement, "CgroupDriver"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_version", GetString(doc.RootElement, "CgroupVersion"));
-        AddEvidenceIfPresent(evidence, Id, "docker.info.default_runtime", GetString(doc.RootElement, "DefaultRuntime"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.operating_system", JsonHelper.GetString(doc.RootElement, "OperatingSystem"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.os_type", JsonHelper.GetString(doc.RootElement, "OSType"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.architecture", JsonHelper.GetString(doc.RootElement, "Architecture"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.kernel_version", JsonHelper.GetString(doc.RootElement, "KernelVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.ncpu", JsonHelper.GetString(doc.RootElement, "NCPU"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.mem_total", JsonHelper.GetString(doc.RootElement, "MemTotal"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.server_version", JsonHelper.GetString(doc.RootElement, "ServerVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_driver", JsonHelper.GetString(doc.RootElement, "CgroupDriver"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.cgroup_version", JsonHelper.GetString(doc.RootElement, "CgroupVersion"));
+        AddEvidenceIfPresent(evidence, Id, "docker.info.default_runtime", JsonHelper.GetString(doc.RootElement, "DefaultRuntime"));
         if (doc.RootElement.TryGetProperty("SecurityOptions", out var securityOptions) && securityOptions.ValueKind == JsonValueKind.Array)
         {
             evidence.Add(new EvidenceItem(Id, "docker.info.security_options_count", securityOptions.GetArrayLength().ToString()));
         }
-        evidence.Add(new EvidenceItem(Id, "runtime.architecture", GetString(doc.RootElement, "Architecture") ?? string.Empty));
+        evidence.Add(new EvidenceItem(Id, "runtime.architecture", JsonHelper.GetString(doc.RootElement, "Architecture") ?? string.Empty));
     }
 
     private void AddPodmanVersionEvidence(List<EvidenceItem> evidence, string body)
     {
         using var doc = JsonDocument.Parse(body);
-        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", GetString(doc.RootElement, "Version"));
-        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", GetString(doc.RootElement, "ApiVersion"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.version", JsonHelper.GetString(doc.RootElement, "Version"));
+        AddEvidenceIfPresent(evidence, Id, "runtime.engine.api_version", JsonHelper.GetString(doc.RootElement, "ApiVersion"));
     }
 
     private void AddPodmanInfoEvidence(List<EvidenceItem> evidence, string body)
@@ -261,42 +261,25 @@ internal sealed class RuntimeApiProbe : IProbe
         }
 
         var evidence = new List<EvidenceItem>();
-        AddEvidenceIfPresent(evidence, probeId, "podman.info.architecture", GetString(host, "arch"));
-        AddEvidenceIfPresent(evidence, probeId, "podman.info.kernel", GetString(host, "kernel"));
-        AddEvidenceIfPresent(evidence, probeId, "podman.info.mem_total", GetString(host, "memTotal"));
-        AddEvidenceIfPresent(evidence, probeId, "podman.info.cpus", GetString(host, "cpus"));
-        AddEvidenceIfPresent(evidence, probeId, "podman.info.service_is_remote", GetString(host, "serviceIsRemote"));
-        AddEvidenceIfPresent(evidence, probeId, "runtime.architecture", GetString(host, "arch"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.architecture", JsonHelper.GetString(host, "arch"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.kernel", JsonHelper.GetString(host, "kernel"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.mem_total", JsonHelper.GetString(host, "memTotal"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.cpus", JsonHelper.GetString(host, "cpus"));
+        AddEvidenceIfPresent(evidence, probeId, "podman.info.service_is_remote", JsonHelper.GetString(host, "serviceIsRemote"));
+        AddEvidenceIfPresent(evidence, probeId, "runtime.architecture", JsonHelper.GetString(host, "arch"));
 
         if (host.TryGetProperty("remoteSocket", out var remoteSocket) && remoteSocket.ValueKind == JsonValueKind.Object)
         {
-            AddEvidenceIfPresent(evidence, probeId, "podman.info.remote_socket_path", GetString(remoteSocket, "path"));
+            AddEvidenceIfPresent(evidence, probeId, "podman.info.remote_socket_path", JsonHelper.GetString(remoteSocket, "path"));
         }
 
         if (host.TryGetProperty("distribution", out var distribution) && distribution.ValueKind == JsonValueKind.Object)
         {
-            var distro = $"{GetString(distribution, "distribution")} {GetString(distribution, "version")}".Trim();
+            var distro = $"{JsonHelper.GetString(distribution, "distribution")} {JsonHelper.GetString(distribution, "version")}".Trim();
             AddEvidenceIfPresent(evidence, probeId, "podman.info.distribution", string.IsNullOrWhiteSpace(distro) ? null : distro);
         }
 
         return evidence;
-    }
-
-    private static string? GetString(JsonElement element, string propertyName)
-    {
-        if (!element.TryGetProperty(propertyName, out var value))
-        {
-            return null;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.String => value.GetString(),
-            JsonValueKind.Number => value.GetRawText(),
-            JsonValueKind.True => bool.TrueString,
-            JsonValueKind.False => bool.FalseString,
-            _ => null
-        };
     }
 
     private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string probeId, string key, string? value)
@@ -353,7 +336,15 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         var api = context.KubernetesApiBase ?? new Uri($"https://{host}:{port}");
-        using var client = new HttpClient(new HttpClientHandler { ServerCertificateCustomValidationCallback = (_, _, _, _) => true }) { BaseAddress = api, Timeout = context.Timeout };
+        if (string.Equals(api.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+        {
+            var tlsVerification = context.KubernetesTlsVerificationMode == KubernetesTlsVerificationMode.Strict
+                ? "strict"
+                : "compatibility-skip-validation";
+            evidence.Add(new EvidenceItem(Id, "api.tls.verification", tlsVerification));
+        }
+
+        using var client = new HttpClient(CreateHttpClientHandler(context.KubernetesTlsVerificationMode)) { BaseAddress = api, Timeout = context.Timeout };
         var token = await File.ReadAllTextAsync(tokenPath, context.CancellationToken).ConfigureAwait(false);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.Trim());
 
@@ -376,6 +367,17 @@ internal sealed class KubernetesProbe : IProbe
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static HttpClientHandler CreateHttpClientHandler(KubernetesTlsVerificationMode tlsVerificationMode)
+    {
+        var handler = new HttpClientHandler();
+        if (tlsVerificationMode == KubernetesTlsVerificationMode.Compatibility)
+        {
+            handler.ServerCertificateCustomValidationCallback = (_, _, _, _) => true;
+        }
+
+        return handler;
     }
 
     private async Task ProbeNodeInfoAsync(HttpClient client, List<EvidenceItem> evidence, string podJson, CancellationToken ct)
@@ -412,12 +414,12 @@ internal sealed class KubernetesProbe : IProbe
             return;
         }
 
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.osImage", GetString(nodeInfo, "osImage"));
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kernelVersion", GetString(nodeInfo, "kernelVersion"));
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.operatingSystem", GetString(nodeInfo, "operatingSystem"));
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.architecture", GetString(nodeInfo, "architecture"));
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.containerRuntimeVersion", GetString(nodeInfo, "containerRuntimeVersion"));
-        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kubeletVersion", GetString(nodeInfo, "kubeletVersion"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.osImage", JsonHelper.GetString(nodeInfo, "osImage"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kernelVersion", JsonHelper.GetString(nodeInfo, "kernelVersion"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.operatingSystem", JsonHelper.GetString(nodeInfo, "operatingSystem"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.architecture", JsonHelper.GetString(nodeInfo, "architecture"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.containerRuntimeVersion", JsonHelper.GetString(nodeInfo, "containerRuntimeVersion"));
+        AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kubeletVersion", JsonHelper.GetString(nodeInfo, "kubeletVersion"));
     }
 
     private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
@@ -426,23 +428,6 @@ internal sealed class KubernetesProbe : IProbe
         {
             evidence.Add(new EvidenceItem(Id, key, value.Trim()));
         }
-    }
-
-    private static string? GetString(JsonElement element, string propertyName)
-    {
-        if (!element.TryGetProperty(propertyName, out var value))
-        {
-            return null;
-        }
-
-        return value.ValueKind switch
-        {
-            JsonValueKind.String => value.GetString(),
-            JsonValueKind.Number => value.GetRawText(),
-            JsonValueKind.True => bool.TrueString,
-            JsonValueKind.False => bool.FalseString,
-            _ => null
-        };
     }
 }
 
@@ -454,88 +439,49 @@ internal sealed class CloudMetadataProbe : IProbe
     {
         var sw = Stopwatch.StartNew();
         var evidence = new List<EvidenceItem>();
-
-        // ECS
         var ecs = Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4") ?? Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI");
-        if (!string.IsNullOrWhiteSpace(ecs))
+
+        var ecsBase = string.IsNullOrWhiteSpace(ecs)
+            ? null
+            : new Uri(ecs.EndsWith("/", StringComparison.Ordinal) ? ecs : ecs + '/');
+        var awsBase = context.AwsImdsBase ?? new Uri("http://169.254.169.254");
+        var azureBase = context.AzureImdsBase ?? new Uri("http://169.254.169.254");
+        var gcpBase = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal");
+        var ociBase = context.OciMetadataBase ?? new Uri("http://169.254.169.254");
+        var baseAddresses = new List<Uri> { awsBase, azureBase, gcpBase, ociBase };
+        if (ecsBase is not null)
         {
-            using var ecsClient = new HttpClient { BaseAddress = new Uri(ecs.EndsWith('/') ? ecs : ecs + '/'), Timeout = context.Timeout };
-            foreach (var p in new[] { "", "task", "stats" })
-            {
-                var r = await HttpProbe.GetAsync(ecsClient, p, ct: context.CancellationToken).ConfigureAwait(false);
-                evidence.Add(new EvidenceItem(Id, $"ecs.{p}.outcome", r.outcome.ToString()));
-            }
+            baseAddresses.Add(ecsBase);
         }
 
-        // AWS IMDSv2 safe
-        using (var aws = new HttpClient { BaseAddress = context.AwsImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
-        {
-            try
-            {
-                using var tokenReq = new HttpRequestMessage(HttpMethod.Put, "/latest/api/token");
-                tokenReq.Headers.Add("X-aws-ec2-metadata-token-ttl-seconds", "60");
-                using var tokenResp = await aws.SendAsync(tokenReq, context.CancellationToken).ConfigureAwait(false);
-                var tok = await tokenResp.Content.ReadAsStringAsync(context.CancellationToken).ConfigureAwait(false);
-                if (tokenResp.IsSuccessStatusCode)
-                {
-                    var headers = new Dictionary<string, string> { ["X-aws-ec2-metadata-token"] = tok };
-                    var idDoc = await HttpProbe.GetAsync(aws, "/latest/dynamic/instance-identity/document", headers, context.CancellationToken).ConfigureAwait(false);
-                    evidence.Add(new EvidenceItem(Id, "aws.imds.identity.outcome", idDoc.outcome.ToString()));
-                    if (idDoc.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(idDoc.body))
-                    {
-                        AddAwsEvidence(evidence, idDoc.body!);
-                    }
-                }
-            }
-            catch { }
-        }
+        var clientPool = CreateClientPool(baseAddresses, context.Timeout);
 
-        // Azure IMDS
-        using (var az = new HttpClient { BaseAddress = context.AzureImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
+        try
         {
-            var azr = await HttpProbe.GetAsync(az, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", azr.outcome.ToString()));
-            if (azr.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(azr.body))
+            var probeTasks = new List<Task<IReadOnlyList<EvidenceItem>>>
             {
-                AddAzureEvidence(evidence, azr.body!);
+                ProbeAwsAsync(GetClient(clientPool, awsBase), context.CancellationToken),
+                ProbeAzureAsync(GetClient(clientPool, azureBase), context.CancellationToken),
+                ProbeGcpAsync(GetClient(clientPool, gcpBase), context.CancellationToken),
+                ProbeOciAsync(GetClient(clientPool, ociBase), context.CancellationToken)
+            };
+
+            if (ecsBase is not null)
+            {
+                probeTasks.Insert(0, ProbeEcsAsync(GetClient(clientPool, ecsBase), context.CancellationToken));
+            }
+
+            var providerEvidence = await Task.WhenAll(probeTasks).ConfigureAwait(false);
+            foreach (var items in providerEvidence)
+            {
+                evidence.AddRange(items);
             }
         }
-
-        // GCP metadata
-        using (var gcp = new HttpClient { BaseAddress = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal"), Timeout = context.Timeout })
+        finally
         {
-            var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
-            var machineType = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/machine-type", headers, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
-            if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
+            foreach (var client in clientPool.Values)
             {
-                AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
-                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
-            }
-
-            var zone = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/zone", headers, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
-            if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
-            {
-                var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
-                AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
-                var lastDash = zoneValue.LastIndexOf('-');
-                AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
-                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
-            }
-
-            var gcpOutcome = machineType.outcome == ProbeOutcome.Success || zone.outcome == ProbeOutcome.Success ? ProbeOutcome.Success : zone.outcome;
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gcpOutcome.ToString()));
-        }
-
-        // OCI metadata
-        using (var oci = new HttpClient { BaseAddress = context.OciMetadataBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
-        {
-            var or = await HttpProbe.GetAsync(oci, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", or.outcome.ToString()));
-            if (or.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(or.body))
-            {
-                AddOciEvidence(evidence, or.body!);
+                client.Dispose();
             }
         }
 
@@ -548,6 +494,137 @@ internal sealed class CloudMetadataProbe : IProbe
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static IReadOnlyDictionary<string, HttpClient> CreateClientPool(IEnumerable<Uri> baseAddresses, TimeSpan timeout)
+    {
+        var clients = new Dictionary<string, HttpClient>(StringComparer.OrdinalIgnoreCase);
+        foreach (var baseAddress in baseAddresses)
+        {
+            var normalized = NormalizeBaseAddress(baseAddress);
+            if (!clients.ContainsKey(normalized.AbsoluteUri))
+            {
+                clients[normalized.AbsoluteUri] = new HttpClient { BaseAddress = normalized, Timeout = timeout };
+            }
+        }
+
+        return clients;
+    }
+
+    private static HttpClient GetClient(IReadOnlyDictionary<string, HttpClient> clientPool, Uri baseAddress)
+        => clientPool[NormalizeBaseAddress(baseAddress).AbsoluteUri];
+
+    private static Uri NormalizeBaseAddress(Uri baseAddress)
+    {
+        var builder = new UriBuilder(baseAddress);
+        if (string.IsNullOrEmpty(builder.Path))
+        {
+            builder.Path = "/";
+        }
+        else if (!builder.Path.EndsWith("/", StringComparison.Ordinal))
+        {
+            builder.Path += "/";
+        }
+
+        return builder.Uri;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeEcsAsync(HttpClient ecsClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        foreach (var path in new[] { "", "task", "stats" })
+        {
+            var result = await HttpProbe.GetAsync(ecsClient, path, ct: cancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, $"ecs.{path}.outcome", result.outcome.ToString()));
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeAwsAsync(HttpClient awsClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        try
+        {
+            using var tokenReq = new HttpRequestMessage(HttpMethod.Put, "/latest/api/token");
+            tokenReq.Headers.Add("X-aws-ec2-metadata-token-ttl-seconds", "60");
+            using var tokenResp = await awsClient.SendAsync(tokenReq, cancellationToken).ConfigureAwait(false);
+            var token = await tokenResp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!tokenResp.IsSuccessStatusCode)
+            {
+                return evidence;
+            }
+
+            var headers = new Dictionary<string, string> { ["X-aws-ec2-metadata-token"] = token };
+            var identity = await HttpProbe.GetAsync(awsClient, "/latest/dynamic/instance-identity/document", headers, cancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, "aws.imds.identity.outcome", identity.outcome.ToString()));
+            if (identity.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(identity.body))
+            {
+                AddAwsEvidence(evidence, identity.body!);
+            }
+        }
+        catch
+        {
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeAzureAsync(HttpClient azureClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var result = await HttpProbe.GetAsync(azureClient, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, cancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", result.outcome.ToString()));
+        if (result.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(result.body))
+        {
+            AddAzureEvidence(evidence, result.body!);
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeGcpAsync(HttpClient gcpClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
+        var machineTypeTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/machine-type", headers, cancellationToken);
+        var zoneTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/zone", headers, cancellationToken);
+
+        var machineType = await machineTypeTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
+        if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
+        {
+            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var zone = await zoneTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
+        if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
+        {
+            var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
+            AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
+            var lastDash = zoneValue.LastIndexOf('-');
+            AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var gcpOutcome = machineType.outcome == ProbeOutcome.Success || zone.outcome == ProbeOutcome.Success ? ProbeOutcome.Success : zone.outcome;
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gcpOutcome.ToString()));
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeOciAsync(HttpClient ociClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var result = await HttpProbe.GetAsync(ociClient, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, cancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", result.outcome.ToString()));
+        if (result.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(result.body))
+        {
+            AddOciEvidence(evidence, result.body!);
+        }
+
+        return evidence;
     }
 
     private void AddAwsEvidence(List<EvidenceItem> evidence, string body)

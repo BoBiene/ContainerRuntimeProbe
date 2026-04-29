@@ -56,6 +56,17 @@ public sealed class SecuritySandboxProbeTests
     }
 
     [Fact]
+    public async Task SecuritySandboxProbe_EmitsSelinuxEnforceOutcomeEvidence()
+    {
+        var probe = new SecuritySandboxProbe();
+        var ctx = new ProbeContext(TimeSpan.FromSeconds(2), false, null, null, null, null, null, null, CancellationToken.None);
+
+        var result = await probe.ExecuteAsync(ctx);
+
+        Assert.Contains(result.Evidence, e => e.Key == "selinux.enforce.outcome");
+    }
+
+    [Fact]
     public async Task SecuritySandboxProbe_OnLinuxWithProcStatus_HasSecurityFields()
     {
         // This test is Linux-only; on /proc-less systems the outcome will be Unavailable
@@ -99,5 +110,24 @@ public sealed class SecuritySandboxProbeTests
         // security-sandbox probe owns those keys
         var sandboxEvidence = report.Probes.FirstOrDefault(p => p.ProbeId == "security-sandbox")?.Evidence ?? [];
         Assert.Contains(sandboxEvidence, e => e.Key == "proc.self.status.outcome");
+    }
+
+    [Theory]
+    [InlineData("system_u:system_r:container_t:s0", true)]
+    [InlineData("system_u:system_r:container_t:s0:c123,c456", true)]
+    [InlineData("docker-default", false)]
+    [InlineData("profile:child", false)]
+    public void LooksLikeSelinuxContext_UsesStructuredContextShape(string attr, bool expected)
+    {
+        Assert.Equal(expected, SecuritySandboxProbe.LooksLikeSelinuxContext(attr));
+    }
+
+    [Theory]
+    [InlineData("system_u:system_r:container_t:s0", "selinux.context")]
+    [InlineData("profile:child", "apparmor.profile")]
+    [InlineData("docker-default (enforce)", "apparmor.profile")]
+    public void ClassifyCurrentAttrKey_UsesStructuredClassification(string attr, string expectedKey)
+    {
+        Assert.Equal(expectedKey, SecuritySandboxProbe.ClassifyCurrentAttrKey(attr));
     }
 }

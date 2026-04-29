@@ -82,6 +82,9 @@ internal sealed class EnvironmentProbe : IProbe
 internal sealed class ProcFilesProbe : IProbe
 {
     public string Id => "proc-files";
+    private readonly IReadOnlyList<string> _files;
+    private readonly Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> _readFileAsync;
+
     private static readonly string[] Files =
     [
         "/proc/1/cgroup", "/proc/self/cgroup",
@@ -95,6 +98,16 @@ internal sealed class ProcFilesProbe : IProbe
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
 
+    public ProcFilesProbe() : this(Files, ProbeIo.ReadFileAsync) { }
+
+    internal ProcFilesProbe(
+        IReadOnlyList<string> files,
+        Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync)
+    {
+        _files = files;
+        _readFileAsync = readFileAsync;
+    }
+
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
     {
         var sw = Stopwatch.StartNew();
@@ -106,13 +119,14 @@ internal sealed class ProcFilesProbe : IProbe
         string? kernelOsRelease = null;
         string? kernelOsType = null;
         string? kernelVersion = null;
+        var readTasks = _files.ToDictionary(file => file, file => _readFileAsync(file, context.Timeout, context.CancellationToken));
 
-        foreach (var file in Files)
+        foreach (var file in _files)
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
 
-            var (outcome, text, msg) = await ProbeIo.ReadFileAsync(file, context.Timeout, context.CancellationToken).ConfigureAwait(false);
+            var (outcome, text, msg) = await readTasks[file].ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
             {
                 if (outcome != ProbeOutcome.Unavailable)
@@ -309,6 +323,7 @@ internal sealed class SecuritySandboxProbe : IProbe
     {
         var sw = Stopwatch.StartNew();
         var evidence = new List<EvidenceItem>();
+        var selinuxMounted = Directory.Exists("/sys/fs/selinux");
 
         // /proc/self/status: Seccomp, NoNewPrivs, CapEff, CapBnd, CapPrm
         var (statusOc, statusText, _) = await ProbeIo.ReadFileAsync("/proc/self/status", context.Timeout, context.CancellationToken).ConfigureAwait(false);
@@ -334,15 +349,29 @@ internal sealed class SecuritySandboxProbe : IProbe
         if (attrOc == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(attrText))
         {
             var attr = attrText.Trim('\n', '\0', ' ');
-            // SELinux context contains ':' separators; AppArmor is a plain label or "unconfined"
-            var key = attr.Contains(':') ? "selinux.context" : "apparmor.profile";
-            evidence.Add(new EvidenceItem(Id, key, attr));
+            evidence.Add(new EvidenceItem(Id, ClassifyCurrentAttrKey(attr), attr));
         }
 
         // /sys/fs/selinux: directory existence indicates SELinux is mounted
-        evidence.Add(new EvidenceItem(Id, "selinux.mount.present", Directory.Exists("/sys/fs/selinux").ToString()));
+        evidence.Add(new EvidenceItem(Id, "selinux.mount.present", selinuxMounted.ToString()));
+
+        var (selinuxEnforceOutcome, selinuxEnforceText, _) = await ProbeIo.ReadFileAsync("/sys/fs/selinux/enforce", context.Timeout, context.CancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "selinux.enforce.outcome", selinuxEnforceOutcome.ToString()));
+        if (selinuxEnforceOutcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(selinuxEnforceText))
+        {
+            evidence.Add(new EvidenceItem(Id, "selinux.enforce", selinuxEnforceText.Trim()));
+        }
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static string ClassifyCurrentAttrKey(string attr)
+        => LooksLikeSelinuxContext(attr) ? "selinux.context" : "apparmor.profile";
+
+    internal static bool LooksLikeSelinuxContext(string attr)
+    {
+        var parts = attr.Split(':', StringSplitOptions.None | StringSplitOptions.TrimEntries);
+        return parts.Length >= 4 && parts.All(part => !string.IsNullOrWhiteSpace(part));
     }
 }
