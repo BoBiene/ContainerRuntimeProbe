@@ -44,7 +44,7 @@ All high priority issues resolved. ✅
 - [x] **9. Shared JSON helper** — the duplicate `GetString(JsonElement, string)` logic now lives in a shared internal `JsonHelper`.
 - [x] **10. Cross-OS unit-test matrix** — `ci.yml` now runs the main build-and-test job on Ubuntu, Windows, and macOS.
 - [x] **11. TODO backlog refreshed** — this file now tracks the current review backlog instead of reporting `None known`.
-- [ ] **12. Stronger smoke/integration fixtures** — integration coverage still needs more real-world fixture-driven cases.
+- [x] **12. Stronger smoke/integration fixtures** — `SmokeIntegrationTests` now exercises real sample-report fixtures for proc, mountinfo, os-release, and WSL2-specific signals.
 
 ### Carry-Over
 
