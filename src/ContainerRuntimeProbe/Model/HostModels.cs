@@ -36,6 +36,13 @@ public enum OperatingSystemFamily
     RancherOS,
     Talos,
     ContainerOptimizedOS,
+    CoreOS,
+    NixOS,
+    VoidLinux,
+    Gentoo,
+    OpenEuler,
+    ClearLinux,
+    Embedded,
     WindowsServer,
     WindowsNanoServer,
     WindowsServerCore
