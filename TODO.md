@@ -28,7 +28,7 @@ All high priority issues resolved. ✅
 ### Critical
 
 - [x] **1. Parallel probe execution** — `ContainerRuntimeProbeEngine.RunAsync` now runs the selected probe set concurrently while preserving report order.
-- [ ] **2. Shared IMDS client/pooling** — AWS/Azure/OCI defaults still fan out to separate clients for `169.254.169.254`.
+- [x] **2. Shared IMDS client/pooling** — `CloudMetadataProbe` now reuses one client per normalized base URI and fans out provider metadata requests concurrently.
 - [x] **3. Kubernetes TLS mode** — default remains compatibility-first so in-cluster probing just works, but the report now emits `KUBERNETES_TLS_VALIDATION_SKIPPED` and the CLI/library can switch to strict TLS validation.
 
 ### Medium

@@ -473,88 +473,49 @@ internal sealed class CloudMetadataProbe : IProbe
     {
         var sw = Stopwatch.StartNew();
         var evidence = new List<EvidenceItem>();
-
-        // ECS
         var ecs = Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI_V4") ?? Environment.GetEnvironmentVariable("ECS_CONTAINER_METADATA_URI");
-        if (!string.IsNullOrWhiteSpace(ecs))
+
+        var ecsBase = string.IsNullOrWhiteSpace(ecs)
+            ? null
+            : new Uri(ecs.EndsWith("/", StringComparison.Ordinal) ? ecs : ecs + '/');
+        var awsBase = context.AwsImdsBase ?? new Uri("http://169.254.169.254");
+        var azureBase = context.AzureImdsBase ?? new Uri("http://169.254.169.254");
+        var gcpBase = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal");
+        var ociBase = context.OciMetadataBase ?? new Uri("http://169.254.169.254");
+        var baseAddresses = new List<Uri> { awsBase, azureBase, gcpBase, ociBase };
+        if (ecsBase is not null)
         {
-            using var ecsClient = new HttpClient { BaseAddress = new Uri(ecs.EndsWith('/') ? ecs : ecs + '/'), Timeout = context.Timeout };
-            foreach (var p in new[] { "", "task", "stats" })
-            {
-                var r = await HttpProbe.GetAsync(ecsClient, p, ct: context.CancellationToken).ConfigureAwait(false);
-                evidence.Add(new EvidenceItem(Id, $"ecs.{p}.outcome", r.outcome.ToString()));
-            }
+            baseAddresses.Add(ecsBase);
         }
 
-        // AWS IMDSv2 safe
-        using (var aws = new HttpClient { BaseAddress = context.AwsImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
-        {
-            try
-            {
-                using var tokenReq = new HttpRequestMessage(HttpMethod.Put, "/latest/api/token");
-                tokenReq.Headers.Add("X-aws-ec2-metadata-token-ttl-seconds", "60");
-                using var tokenResp = await aws.SendAsync(tokenReq, context.CancellationToken).ConfigureAwait(false);
-                var tok = await tokenResp.Content.ReadAsStringAsync(context.CancellationToken).ConfigureAwait(false);
-                if (tokenResp.IsSuccessStatusCode)
-                {
-                    var headers = new Dictionary<string, string> { ["X-aws-ec2-metadata-token"] = tok };
-                    var idDoc = await HttpProbe.GetAsync(aws, "/latest/dynamic/instance-identity/document", headers, context.CancellationToken).ConfigureAwait(false);
-                    evidence.Add(new EvidenceItem(Id, "aws.imds.identity.outcome", idDoc.outcome.ToString()));
-                    if (idDoc.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(idDoc.body))
-                    {
-                        AddAwsEvidence(evidence, idDoc.body!);
-                    }
-                }
-            }
-            catch { }
-        }
+        var clientPool = CreateClientPool(baseAddresses, context.Timeout);
 
-        // Azure IMDS
-        using (var az = new HttpClient { BaseAddress = context.AzureImdsBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
+        try
         {
-            var azr = await HttpProbe.GetAsync(az, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", azr.outcome.ToString()));
-            if (azr.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(azr.body))
+            var probeTasks = new List<Task<IReadOnlyList<EvidenceItem>>>
             {
-                AddAzureEvidence(evidence, azr.body!);
+                ProbeAwsAsync(GetClient(clientPool, awsBase), context.CancellationToken),
+                ProbeAzureAsync(GetClient(clientPool, azureBase), context.CancellationToken),
+                ProbeGcpAsync(GetClient(clientPool, gcpBase), context.CancellationToken),
+                ProbeOciAsync(GetClient(clientPool, ociBase), context.CancellationToken)
+            };
+
+            if (ecsBase is not null)
+            {
+                probeTasks.Insert(0, ProbeEcsAsync(GetClient(clientPool, ecsBase), context.CancellationToken));
+            }
+
+            var providerEvidence = await Task.WhenAll(probeTasks).ConfigureAwait(false);
+            foreach (var items in providerEvidence)
+            {
+                evidence.AddRange(items);
             }
         }
-
-        // GCP metadata
-        using (var gcp = new HttpClient { BaseAddress = context.GcpMetadataBase ?? new Uri("http://metadata.google.internal"), Timeout = context.Timeout })
+        finally
         {
-            var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
-            var machineType = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/machine-type", headers, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
-            if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
+            foreach (var client in clientPool.Values)
             {
-                AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
-                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
-            }
-
-            var zone = await HttpProbe.GetAsync(gcp, "/computeMetadata/v1/instance/zone", headers, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
-            if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
-            {
-                var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
-                AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
-                var lastDash = zoneValue.LastIndexOf('-');
-                AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
-                evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
-            }
-
-            var gcpOutcome = machineType.outcome == ProbeOutcome.Success || zone.outcome == ProbeOutcome.Success ? ProbeOutcome.Success : zone.outcome;
-            evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gcpOutcome.ToString()));
-        }
-
-        // OCI metadata
-        using (var oci = new HttpClient { BaseAddress = context.OciMetadataBase ?? new Uri("http://169.254.169.254"), Timeout = context.Timeout })
-        {
-            var or = await HttpProbe.GetAsync(oci, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, context.CancellationToken).ConfigureAwait(false);
-            evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", or.outcome.ToString()));
-            if (or.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(or.body))
-            {
-                AddOciEvidence(evidence, or.body!);
+                client.Dispose();
             }
         }
 
@@ -567,6 +528,137 @@ internal sealed class CloudMetadataProbe : IProbe
 
         sw.Stop();
         return new ProbeResult(Id, ProbeOutcome.Success, evidence, Duration: sw.Elapsed);
+    }
+
+    internal static IReadOnlyDictionary<string, HttpClient> CreateClientPool(IEnumerable<Uri> baseAddresses, TimeSpan timeout)
+    {
+        var clients = new Dictionary<string, HttpClient>(StringComparer.OrdinalIgnoreCase);
+        foreach (var baseAddress in baseAddresses)
+        {
+            var normalized = NormalizeBaseAddress(baseAddress);
+            if (!clients.ContainsKey(normalized.AbsoluteUri))
+            {
+                clients[normalized.AbsoluteUri] = new HttpClient { BaseAddress = normalized, Timeout = timeout };
+            }
+        }
+
+        return clients;
+    }
+
+    private static HttpClient GetClient(IReadOnlyDictionary<string, HttpClient> clientPool, Uri baseAddress)
+        => clientPool[NormalizeBaseAddress(baseAddress).AbsoluteUri];
+
+    private static Uri NormalizeBaseAddress(Uri baseAddress)
+    {
+        var builder = new UriBuilder(baseAddress);
+        if (string.IsNullOrEmpty(builder.Path))
+        {
+            builder.Path = "/";
+        }
+        else if (!builder.Path.EndsWith("/", StringComparison.Ordinal))
+        {
+            builder.Path += "/";
+        }
+
+        return builder.Uri;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeEcsAsync(HttpClient ecsClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        foreach (var path in new[] { "", "task", "stats" })
+        {
+            var result = await HttpProbe.GetAsync(ecsClient, path, ct: cancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, $"ecs.{path}.outcome", result.outcome.ToString()));
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeAwsAsync(HttpClient awsClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        try
+        {
+            using var tokenReq = new HttpRequestMessage(HttpMethod.Put, "/latest/api/token");
+            tokenReq.Headers.Add("X-aws-ec2-metadata-token-ttl-seconds", "60");
+            using var tokenResp = await awsClient.SendAsync(tokenReq, cancellationToken).ConfigureAwait(false);
+            var token = await tokenResp.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!tokenResp.IsSuccessStatusCode)
+            {
+                return evidence;
+            }
+
+            var headers = new Dictionary<string, string> { ["X-aws-ec2-metadata-token"] = token };
+            var identity = await HttpProbe.GetAsync(awsClient, "/latest/dynamic/instance-identity/document", headers, cancellationToken).ConfigureAwait(false);
+            evidence.Add(new EvidenceItem(Id, "aws.imds.identity.outcome", identity.outcome.ToString()));
+            if (identity.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(identity.body))
+            {
+                AddAwsEvidence(evidence, identity.body!);
+            }
+        }
+        catch
+        {
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeAzureAsync(HttpClient azureClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var result = await HttpProbe.GetAsync(azureClient, "/metadata/instance?api-version=2021-02-01", new() { ["Metadata"] = "true" }, cancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "azure.imds.outcome", result.outcome.ToString()));
+        if (result.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(result.body))
+        {
+            AddAzureEvidence(evidence, result.body!);
+        }
+
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeGcpAsync(HttpClient gcpClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
+        var machineTypeTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/machine-type", headers, cancellationToken);
+        var zoneTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/zone", headers, cancellationToken);
+
+        var machineType = await machineTypeTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
+        if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
+        {
+            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var zone = await zoneTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
+        if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
+        {
+            var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
+            AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
+            var lastDash = zoneValue.LastIndexOf('-');
+            AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var gcpOutcome = machineType.outcome == ProbeOutcome.Success || zone.outcome == ProbeOutcome.Success ? ProbeOutcome.Success : zone.outcome;
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.outcome", gcpOutcome.ToString()));
+        return evidence;
+    }
+
+    private async Task<IReadOnlyList<EvidenceItem>> ProbeOciAsync(HttpClient ociClient, CancellationToken cancellationToken)
+    {
+        var evidence = new List<EvidenceItem>();
+        var result = await HttpProbe.GetAsync(ociClient, "/opc/v2/instance/", new() { ["Authorization"] = "Bearer Oracle" }, cancellationToken).ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "oci.metadata.outcome", result.outcome.ToString()));
+        if (result.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(result.body))
+        {
+            AddOciEvidence(evidence, result.body!);
+        }
+
+        return evidence;
     }
 
     private void AddAwsEvidence(List<EvidenceItem> evidence, string body)
