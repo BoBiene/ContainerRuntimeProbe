@@ -116,46 +116,24 @@ For Portainer, deploy this as a stack.
 
 ### Kubernetes
 
-Use this Job to print the runtime report:
+Checked-in manifests live in `kubernetes/`:
 
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: container-runtime-probe
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: container-runtime-probe
-          image: ghcr.io/bobiene/containerruntimeprobe:preview
-          imagePullPolicy: Always
-```
+- `kubernetes/job.yaml`: prints the full runtime report
+- `kubernetes/job-url.yaml`: prints only the prefilled GitHub issue URL
+- `kubernetes/run-test.ps1`: applies the job, waits, and prints logs
 
-URL-only variant:
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: container-runtime-probe-url
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: container-runtime-probe
-          image: ghcr.io/bobiene/containerruntimeprobe:preview
-          imagePullPolicy: Always
-          args: ["sample", "--url-only"]
-```
-
-Apply and inspect logs:
+Apply and inspect logs manually:
 
 ```bash
-kubectl apply -f probe-job.yaml
+kubectl apply -f kubernetes/job.yaml
 kubectl logs job/container-runtime-probe
+```
+
+PowerShell helper:
+
+```powershell
+.\kubernetes\run-test.ps1
+.\kubernetes\run-test.ps1 -Mode UrlOnly
 ```
 
 ### Other runtimes
