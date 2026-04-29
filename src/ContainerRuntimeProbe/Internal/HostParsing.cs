@@ -29,8 +29,15 @@ internal sealed record ParsedKernelInfo(
     string? Name,
     string? Release,
     string? Version,
-    string? Compiler,
+    ParsedKernelCompilerInfo? Compiler,
     KernelFlavor Flavor);
+
+internal sealed record ParsedKernelCompilerInfo(
+    string? Name,
+    string? Version,
+    string? Raw,
+    string? DistributionHint,
+    string? DistributionVersionHint);
 
 internal sealed record ParsedCpuInfo(
     int? LogicalProcessorCount,
@@ -137,7 +144,7 @@ internal static class HostParsing
         var release = CleanValue(osRelease);
         var name = CleanValue(osType);
         var version = CleanValue(kernelVersion);
-        var compiler = ExtractCompiler(procVersion);
+        var compiler = ExtractCompilerInfo(procVersion);
 
         if (!string.IsNullOrWhiteSpace(procVersion))
         {
@@ -156,6 +163,31 @@ internal static class HostParsing
             version,
             compiler,
             InferKernelFlavor($"{procVersion}\n{osRelease}\n{kernelVersion}"));
+    }
+
+    public static ParsedKernelCompilerInfo? ParseKernelCompiler(string? rawCompiler)
+    {
+        var raw = CleanValue(rawCompiler);
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var nameMatch = System.Text.RegularExpressions.Regex.Match(raw, @"^(?<name>[A-Za-z][A-Za-z0-9+._-]*)");
+        var versionMatch = System.Text.RegularExpressions.Regex.Match(raw, @"\b(?<version>\d+(?:\.\d+){1,3})\b");
+        var distributionMatch = System.Text.RegularExpressions.Regex.Match(raw, @"\((?<distribution>[^()]+)\)");
+        var distribution = distributionMatch.Success ? distributionMatch.Groups["distribution"].Value.Trim() : null;
+        var family = NormalizeOperatingSystemFamily(distribution, [], distribution, distribution);
+        var distributionHint = family is OperatingSystemFamily.Unknown or OperatingSystemFamily.Linux
+            ? null
+            : family.ToString();
+
+        return new ParsedKernelCompilerInfo(
+            nameMatch.Success ? nameMatch.Groups["name"].Value : null,
+            versionMatch.Success ? versionMatch.Groups["version"].Value : null,
+            raw,
+            distributionHint,
+            ExtractCompilerDistributionVersionHint(distribution, family));
     }
 
     public static ParsedCpuInfo ParseCpuInfo(string text)
@@ -252,7 +284,7 @@ internal static class HostParsing
             return "ARM";
         }
 
-        return string.IsNullOrWhiteSpace(vendor) ? "Unknown" : vendor!;
+        return string.IsNullOrWhiteSpace(vendor) ? KnownValues.Unknown : vendor!;
     }
 
     public static string? NormalizeModelName(string? modelName)
@@ -661,21 +693,40 @@ internal static class HostParsing
         return null;
     }
 
-    private static string? ExtractCompiler(string? procVersion)
+    private static ParsedKernelCompilerInfo? ExtractCompilerInfo(string? procVersion)
     {
         if (string.IsNullOrWhiteSpace(procVersion))
         {
             return null;
         }
 
-        var gccIndex = procVersion.IndexOf("gcc", StringComparison.OrdinalIgnoreCase);
-        if (gccIndex >= 0)
+        var compilerGroupStart = procVersion.IndexOf("(gcc", StringComparison.OrdinalIgnoreCase);
+        var compilerStart = compilerGroupStart >= 0 ? compilerGroupStart + 1 : procVersion.IndexOf("gcc", StringComparison.OrdinalIgnoreCase);
+        if (compilerStart < 0)
         {
-            var end = procVersion.IndexOf(')', gccIndex);
-            return end > gccIndex ? procVersion[gccIndex..end].Trim() : procVersion[gccIndex..].Trim();
+            return null;
         }
 
-        return null;
+        var depth = 0;
+        for (var index = compilerStart; index < procVersion.Length; index++)
+        {
+            var current = procVersion[index];
+            if (current == '(')
+            {
+                depth++;
+            }
+            else if (current == ')')
+            {
+                if (depth == 0)
+                {
+                    return ParseKernelCompiler(procVersion[compilerStart..index]);
+                }
+
+                depth--;
+            }
+        }
+
+        return ParseKernelCompiler(procVersion[compilerStart..]);
     }
 
     private static string? ExtractKernelVersion(string procVersion)
@@ -731,6 +782,31 @@ internal static class HostParsing
 
         var match = System.Text.RegularExpressions.Regex.Match(name, @"\d+(?:\.\d+){0,2}(?:\s*LTS)?");
         return match.Success ? match.Value.Trim() : null;
+    }
+
+    private static string? ExtractCompilerDistributionVersionHint(string? distribution, OperatingSystemFamily family)
+    {
+        if (string.IsNullOrWhiteSpace(distribution))
+        {
+            return null;
+        }
+
+        if (family == OperatingSystemFamily.Ubuntu)
+        {
+            var ubuntuRelease = System.Text.RegularExpressions.Regex.Match(distribution, @"~(?<release>\d{2}\.\d{2})(?:[.-]|$)");
+            if (ubuntuRelease.Success)
+            {
+                return ubuntuRelease.Groups["release"].Value;
+            }
+
+            ubuntuRelease = System.Text.RegularExpressions.Regex.Match(distribution, @"\bUbuntu\s+(?<release>\d{2}\.\d{2})(?:[.-]|\b)");
+            if (ubuntuRelease.Success)
+            {
+                return ubuntuRelease.Groups["release"].Value;
+            }
+        }
+
+        return null;
     }
 
     internal static bool ContainsWsl2Signal(string? value)

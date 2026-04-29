@@ -140,6 +140,6 @@ internal static class VendorDetection
             return Make("IoTEdge", iotedgeScore, iotedgeReasons.ToArray());
         }
 
-        return Make("Unknown", 0, new ClassificationReason("No vendor-specific proofs", []));
+        return Make(KnownValues.Unknown, 0, new ClassificationReason("No vendor-specific proofs", []));
     }
 }

@@ -49,7 +49,12 @@ internal static class TestReportFactory
                     ArchitectureKind.X64,
                     "x86_64",
                     KernelFlavor.Azure,
-                    "gcc-13",
+                       new KernelCompilerInfo(
+                           "gcc",
+                           "13.3.0",
+                           "gcc (Ubuntu 13.3.0) 13.3.0",
+                           "Ubuntu",
+                           null),
                     Confidence.Medium,
                     ["proc-files:kernel.release"]),
                 new RuntimeReportedHostOsInfo(
@@ -70,6 +75,9 @@ internal static class TestReportFactory
                 new UnderlyingHostOsInfo(
                     OperatingSystemFamily.Unknown,
                     null,
+                    null,
+                    null,
+                    UnderlyingHostOsSource.Unknown,
                     Confidence.Unknown,
                     []),
                 new HostHardwareInfo(

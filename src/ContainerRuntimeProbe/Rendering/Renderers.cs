@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Json;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Rendering;
@@ -14,13 +15,13 @@ public static class ReportRenderer
     /// <summary>Renders report as Markdown for support and diagnostics workflows.</summary>
     public static string ToMarkdown(ContainerRuntimeReport report)
     {
-        static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? "Unknown" : value;
-        static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? "Unknown" : value.ToString();
+        static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
+        static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
         static string FormatBytes(long? bytes)
         {
             if (bytes is null)
             {
-                return "Unknown";
+                return KnownValues.Unknown;
             }
 
             if (bytes < 1024)
@@ -77,6 +78,10 @@ public static class ReportRenderer
         sb.AppendLine($"- Name: {ValueOrUnknownString(report.Host.VisibleKernel.Name)}");
         sb.AppendLine($"- Release: {ValueOrUnknownString(report.Host.VisibleKernel.Release)}");
         sb.AppendLine($"- Flavor: {ValueOrUnknownEnum(report.Host.VisibleKernel.Flavor)}");
+        sb.AppendLine($"- Compiler: {FormatKernelBuild(report.Host.VisibleKernel.Compiler)}");
+        sb.AppendLine($"- Compiler Raw: {ValueOrUnknownString(report.Host.VisibleKernel.Compiler?.Raw)}");
+        sb.AppendLine($"- Compiler Distribution Hint: {ValueOrUnknownString(report.Host.VisibleKernel.Compiler?.DistributionHint)}");
+        sb.AppendLine($"- Compiler Distribution Version Hint: {ValueOrUnknownString(report.Host.VisibleKernel.Compiler?.DistributionVersionHint)}");
         sb.AppendLine($"- Architecture: {ValueOrUnknownString(report.Host.VisibleKernel.RawArchitecture ?? report.Host.VisibleKernel.Architecture.ToString())}");
         sb.AppendLine($"- Confidence: {report.Host.VisibleKernel.Confidence}");
         sb.AppendLine();
@@ -87,7 +92,10 @@ public static class ReportRenderer
         sb.AppendLine();
         sb.AppendLine("### Underlying Host OS");
         sb.AppendLine($"- Family: {ValueOrUnknownEnum(report.Host.UnderlyingHostOs.Family)}");
+        sb.AppendLine($"- Name: {ValueOrUnknownString(report.Host.UnderlyingHostOs.Name)}");
         sb.AppendLine($"- Version: {ValueOrUnknownString(report.Host.UnderlyingHostOs.Version)}");
+        sb.AppendLine($"- Version Hint: {ValueOrUnknownString(report.Host.UnderlyingHostOs.VersionHint)}");
+        sb.AppendLine($"- Source: {ValueOrUnknownEnum(report.Host.UnderlyingHostOs.Source)}");
         sb.AppendLine($"- Confidence: {report.Host.UnderlyingHostOs.Confidence}");
         sb.AppendLine();
         sb.AppendLine("### Runtime-Reported Host OS");
@@ -140,21 +148,6 @@ public static class ReportRenderer
         }
 
         return sb.ToString();
-
-        static string FormatHostOs(string? name, string? version)
-        {
-            if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(version))
-            {
-                return "Unknown";
-            }
-
-            if (string.IsNullOrWhiteSpace(version) || (name?.Contains(version, StringComparison.OrdinalIgnoreCase) ?? false))
-            {
-                return ValueOrUnknownString(name);
-            }
-
-            return $"{ValueOrUnknownString(name)} {version}";
-        }
     }
 
     /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
@@ -163,14 +156,14 @@ public static class ReportRenderer
         // ContainerOS: what /etc/os-release inside the container says.
         var containerOs = report.Host.ContainerImageOs.PrettyName
                        ?? report.Host.ContainerImageOs.Id
-                       ?? "Unknown";
+                       ?? KnownValues.Unknown;
 
         // HostOS: what the container runtime (Docker, etc.) reports as the host — no fallback to container OS.
         var runtimeHost = report.Host.RuntimeReportedHostOs;
         string hostOs;
         if (string.IsNullOrWhiteSpace(runtimeHost.Name))
         {
-            hostOs = "Unknown";
+            hostOs = KnownValues.Unknown;
         }
         else if (!string.IsNullOrWhiteSpace(runtimeHost.Version)
                  && !runtimeHost.Name.Contains(runtimeHost.Version, StringComparison.OrdinalIgnoreCase))
@@ -183,15 +176,20 @@ public static class ReportRenderer
         }
 
         var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
-            ? "Unknown"
-            : report.Host.UnderlyingHostOs.Family.ToString();
+            ? KnownValues.Unknown
+            : report.Host.UnderlyingHostOs.Name
+                ?? report.Host.UnderlyingHostOs.Family.ToString();
 
         var kernel = report.Host.VisibleKernel;
         var kernelVersion = string.IsNullOrWhiteSpace(kernel.Release)
-            ? (string.IsNullOrWhiteSpace(kernel.Name) ? "Unknown" : kernel.Name)
+            ? (string.IsNullOrWhiteSpace(kernel.Name) ? KnownValues.Unknown : kernel.Name)
             : string.IsNullOrWhiteSpace(kernel.Name)
                 ? kernel.Release
                 : $"{kernel.Name} {kernel.Release}";
+        var kernelBuild = FormatKernelBuild(kernel.Compiler);
+        var kernelHostOs = report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel
+            ? underlyingHost
+            : KnownValues.Unknown;
 
         // (key, value, optional confidence)
         (string Key, string Value, Confidence? Conf)[] fields =
@@ -208,6 +206,8 @@ public static class ReportRenderer
             ("Vendor",          report.Classification.PlatformVendor.Value,     report.Classification.PlatformVendor.Confidence),
             ("UnderlyingHost",  underlyingHost,                                 null),
             ("HostOS",          hostOs,                                         runtimeHost.Confidence),
+            ("HostKernelOS",    kernelHostOs,                                   report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),
+            ("KernelBuild",     kernelBuild,                                    kernel.Compiler is null ? null : Confidence.Low),
             ("ContainerOS",     containerOs,                                    null),
             ("Kernel",          kernelVersion,                                  kernel.Confidence),
             ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
@@ -234,4 +234,61 @@ public static class ReportRenderer
 
         return sb.ToString().TrimEnd();
     }
+
+    private static string FormatHostOs(string? name, string? version)
+    {
+        if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(version))
+        {
+            return KnownValues.Unknown;
+        }
+
+        if (string.IsNullOrWhiteSpace(version) || (name?.Contains(version, StringComparison.OrdinalIgnoreCase) ?? false))
+        {
+            return string.IsNullOrWhiteSpace(name) ? KnownValues.Unknown : name;
+        }
+
+        return $"{name} {version}";
+    }
+
+    private static string FormatKernelBuild(KernelCompilerInfo? compiler)
+    {
+        if (compiler is null)
+        {
+            return KnownValues.Unknown;
+        }
+
+        var tool = JoinNonEmpty(compiler.Name, compiler.Version);
+        var hint = FormatCompilerHint(compiler);
+        if (!string.IsNullOrWhiteSpace(tool) && !string.IsNullOrWhiteSpace(hint))
+        {
+            return $"{tool} ({hint})";
+        }
+
+        if (!string.IsNullOrWhiteSpace(tool))
+        {
+            return tool;
+        }
+
+        if (!string.IsNullOrWhiteSpace(hint))
+        {
+            return hint;
+        }
+
+        return string.IsNullOrWhiteSpace(compiler.Raw) ? KnownValues.Unknown : compiler.Raw;
+    }
+
+    private static string? FormatCompilerHint(KernelCompilerInfo compiler)
+    {
+        if (string.IsNullOrWhiteSpace(compiler.DistributionHint))
+        {
+            return null;
+        }
+
+        return string.IsNullOrWhiteSpace(compiler.DistributionVersionHint)
+            ? $"{compiler.DistributionHint} toolchain hint"
+            : $"{compiler.DistributionHint} {compiler.DistributionVersionHint} toolchain hint";
+    }
+
+    private static string JoinNonEmpty(params string?[] values)
+        => string.Join(' ', values.Where(value => !string.IsNullOrWhiteSpace(value)));
 }

@@ -102,7 +102,7 @@ internal static class Classifier
             ? Make("True", containerScore, containerReasons.ToArray())
             : containerEvidenceAvailable
                 ? MakeWithConfidence("False", Confidence.High, new ClassificationReason("No container markers detected in marker files, cgroup paths, or mountinfo", new[] { "/.dockerenv", "/proc/self/cgroup", "/proc/self/mountinfo" }))
-                : MakeWithConfidence("Unknown", Confidence.Unknown, new ClassificationReason("Container markers were not available", Array.Empty<string>()));
+                : MakeWithConfidence(KnownValues.Unknown, Confidence.Unknown, new ClassificationReason("Container markers were not available", Array.Empty<string>()));
 
         // ── Virtualization / Host / Environment ────────────────────────────────
         var virtualizationReasons = new List<ClassificationReason>();
@@ -165,7 +165,7 @@ internal static class Classifier
                 ? Make("Appliance", applianceScore, applianceReasons.ToArray())
                 : kernelMajor is >= 5
                     ? MakeWithConfidence("StandardLinux", osId is null ? Confidence.Medium : Confidence.High, new ClassificationReason("Modern kernel and userspace do not show appliance mismatch signals", new[] { "kernel.release", "os.id", "os.version_id" }))
-                    : MakeWithConfidence("Unknown", Confidence.Low, new ClassificationReason("Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance", new[] { "kernel.release", "os.version_id", "kernel.compiler" }));
+                    : MakeWithConfidence(KnownValues.Unknown, Confidence.Low, new ClassificationReason("Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance", new[] { "kernel.release", "os.version_id", "kernel.compiler" }));
 
         var environmentReasons = new List<ClassificationReason>();
         var metadataSuccess = e.Where(IsCloudMetadataSuccess).ToArray();
@@ -198,7 +198,7 @@ internal static class Classifier
 
             return onPremScore >= 4
                 ? Make("OnPrem", onPremScore, environmentReasons.ToArray())
-                : MakeWithConfidence("Unknown", onPremScore > 0 ? Confidence.Low : Confidence.Unknown, environmentReasons.Count == 0 ? [new ClassificationReason("No cloud metadata success and no strong on-prem corroboration", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome", "cpu.model_name", "dns-search" })] : environmentReasons.ToArray());
+                : MakeWithConfidence(KnownValues.Unknown, onPremScore > 0 ? Confidence.Low : Confidence.Unknown, environmentReasons.Count == 0 ? [new ClassificationReason("No cloud metadata success and no strong on-prem corroboration", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome", "cpu.model_name", "dns-search" })] : environmentReasons.ToArray());
         }
 
         // ── ContainerRuntime ─────────────────────────────────────────────────────
@@ -226,12 +226,12 @@ internal static class Classifier
 
         var runtime = runtimeScore.OrderByDescending(x => x.Value).FirstOrDefault();
         var runtimeClass = runtime.Key is null
-            ? Make("Unknown", 0, new ClassificationReason("No runtime evidence", Array.Empty<string>()))
+            ? Make(KnownValues.Unknown, 0, new ClassificationReason("No runtime evidence", Array.Empty<string>()))
             : Make(runtime.Key, runtime.Value, (runtimeReasons.TryGetValue(runtime.Key, out var rtReasons) ? rtReasons : new List<ClassificationReason>()).ToArray());
 
         // ── RuntimeApi ───────────────────────────────────────────────────────────
         var runtimeApiScore = 0;
-        var runtimeApiName = "Unknown";
+        var runtimeApiName = KnownValues.Unknown;
         if (e.Any(x => x.Key.Contains("/libpod/_ping", StringComparison.OrdinalIgnoreCase) && x.Value == "Success")) { runtimeApiScore = 8; runtimeApiName = "PodmanLibpodApi"; }
         else if (e.Any(x => x.Key.Contains("/_ping", StringComparison.OrdinalIgnoreCase) && x.Key.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) && x.Value == "Success")) { runtimeApiScore = 7; runtimeApiName = "DockerEngineApi"; }
         else if (e.Any(x => x.Key.Contains("/libpod/", StringComparison.OrdinalIgnoreCase))) { runtimeApiScore = 5; runtimeApiName = "PodmanLibpodApi"; }
@@ -250,12 +250,12 @@ internal static class Classifier
         if (e.Any(x => x.Key.Contains("compose", StringComparison.OrdinalIgnoreCase))) AddOrch("DockerCompose", 5);
         var orch = orchScore.OrderByDescending(x => x.Value).FirstOrDefault();
         var orchestrator = orch.Key is null
-            ? Make("Unknown", 0, new ClassificationReason("No orchestrator markers", Array.Empty<string>()))
+            ? Make(KnownValues.Unknown, 0, new ClassificationReason("No orchestrator markers", Array.Empty<string>()))
             : Make(orch.Key, orch.Value, new ClassificationReason("Weighted orchestrator score", new[] { "environment", "kubernetes", "cloud-metadata" }));
 
         // ── CloudProvider ────────────────────────────────────────────────────────
         // Only attribute cloud when there is positive (Success) evidence, not just probe-ran evidence.
-        var cloud = "Unknown";
+        var cloud = KnownValues.Unknown;
         var cloudScore = 0;
 
         // AWS: IMDS token+identity succeeded, or ECS metadata succeeded, or explicit AWS env

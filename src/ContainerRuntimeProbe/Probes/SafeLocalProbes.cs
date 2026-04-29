@@ -270,7 +270,12 @@ internal sealed class ProcFilesProbe : IProbe
         AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
         AddEvidenceIfPresent(evidence, "kernel.release", kernel.Release);
         AddEvidenceIfPresent(evidence, "kernel.version", kernel.Version);
-        AddEvidenceIfPresent(evidence, "kernel.compiler", kernel.Compiler);
+        AddEvidenceIfPresent(evidence, "kernel.compiler", kernel.Compiler?.Raw);
+        AddEvidenceIfPresent(evidence, "kernel.compiler.raw", kernel.Compiler?.Raw);
+        AddEvidenceIfPresent(evidence, "kernel.compiler.name", kernel.Compiler?.Name);
+        AddEvidenceIfPresent(evidence, "kernel.compiler.version", kernel.Compiler?.Version);
+        AddEvidenceIfPresent(evidence, "kernel.compiler.distribution_hint", kernel.Compiler?.DistributionHint);
+        AddEvidenceIfPresent(evidence, "kernel.compiler.distribution_version_hint", kernel.Compiler?.DistributionVersionHint);
         if (kernel.Flavor != KernelFlavor.Unknown)
         {
             evidence.Add(new EvidenceItem(Id, "kernel.flavor", kernel.Flavor.ToString()));
