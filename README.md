@@ -62,6 +62,9 @@ Run the probe:
 docker run --pull=always --rm ghcr.io/bobiene/containerruntimeprobe:preview
 ```
 
+Published container images target `linux/amd64`, `linux/arm64`, and `linux/arm/v7`.
+`linux/arm64` Native AOT is only enabled when the image is built on a real arm64 runner; standard CI builds publish arm64 as a trimmed self-contained binary instead. `linux/386` is not currently published.
+
 Generate only the prefilled GitHub issue URL:
 
 ```bash
@@ -113,46 +116,24 @@ For Portainer, deploy this as a stack.
 
 ### Kubernetes
 
-Use this Job to print the runtime report:
+Checked-in manifests live in `kubernetes/`:
 
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: container-runtime-probe
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: container-runtime-probe
-          image: ghcr.io/bobiene/containerruntimeprobe:preview
-          imagePullPolicy: Always
-```
+- `kubernetes/job.yaml`: prints the full runtime report
+- `kubernetes/job-url.yaml`: prints only the prefilled GitHub issue URL
+- `kubernetes/run-test.ps1`: applies the job, waits, and prints logs
 
-URL-only variant:
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: container-runtime-probe-url
-spec:
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-        - name: container-runtime-probe
-          image: ghcr.io/bobiene/containerruntimeprobe:preview
-          imagePullPolicy: Always
-          args: ["sample", "--url-only"]
-```
-
-Apply and inspect logs:
+Apply and inspect logs manually:
 
 ```bash
-kubectl apply -f probe-job.yaml
+kubectl apply -f kubernetes/job.yaml
 kubectl logs job/container-runtime-probe
+```
+
+PowerShell helper:
+
+```powershell
+.\kubernetes\run-test.ps1
+.\kubernetes\run-test.ps1 -Mode UrlOnly
 ```
 
 ### Other runtimes

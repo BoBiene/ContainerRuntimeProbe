@@ -59,10 +59,18 @@ internal static class Classifier
                 return false;
             }
 
+            var normalizedDomain = dnsDomain.Trim().TrimEnd('.');
+            if (normalizedDomain.Equals("cluster.local", StringComparison.OrdinalIgnoreCase)
+                || normalizedDomain.EndsWith(".cluster.local", StringComparison.OrdinalIgnoreCase)
+                || normalizedDomain.Equals("dns.podman", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
             return DetectionMaps.HomeDnsSignals.Any(signal =>
                 string.Equals(signal, "lan", StringComparison.Ordinal)
-                    ? dnsDomain.Equals(signal, StringComparison.OrdinalIgnoreCase)
-                    : dnsDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
+                    ? normalizedDomain.Equals(signal, StringComparison.OrdinalIgnoreCase)
+                    : normalizedDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
         }
 
         static bool IsCorporateDns(string? dnsDomain)
@@ -114,6 +122,9 @@ internal static class Classifier
             && x.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true);
         if (hasDockerCgroupSignal) { containerScore += 3; containerReasons.Add(new("Cgroup contains docker path", new[] { "/proc/self/cgroup", "/proc/1/cgroup" })); }
         if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && string.Equals(x.Value, "overlay", StringComparison.OrdinalIgnoreCase))) { containerScore += 3; containerReasons.Add(new("Overlay mount detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
+        if (HasEnvKey(e, "KUBERNETES_SERVICE_HOST")) { containerScore += 2; containerReasons.Add(new("Kubernetes service environment detected", new[] { "KUBERNETES_SERVICE_HOST" })); }
+        if (e.Any(x => x.Key == "serviceaccount.token")) { containerScore += 3; containerReasons.Add(new("Kubernetes service account token mounted", new[] { "serviceaccount.token" })); }
+        if (e.Any(x => x.Key.Contains("mountinfo:signal", StringComparison.OrdinalIgnoreCase) && x.Value is "kubelet" or "kubernetes-serviceaccount")) { containerScore += 3; containerReasons.Add(new("Kubernetes mount signal detected", new[] { "/proc/self/mountinfo", "/proc/1/mountinfo" })); }
         var containerEvidenceAvailable =
             probes.Any(probe => probe.ProbeId == "marker-files")
             || probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success);
@@ -258,6 +269,7 @@ internal static class Classifier
         if (e.Any(x => x.Key.Contains("/libpod/", StringComparison.OrdinalIgnoreCase))) AddRuntime(ContainerRuntimeKind.Podman, 6, "Libpod API endpoint present", "runtime-api");
         if (e.Any(x => x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true && x.Key.EndsWith(":body", StringComparison.OrdinalIgnoreCase))) AddRuntime(ContainerRuntimeKind.Podman, 4, "Podman in API response body", "runtime-api");
         if (e.Any(x => x.Key == "socket.present" && x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true)) AddRuntime(ContainerRuntimeKind.Podman, 2, "Podman socket path present", "runtime-api");
+        if (e.Any(x => x.Key is "container" or "CONTAINER" && (x.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true || x.Value?.Contains("libpod", StringComparison.OrdinalIgnoreCase) == true))) AddRuntime(ContainerRuntimeKind.Podman, 4, "Environment reports Podman container runtime", "environment");
 
         // Docker: _ping on docker.sock or Docker in version body
         if (e.Any(x => x.Key.Contains("/_ping", StringComparison.OrdinalIgnoreCase) && x.Key.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) && x.Value == "Success")) AddRuntime(ContainerRuntimeKind.Docker, 6, "Docker /_ping succeeded", "runtime-api");

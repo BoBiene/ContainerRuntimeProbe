@@ -1,0 +1,13 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: container-runtime-probe-url
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: container-runtime-probe
+          image: ghcr.io/bobiene/containerruntimeprobe:preview
+          imagePullPolicy: Always
+          args: ["sample", "--url-only"]

@@ -67,6 +67,27 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_ClearKubernetesPodSignals_RaiseContainerizedConfidence()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "KUBERNETES_SERVICE_HOST", "10.96.0.1")
+            ]),
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "/proc/self/mountinfo:signal", "overlay"),
+                new EvidenceItem("proc-files", "/proc/self/mountinfo:signal", "kubelet"),
+                new EvidenceItem("proc-files", "/proc/self/mountinfo:signal", "kubernetes-serviceaccount")
+            ]),
+            new ProbeResult("kubernetes", ProbeOutcome.Success, [
+                new EvidenceItem("kubernetes", "serviceaccount.token", "present")
+            ])
+        ]);
+
+        Assert.Equal(ContainerizationKind.@True, report.IsContainerized.Value);
+        Assert.True(report.IsContainerized.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
     public void Classifier_DockerSocketPingSuccess_DockerHighConfidence()
     {
         var report = Classifier.Classify([
@@ -98,6 +119,21 @@ public sealed class ClassifierTests
         Assert.True(report.ContainerRuntime.Confidence >= Confidence.Medium);
         Assert.Equal(RuntimeApiKind.PodmanLibpodApi, report.RuntimeApi.Value);
         Assert.True(report.RuntimeApi.Confidence >= Confidence.High);
+    }
+
+    [Fact]
+    public void Classifier_PodmanEnvironmentHintWithoutRuntimeApi_DetectsPodmanRuntime()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "container", "podman")
+            ]),
+            new ProbeResult("runtime-api", ProbeOutcome.Unavailable, [])
+        ]);
+
+        Assert.Equal(ContainerRuntimeKind.Podman, report.ContainerRuntime.Value);
+        Assert.True(report.ContainerRuntime.Confidence >= Confidence.Low);
+        Assert.Equal(RuntimeApiKind.Unknown, report.RuntimeApi.Value);
     }
 
     // ── Orchestrator scenarios ───────────────────────────────────────────────
@@ -415,6 +451,26 @@ public sealed class ClassifierTests
         Assert.Equal(Confidence.High, report.Host.Type.Confidence);
         Assert.Equal(EnvironmentTypeKind.OnPrem, report.Environment.Type.Value);
         Assert.Equal(Confidence.Medium, report.Environment.Type.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_KubernetesClusterDns_DoesNotCountAsHomeNetworkSignal()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.model_name", "Intel Xeon Platinum 8370C"),
+                new EvidenceItem("proc-files", "dns-search", "default.svc.cluster.local"),
+                new EvidenceItem("proc-files", "dns-search", "svc.cluster.local"),
+                new EvidenceItem("proc-files", "dns-search", "cluster.local")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Unavailable"),
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Unavailable")
+            ])
+        ]);
+
+        Assert.Equal(EnvironmentTypeKind.Unknown, report.Environment.Type.Value);
+        Assert.Equal(Confidence.Low, report.Environment.Type.Confidence);
     }
 
     [Fact]
