@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Rendering;
@@ -161,33 +162,55 @@ public static class ReportRenderer
     }
 
     /// <summary>Renders a compact one-line textual summary.</summary>
+    /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
     public static string ToText(ContainerRuntimeReport report)
     {
         var hostName = report.Host.RuntimeReportedHostOs.Name ?? report.Host.ContainerImageOs.PrettyName ?? "Unknown";
         var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
             ? "Unknown"
             : report.Host.UnderlyingHostOs.Family.ToString();
-        
-        var toolInfo = report.ProbeToolInfo is not null 
-            ? $"ProbeToolVersion={report.ProbeToolInfo.Version}, " +
-              (string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommitHash) 
-                  ? "" 
-                  : $"GitCommit={report.ProbeToolInfo.GitCommitHash}, ")
-            : "";
 
-        return $"{toolInfo}" +
-               $"IsContainerized={report.Classification.IsContainerized.Value}, " +
-               $"Runtime={report.Classification.ContainerRuntime.Value}, " +
-               $"Virtualization={report.Classification.Virtualization.Value}, " +
-               $"HostFamily={report.Classification.Host.Family.Value}, " +
-               $"HostType={report.Classification.Host.Type.Value}, " +
-               $"Environment={report.Classification.Environment.Type.Value}, " +
-               $"RuntimeApi={report.Classification.RuntimeApi.Value}, " +
-               $"Orchestrator={report.Classification.Orchestrator.Value}, " +
-               $"Cloud={report.Classification.CloudProvider.Value}, " +
-               $"Vendor={report.Classification.PlatformVendor.Value}, " +
-               $"UnderlyingHost={underlyingHost}, " +
-               $"HostOS={hostName}, " +
-               $"HostFingerprint={(report.Host.Fingerprint?.Value ?? "disabled")}";
+        // (key, value, optional confidence)
+        (string Key, string Value, Confidence? Conf)[] fields =
+        [
+            ("IsContainerized", report.Classification.IsContainerized.Value,   report.Classification.IsContainerized.Confidence),
+            ("Runtime",         report.Classification.ContainerRuntime.Value,   report.Classification.ContainerRuntime.Confidence),
+            ("Virtualization",  report.Classification.Virtualization.Value,     report.Classification.Virtualization.Confidence),
+            ("HostFamily",      report.Classification.Host.Family.Value,        report.Classification.Host.Family.Confidence),
+            ("HostType",        report.Classification.Host.Type.Value,          report.Classification.Host.Type.Confidence),
+            ("Environment",     report.Classification.Environment.Type.Value,   report.Classification.Environment.Type.Confidence),
+            ("RuntimeApi",      report.Classification.RuntimeApi.Value,         report.Classification.RuntimeApi.Confidence),
+            ("Orchestrator",    report.Classification.Orchestrator.Value,       report.Classification.Orchestrator.Confidence),
+            ("Cloud",           report.Classification.CloudProvider.Value,      report.Classification.CloudProvider.Confidence),
+            ("Vendor",          report.Classification.PlatformVendor.Value,     report.Classification.PlatformVendor.Confidence),
+            ("UnderlyingHost",  underlyingHost,                                 null),
+            ("HostOS",          hostName,                                       null),
+            ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
+        ];
+
+        var maxKeyLen = fields.Max(f => f.Key.Length);
+        var sb = new StringBuilder();
+
+        if (report.ProbeToolInfo is not null)
+        {
+            // Shorten semver build-metadata hash to 7 chars for readability.
+            var ver = report.ProbeToolInfo.Version;
+            var plus = ver.IndexOf('+');
+            if (plus >= 0 && ver.Length - plus - 1 > 7)
+                ver = ver[..(plus + 8)];
+            var header = $"Container Runtime Report  v{ver}";
+            sb.AppendLine(header);
+            sb.AppendLine(new string('-', header.Length));
+        }
+
+        foreach (var (key, value, conf) in fields)
+        {
+            var confSuffix = conf is not null && conf != Confidence.Unknown
+                ? $"  [{conf}]"
+                : string.Empty;
+            sb.AppendLine($"{key.PadRight(maxKeyLen)} : {value}{confSuffix}");
+        }
+
+        return sb.ToString().TrimEnd();
     }
 }
