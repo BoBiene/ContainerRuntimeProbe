@@ -106,9 +106,19 @@ public static class ReportRenderer
         sb.AppendLine($"- Confidence: {report.Host.RuntimeReportedHostOs.Confidence}");
         sb.AppendLine();
         sb.AppendLine("### Host Hardware Signals");
+        sb.AppendLine($"- Architecture: {ValueOrUnknownString(report.Host.Hardware.RawArchitecture ?? report.Host.Hardware.Architecture.ToString())}");
         sb.AppendLine($"- CPU: {ValueOrUnknownString(report.Host.Hardware.Cpu.ModelName ?? report.Host.Hardware.Cpu.Family)}, {ValueOrUnknownString(report.Host.Hardware.Cpu.LogicalProcessorCount?.ToString())} logical processors");
         sb.AppendLine($"- Memory: {FormatBytes(report.Host.Hardware.Memory.MemTotalBytes)} visible, cgroup limit: {ValueOrUnknownString(report.Host.Hardware.Memory.CgroupMemoryLimitRaw ?? FormatBytes(report.Host.Hardware.Memory.CgroupMemoryLimitBytes))}");
         sb.AppendLine($"- Machine Type: {ValueOrUnknownString(report.Host.Hardware.CloudMachineType)}");
+        sb.AppendLine();
+        sb.AppendLine("### Platform / DMI");
+        sb.AppendLine($"- System Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor)}");
+        sb.AppendLine($"- Product Name: {ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName)}");
+        sb.AppendLine($"- Product Version: {ValueOrUnknownString(report.Host.Hardware.Dmi.ProductVersion)}");
+        sb.AppendLine($"- Board Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.BoardVendor)}");
+        sb.AppendLine($"- Board Name: {ValueOrUnknownString(report.Host.Hardware.Dmi.BoardName)}");
+        sb.AppendLine($"- BIOS Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.BiosVendor)}");
+        sb.AppendLine($"- Confidence: {report.Host.Hardware.Dmi.Confidence}");
         sb.AppendLine();
         sb.AppendLine("### Host Fingerprint");
         if (report.Host.Fingerprint is null)
@@ -154,6 +164,7 @@ public static class ReportRenderer
     public static string ToText(ContainerRuntimeReport report)
     {
         static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
+        static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
 
         // ContainerOS: what /etc/os-release inside the container says.
         var containerOs = report.Host.ContainerImageOs.PrettyName
@@ -206,6 +217,9 @@ public static class ReportRenderer
             ("Orchestrator",    ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value),       report.Classification.Orchestrator.Confidence),
             ("Cloud",           ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value),      report.Classification.CloudProvider.Confidence),
             ("Vendor",          ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value),     report.Classification.PlatformVendor.Confidence),
+            ("Architecture",    report.Host.Hardware.RawArchitecture ?? ValueOrUnknownEnum(report.Host.Hardware.Architecture), null),
+            ("HardwareVendor",  ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor),                        report.Host.Hardware.Dmi.Confidence),
+            ("ProductName",     ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName),                         report.Host.Hardware.Dmi.Confidence),
             ("UnderlyingHost",  underlyingHost,                                 null),
             ("HostOS",          hostOs,                                         runtimeHost.Confidence),
             ("HostKernelOS",    kernelHostOs,                                   report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),

@@ -207,9 +207,14 @@ public sealed class HostParsingAndReportingTests
 
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("### Virtualization", markdown);
+        Assert.Contains("### Platform / DMI", markdown);
+        Assert.Contains("- System Vendor: Microsoft Corporation", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
+        Assert.Contains("HardwareVendor", text);
+        Assert.Contains("Architecture", text);
         Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
     }
 

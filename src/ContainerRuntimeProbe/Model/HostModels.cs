@@ -221,12 +221,25 @@ public sealed record HostMemoryInfo(
     long? CgroupMemoryCurrentBytes,
     string? CgroupMemoryLimitRaw);
 
+/// <summary>Normalized public DMI / firmware platform details.</summary>
+public sealed record HostDmiInfo(
+    string? SystemVendor,
+    string? ProductName,
+    string? ProductVersion,
+    string? BoardVendor,
+    string? BoardName,
+    string? BiosVendor,
+    string? Modalias,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
 /// <summary>Normalized visible hardware summary.</summary>
 public sealed record HostHardwareInfo(
     ArchitectureKind Architecture,
     string? RawArchitecture,
     HostCpuInfo Cpu,
     HostMemoryInfo Memory,
+    HostDmiInfo Dmi,
     string? CloudMachineType);
 
 /// <summary>Single host fingerprint component.</summary>

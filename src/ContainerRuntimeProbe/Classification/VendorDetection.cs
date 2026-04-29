@@ -24,6 +24,11 @@ internal static class VendorDetection
     private static string? FirstValue(IEnumerable<EvidenceItem> ev, params string[] keys)
         => ev.FirstOrDefault(x => keys.Contains(x.Key, StringComparer.Ordinal))?.Value;
 
+    private static EvidenceItem? FirstByKeyPattern(IEnumerable<EvidenceItem> ev, string prefix, string suffix)
+        => ev.FirstOrDefault(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
+            && x.Key.EndsWith(suffix, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(x.Value));
+
     /// <summary>
     /// Evaluates all platform vendor signals and returns the best-matching vendor classification.
     /// Vendors are checked in priority order: Microsoft (WSL2) → Synology → Apple → Siemens/IoTEdge.
@@ -52,10 +57,20 @@ internal static class VendorDetection
         // and removed from OS name matching to require "synology" or "diskstation" instead.
         var synologyScore = 0;
         var synologyReasons = new List<ClassificationReason>();
-        var synoHwVersion = FirstValue(e, "kernel.syno_hw_version");
+        var publicHwVersion = FirstByKeyPattern(e, "kernel.", "_hw_version");
         var dmiSysVendor = FirstValue(e, "dmi.sys_vendor");
+        var dmiBoardVendor = FirstValue(e, "dmi.board_vendor");
         var dmiProductName = FirstValue(e, "dmi.product_name");
+        var dmiBoardName = FirstValue(e, "dmi.board_name");
         var dmiModalias = FirstValue(e, "dmi.modalias");
+        var synologyOsDetected = ContainsAny(osId, "synology")
+            || ContainsAny(osName, "synology", "diskstation")
+            || ContainsAny(prettyName, "synology", "diskstation");
+        var synologyVendorDetected = ContainsAny(dmiSysVendor, "synology")
+            || ContainsAny(dmiBoardVendor, "synology")
+            || ContainsAny(dmiModalias, "svnsynologyinc.");
+        var synologyProductDetected = ContainsAny(dmiProductName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station")
+            || ContainsAny(dmiBoardName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station");
 
         if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "Synology", StringComparison.OrdinalIgnoreCase)))
         {
@@ -63,30 +78,32 @@ internal static class VendorDetection
             synologyReasons.Add(new("Kernel flavor identified as Synology DSM", ["kernel.flavor"]));
         }
 
-        if (ContainsAny(osId, "synology")
-            || ContainsAny(osName, "synology", "diskstation")
-            || ContainsAny(prettyName, "synology", "diskstation"))
+        if (synologyOsDetected)
         {
             synologyScore += 2;
             synologyReasons.Add(new("OS release identifies Synology distribution", ["os.id", "os.name", "os.pretty_name"]));
         }
 
-        if (!string.IsNullOrWhiteSpace(synoHwVersion))
+        if (publicHwVersion is not null
+            && (publicHwVersion.Key.Contains("syno", StringComparison.OrdinalIgnoreCase)
+                || synologyOsDetected
+                || synologyVendorDetected
+                || synologyProductDetected))
         {
             synologyScore += 5;
-            synologyReasons.Add(new("Synology kernel sysctl exposed host hardware model", ["kernel.syno_hw_version"]));
+            synologyReasons.Add(new("Public kernel hardware-version sysctl exposed host hardware model", [publicHwVersion.Key]));
         }
 
-        if (ContainsAny(dmiSysVendor, "synology") || ContainsAny(dmiModalias, "svnsynologyinc."))
+        if (synologyVendorDetected)
         {
             synologyScore += 4;
-            synologyReasons.Add(new("DMI vendor identifies a Synology system", ["dmi.sys_vendor", "dmi.modalias"]));
+            synologyReasons.Add(new("DMI vendor identifies a Synology system", ["dmi.sys_vendor", "dmi.board_vendor", "dmi.modalias"]));
         }
 
-        if (ContainsAny(dmiProductName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station"))
+        if (synologyProductDetected)
         {
             synologyScore += 2;
-            synologyReasons.Add(new("DMI product name identifies a Synology appliance line", ["dmi.product_name"]));
+            synologyReasons.Add(new("DMI product name identifies a Synology appliance line", ["dmi.product_name", "dmi.board_name"]));
         }
 
         if (synologyScore >= 2)

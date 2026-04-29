@@ -267,11 +267,24 @@ internal static class HostReportBuilder
             GetNullableLong(evidence, "memory.cgroup.current_bytes"),
             GetValue(evidence, "memory.cgroup.limit_raw"));
 
+        var dmiReferences = GetEvidenceReferences(evidence, "dmi.");
+        var dmi = new HostDmiInfo(
+            GetValue(evidence, "dmi.sys_vendor"),
+            GetValue(evidence, "dmi.product_name"),
+            GetValue(evidence, "dmi.product_version"),
+            GetValue(evidence, "dmi.board_vendor"),
+            GetValue(evidence, "dmi.board_name"),
+            GetValue(evidence, "dmi.bios_vendor"),
+            GetValue(evidence, "dmi.modalias"),
+            dmiReferences.Count == 0 ? Confidence.Unknown : Confidence.High,
+            dmiReferences);
+
         return new HostHardwareInfo(
             HostParsing.NormalizeArchitecture(rawArchitecture),
             rawArchitecture,
             cpu,
             memory,
+            dmi,
             GetValue(evidence, "cloud.machine_type"));
     }
 

@@ -617,4 +617,20 @@ public sealed class ClassifierTests
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
         Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
     }
+
+    [Fact]
+    public void Classifier_GenericHwVersionAndBoardDmiSignals_DetectsSynologyVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.vendor_hw_version", "DS925+"),
+                new EvidenceItem("proc-files", "dmi.board_vendor", "Synology Inc."),
+                new EvidenceItem("proc-files", "dmi.board_name", "DiskStation"),
+                new EvidenceItem("proc-files", "kernel.release", "5.10.55+")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
 }

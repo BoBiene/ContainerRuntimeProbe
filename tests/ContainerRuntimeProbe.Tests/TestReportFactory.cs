@@ -85,6 +85,16 @@ internal static class TestReportFactory
                     "x86_64",
                     new HostCpuInfo(4, 4, "GenuineIntel", "Intel(R) Xeon(R)", "IntelXeon", "sha256:flags", 32, null, "max"),
                     new HostMemoryInfo(16L * 1024 * 1024 * 1024, null, null, "max"),
+                    new HostDmiInfo(
+                        "Microsoft Corporation",
+                        "Virtual Machine",
+                        "7.0",
+                        "Microsoft Corporation",
+                        "Virtual Machine",
+                        "American Megatrends Inc.",
+                        "dmi:bvnAmericanMegatrendsInc.:svnMicrosoftCorporation:pnVirtualMachine:",
+                        Confidence.High,
+                        ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_name"]),
                     "Standard_D4s_v5"),
                 new HostFingerprint(
                     "CRP-HOST-FP-v1",
