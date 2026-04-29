@@ -65,6 +65,25 @@ internal static class Classifier
                     : dnsDomain.EndsWith(signal, StringComparison.OrdinalIgnoreCase));
         }
 
+        static bool IsCorporateDns(string? dnsDomain)
+        {
+            if (string.IsNullOrWhiteSpace(dnsDomain) || IsHomeDns(dnsDomain))
+            {
+                return false;
+            }
+
+            if (!dnsDomain.Contains('.', StringComparison.Ordinal))
+            {
+                return false;
+            }
+
+            return !dnsDomain.EndsWith(".internal", StringComparison.OrdinalIgnoreCase)
+                && !dnsDomain.EndsWith(".localdomain", StringComparison.OrdinalIgnoreCase)
+                && !dnsDomain.EndsWith(".local", StringComparison.OrdinalIgnoreCase)
+                && !dnsDomain.Equals("internal", StringComparison.OrdinalIgnoreCase)
+                && !dnsDomain.Equals("localdomain", StringComparison.OrdinalIgnoreCase);
+        }
+
         static bool IsCustomCompiler(string? compiler, string? procVersion)
                 => ContainsAnySignal(compiler, DetectionMaps.CustomCompilerSignals)
                     || ContainsAnySignal(procVersion, DetectionMaps.CustomCompilerSignals);
@@ -178,7 +197,7 @@ internal static class Classifier
             var onPremScore = 0;
             if (probes.Any(probe => probe.ProbeId == "cloud-metadata"))
             {
-                onPremScore += 2;
+                onPremScore += 1;
                 environmentReasons.Add(new("No cloud metadata endpoint succeeded", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome" }));
             }
 
@@ -196,9 +215,33 @@ internal static class Classifier
                 environmentReasons.Add(new("DNS search domain looks like a home or LAN network", new[] { "dns-search" }));
             }
 
+            var corporateDnsSignals = GetValues(e, "dns-search").Where(IsCorporateDns).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (corporateDnsSignals.Length > 0)
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("DNS search domain looks like a managed corporate domain", new[] { "dns-search" }));
+            }
+
+            if (hostType.Value == HostTypeKind.Appliance)
+            {
+                onPremScore += 2;
+                environmentReasons.Add(new("Host signals indicate a non-cloud appliance-style system", new[] { "os.id", "kernel.release", "kernel.compiler" }));
+            }
+            else if (hostType.Value == HostTypeKind.StandardLinux && hostType.Confidence is Confidence.Medium or Confidence.High)
+            {
+                onPremScore += 1;
+                environmentReasons.Add(new("Host signals indicate a conventional Linux machine outside WSL2", new[] { "kernel.release", "os.id", "os.version_id" }));
+            }
+
+            if (e.Any(item => item.Key == "default-route-device"))
+            {
+                onPremScore += 1;
+                environmentReasons.Add(new("Default route device is visible from the host network stack", new[] { "default-route-device" }));
+            }
+
             return onPremScore >= 4
                 ? Make(EnvironmentTypeKind.OnPrem, onPremScore, environmentReasons.ToArray())
-                : MakeWithConfidence(EnvironmentTypeKind.Unknown, onPremScore > 0 ? Confidence.Low : Confidence.Unknown, environmentReasons.Count == 0 ? [new ClassificationReason("No cloud metadata success and no strong on-prem corroboration", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome", "cpu.model_name", "dns-search" })] : environmentReasons.ToArray());
+                : MakeWithConfidence(EnvironmentTypeKind.Unknown, onPremScore > 0 ? Confidence.Low : Confidence.Unknown, environmentReasons.Count == 0 ? [new ClassificationReason("No cloud metadata success and no strong on-prem corroboration", new[] { "aws.imds.identity.outcome", "azure.imds.outcome", "gcp.metadata.outcome", "oci.metadata.outcome", "cpu.model_name", "dns-search", "default-route-device", "kernel.release", "os.id" })] : environmentReasons.ToArray());
         }
 
         // ── ContainerRuntime ─────────────────────────────────────────────────────
