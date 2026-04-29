@@ -53,5 +53,6 @@ public sealed class DetectionMapsTests
         var parsed = HostParsing.ParseOsRelease(text);
 
         Assert.Equal(expectedFamily, parsed.Family);
+        Assert.NotNull(parsed.Id); // these fixtures all have an explicit ID field
     }
 }
