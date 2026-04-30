@@ -8,7 +8,10 @@
   - `/etc/hostname`, `/proc/sys/kernel/hostname`
   - `/etc/os-release`, `/usr/lib/os-release`
   - `/proc/version`, `/proc/sys/kernel/osrelease`, `/proc/sys/kernel/ostype`, `/proc/sys/kernel/version`
+  - public vendor kernel sysctls discovered conservatively under `/proc/sys/kernel/` for suffixes `*_hw_version`, `*_hw_revision`, `*_install_flag`
   - `/proc/cpuinfo`, `/sys/devices/system/cpu/{online,possible,present}`
+  - `/sys/class/dmi/id/{sys_vendor,product_name,product_family,product_version,board_vendor,board_name,chassis_vendor,bios_vendor,modalias}`
+  - `/proc/device-tree/{model,compatible}` and `/sys/firmware/devicetree/base/{model,compatible}` when publicly readable
   - `/proc/meminfo`, `/sys/fs/cgroup/memory*`, `/sys/fs/cgroup/cpu*`
   - `/proc/self/ns/*`
 - `security-sandbox`: `/proc/self/status` (Seccomp, NoNewPrivs, CapEff, CapBnd, CapPrm), `/proc/self/attr/current` (AppArmor/SELinux context), `/sys/fs/selinux` (SELinux mount presence)

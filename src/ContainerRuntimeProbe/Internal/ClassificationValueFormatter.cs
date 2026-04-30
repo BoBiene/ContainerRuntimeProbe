@@ -24,6 +24,12 @@ internal static class ClassificationValueFormatter
     public static string Format(VirtualizationClassificationKind value)
         => value switch
         {
+            VirtualizationClassificationKind.VirtualMachine => "Virtual Machine",
+            VirtualizationClassificationKind.HyperV => "Hyper-V",
+            VirtualizationClassificationKind.VMware => "VMware",
+            VirtualizationClassificationKind.VirtualBox => "VirtualBox",
+            VirtualizationClassificationKind.Xen => "Xen",
+            VirtualizationClassificationKind.Kvm => "KVM/QEMU",
             VirtualizationClassificationKind.WSL2 => "WSL2",
             VirtualizationClassificationKind.None => "None",
             _ => KnownValues.Unknown
@@ -59,7 +65,15 @@ internal static class ClassificationValueFormatter
     public static string Format(PlatformVendorKind value)
         => value switch
         {
+            PlatformVendorKind.Siemens => "Siemens",
             PlatformVendorKind.SiemensIndustrialEdge => "Siemens Industrial Edge",
+            PlatformVendorKind.Wago => "WAGO",
+            PlatformVendorKind.PhoenixContact => "Phoenix Contact",
+            PlatformVendorKind.BoschRexroth => "Bosch Rexroth",
+            PlatformVendorKind.SchneiderElectric => "Schneider Electric",
+            PlatformVendorKind.BAndR => "B&R",
+            PlatformVendorKind.Opto22 => "Opto 22",
+            PlatformVendorKind.Stratus => "Stratus",
             PlatformVendorKind.Unknown => KnownValues.Unknown,
             _ => value.ToString()
         };

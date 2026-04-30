@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Classification;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Internal;
@@ -14,7 +15,7 @@ internal static class HostReportBuilder
         var containerImageOs = BuildContainerImageOs(evidence, defaultArchitectureRaw);
         var visibleKernel = BuildVisibleKernel(evidence, defaultArchitectureRaw);
         var runtimeHostOs = BuildRuntimeReportedHostOs(evidence);
-        var virtualization = BuildVirtualization(evidence, visibleKernel);
+        var virtualization = BuildVirtualization(evidence);
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
@@ -162,46 +163,12 @@ internal static class HostReportBuilder
             selected.EvidenceReferences);
     }
 
-    private static VirtualizationInfo BuildVirtualization(IReadOnlyList<EvidenceItem> evidence, VisibleKernelInfo visibleKernel)
+    private static VirtualizationInfo BuildVirtualization(IReadOnlyList<EvidenceItem> evidence)
     {
-        var release = GetValue(evidence, "kernel.release");
-        var procVersion = GetValue(evidence, "/proc/version");
-        var evidenceReferences = new HashSet<string>(StringComparer.Ordinal);
-
-        if (visibleKernel.Flavor == KernelFlavor.WSL2)
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "kernel.flavor"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (HostParsing.ContainsWsl2Signal(release))
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "kernel.release"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (HostParsing.ContainsWsl2Signal(procVersion))
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "/proc/version"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (evidenceReferences.Count > 0)
-        {
-            return new VirtualizationInfo(
-                VirtualizationKind.WSL2,
-                "Microsoft",
-                Confidence.High,
-                evidenceReferences.OrderBy(value => value, StringComparer.Ordinal).ToArray());
-        }
-
-        return new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, []);
+        var match = VirtualizationDetection.Detect(evidence);
+        return match is null
+            ? new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, [])
+            : new VirtualizationInfo(match.Kind, match.PlatformVendor, match.Confidence, match.EvidenceReferences);
     }
 
     private static UnderlyingHostOsInfo BuildUnderlyingHostOs(RuntimeReportedHostOsInfo runtimeReportedHostOs, VirtualizationInfo virtualization, VisibleKernelInfo visibleKernel)
@@ -267,11 +234,34 @@ internal static class HostReportBuilder
             GetNullableLong(evidence, "memory.cgroup.current_bytes"),
             GetValue(evidence, "memory.cgroup.limit_raw"));
 
+        var dmiReferences = GetEvidenceReferences(evidence, "dmi.");
+        var dmi = new HostDmiInfo(
+            GetValue(evidence, "dmi.sys_vendor"),
+            GetValue(evidence, "dmi.product_name"),
+            GetValue(evidence, "dmi.product_family"),
+            GetValue(evidence, "dmi.product_version"),
+            GetValue(evidence, "dmi.board_vendor"),
+            GetValue(evidence, "dmi.board_name"),
+            GetValue(evidence, "dmi.chassis_vendor"),
+            GetValue(evidence, "dmi.bios_vendor"),
+            GetValue(evidence, "dmi.modalias"),
+            dmiReferences.Count == 0 ? Confidence.Unknown : Confidence.High,
+            dmiReferences);
+
+        var deviceTreeReferences = GetEvidenceReferences(evidence, "device_tree.");
+        var deviceTree = new HostDeviceTreeInfo(
+            GetValue(evidence, "device_tree.model"),
+            GetValue(evidence, "device_tree.compatible"),
+            deviceTreeReferences.Count == 0 ? Confidence.Unknown : Confidence.High,
+            deviceTreeReferences);
+
         return new HostHardwareInfo(
             HostParsing.NormalizeArchitecture(rawArchitecture),
             rawArchitecture,
             cpu,
             memory,
+            dmi,
+            deviceTree,
             GetValue(evidence, "cloud.machine_type"));
     }
 
@@ -322,7 +312,7 @@ internal static class HostReportBuilder
         }
 
         var excluded = new List<HostFingerprintComponent>();
-        AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "HOSTNAME");
+        AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "kernel.hostname", "HOSTNAME");
         AddExcludedIfPresent(evidence, excluded, "cpu.serial", "cpu.serial");
         AddExcludedIfPresent(evidence, excluded, "container.inspect", "container.inspect.status", "container.inspect.outcome");
         AddExcludedIfPresent(evidence, excluded, "cloud.project", "gcp.project_id");

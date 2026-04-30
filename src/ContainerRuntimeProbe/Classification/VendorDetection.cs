@@ -21,12 +21,48 @@ internal static class VendorDetection
         => !string.IsNullOrWhiteSpace(value)
            && fragments.Any(f => value.Contains(f, StringComparison.OrdinalIgnoreCase));
 
+    private static bool ContainsAny(string? value, IEnumerable<string> fragments)
+        => !string.IsNullOrWhiteSpace(value)
+           && fragments.Any(f => value.Contains(f, StringComparison.OrdinalIgnoreCase));
+
     private static string? FirstValue(IEnumerable<EvidenceItem> ev, params string[] keys)
         => ev.FirstOrDefault(x => keys.Contains(x.Key, StringComparer.Ordinal))?.Value;
 
+    private static EvidenceItem? FirstByKeyPattern(IEnumerable<EvidenceItem> ev, string prefix, string suffix)
+        => ev.FirstOrDefault(x => x.Key.StartsWith(prefix, StringComparison.Ordinal)
+            && x.Key.EndsWith(suffix, StringComparison.Ordinal)
+            && !string.IsNullOrWhiteSpace(x.Value));
+
+    private static (VendorCatalogEntry? entry, string[] matchedKeys) DetectCatalogPlatformVendor(
+        IReadOnlyList<EvidenceItem> evidence,
+        IReadOnlyList<VendorCatalogEntry> catalog)
+    {
+        var explicitEvidence = evidence
+            .Where(item => VendorCatalog.ExplicitHardwareEvidenceKeys.Contains(item.Key, StringComparer.Ordinal))
+            .Where(item => !string.IsNullOrWhiteSpace(item.Value))
+            .ToArray();
+
+        foreach (var entry in catalog)
+        {
+            var matchedKeys = explicitEvidence
+                .Where(item => entry.EvidenceKeys.Contains(item.Key, StringComparer.Ordinal))
+                .Where(item => ContainsAny(item.Value, entry.MatchFragments))
+                .Select(item => item.Key)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            if (matchedKeys.Length > 0)
+            {
+                return (entry, matchedKeys);
+            }
+        }
+
+        return (null, []);
+    }
+
     /// <summary>
     /// Evaluates all platform vendor signals and returns the best-matching vendor classification.
-    /// Vendors are checked in priority order: Microsoft (WSL2) → Synology → Apple → Siemens/IoTEdge.
+    /// Vendors are checked in priority order: Microsoft (WSL2) → Synology → Apple → verified hardware catalog → Siemens/IoTEdge.
     /// Each vendor requires a minimum score of 2 to prevent single-weak-signal false positives,
     /// except Microsoft (WSL2) which is a deterministic high-confidence signal.
     /// </summary>
@@ -52,6 +88,20 @@ internal static class VendorDetection
         // and removed from OS name matching to require "synology" or "diskstation" instead.
         var synologyScore = 0;
         var synologyReasons = new List<ClassificationReason>();
+        var publicHwVersion = FirstByKeyPattern(e, "kernel.", "_hw_version");
+        var dmiSysVendor = FirstValue(e, "dmi.sys_vendor");
+        var dmiBoardVendor = FirstValue(e, "dmi.board_vendor");
+        var dmiProductName = FirstValue(e, "dmi.product_name");
+        var dmiBoardName = FirstValue(e, "dmi.board_name");
+        var dmiModalias = FirstValue(e, "dmi.modalias");
+        var synologyOsDetected = ContainsAny(osId, "synology")
+            || ContainsAny(osName, "synology", "diskstation")
+            || ContainsAny(prettyName, "synology", "diskstation");
+        var synologyVendorDetected = ContainsAny(dmiSysVendor, "synology")
+            || ContainsAny(dmiBoardVendor, "synology")
+            || ContainsAny(dmiModalias, "svnsynologyinc.");
+        var synologyProductDetected = ContainsAny(dmiProductName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station")
+            || ContainsAny(dmiBoardName, "diskstation", "rackstation", "flashstation", "disk station", "rack station", "flash station");
 
         if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "Synology", StringComparison.OrdinalIgnoreCase)))
         {
@@ -59,12 +109,32 @@ internal static class VendorDetection
             synologyReasons.Add(new("Kernel flavor identified as Synology DSM", ["kernel.flavor"]));
         }
 
-        if (ContainsAny(osId, "synology")
-            || ContainsAny(osName, "synology", "diskstation")
-            || ContainsAny(prettyName, "synology", "diskstation"))
+        if (synologyOsDetected)
         {
             synologyScore += 2;
             synologyReasons.Add(new("OS release identifies Synology distribution", ["os.id", "os.name", "os.pretty_name"]));
+        }
+
+        if (publicHwVersion is not null
+            && (publicHwVersion.Key.Contains("syno", StringComparison.OrdinalIgnoreCase)
+                || synologyOsDetected
+                || synologyVendorDetected
+                || synologyProductDetected))
+        {
+            synologyScore += 5;
+            synologyReasons.Add(new("Public kernel hardware-version sysctl exposed host hardware model", [publicHwVersion.Key]));
+        }
+
+        if (synologyVendorDetected)
+        {
+            synologyScore += 4;
+            synologyReasons.Add(new("DMI vendor identifies a Synology system", ["dmi.sys_vendor", "dmi.board_vendor", "dmi.modalias"]));
+        }
+
+        if (synologyProductDetected)
+        {
+            synologyScore += 2;
+            synologyReasons.Add(new("DMI product name identifies a Synology appliance line", ["dmi.product_name", "dmi.board_name"]));
         }
 
         if (synologyScore >= 2)
@@ -105,6 +175,26 @@ internal static class VendorDetection
         if (appleScore >= 2)
             return Make(PlatformVendorKind.Apple, appleScore, appleReasons.ToArray());
 
+        var (catalogMatch, explicitVendorKeys) = DetectCatalogPlatformVendor(e, VendorCatalog.RuntimeActiveHardwareVendors);
+        var explicitPlatformVendor = catalogMatch?.Vendor ?? PlatformVendorKind.Unknown;
+
+        if (explicitPlatformVendor != PlatformVendorKind.Unknown && explicitPlatformVendor != PlatformVendorKind.Siemens)
+        {
+            var otScore = explicitVendorKeys.Length >= 2 ? 8 : 5;
+            return Make(explicitPlatformVendor, otScore, new ClassificationReason("DMI or device-tree identifies the underlying OT hardware vendor", explicitVendorKeys));
+        }
+
+        if (explicitPlatformVendor == PlatformVendorKind.Siemens)
+        {
+            var siemensScore = explicitVendorKeys.Length >= 2 ? 8 : 5;
+            var siemensReason = new ClassificationReason("DMI or device-tree identifies Siemens hardware", explicitVendorKeys);
+
+            if (!e.Any(x => x.Key.Contains("iotedge", StringComparison.OrdinalIgnoreCase)))
+            {
+                return Make(PlatformVendorKind.Siemens, siemensScore, siemensReason);
+            }
+        }
+
         // ── Siemens Industrial Edge / IoTEdge ─────────────────────────────────
         var iotedgeScore = 0;
         var iotedgeReasons = new List<ClassificationReason>();
@@ -117,16 +207,23 @@ internal static class VendorDetection
 
         if (iotedgeScore > 0)
         {
-            var hasSiemens = e.Any(x =>
-                x.Key.Contains("siemens", StringComparison.OrdinalIgnoreCase) ||
-                x.Key.Contains("industrial", StringComparison.OrdinalIgnoreCase) ||
-                x.Value?.Contains("siemens", StringComparison.OrdinalIgnoreCase) == true);
+            var hasSiemens = explicitPlatformVendor == PlatformVendorKind.Siemens
+                || e.Any(x =>
+                    x.Key.Contains("siemens", StringComparison.OrdinalIgnoreCase) ||
+                    x.Key.Contains("industrial", StringComparison.OrdinalIgnoreCase) ||
+                    x.Value?.Contains("siemens", StringComparison.OrdinalIgnoreCase) == true);
 
             if (hasSiemens)
             {
                 var ieScore = iotedgeScore + 4;
                 var ieReasons = new List<ClassificationReason>(iotedgeReasons)
                     { new("Siemens-specific signals corroborate IoTEdge", ["environment", "runtime-api"]) };
+
+                if (explicitVendorKeys.Length > 0)
+                {
+                    ieScore += explicitVendorKeys.Length >= 2 ? 3 : 2;
+                    ieReasons.Add(new("DMI or device-tree corroborates Siemens hardware", explicitVendorKeys));
+                }
 
                 if (e.Any(x => x.Key.Contains("compose", StringComparison.OrdinalIgnoreCase)))
                 {

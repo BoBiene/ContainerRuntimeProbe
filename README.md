@@ -24,6 +24,11 @@ Container environments often look similar at first glance but differ in importan
 
 Broad real-world samples help improve classification rules, reduce false assumptions, and document edge cases that do not appear in clean lab environments.
 
+Documentation:
+[docs/probe-catalog.md](docs/probe-catalog.md)
+[docs/report-format.md](docs/report-format.md)
+[docs/hardware-vendors.md](docs/hardware-vendors.md)
+
 ## What is collected
 
 The probe collects runtime evidence that helps classify the container environment, including:
@@ -215,6 +220,8 @@ Signals are combined across kernel markers, runtime APIs, orchestrator hints, an
 The fastest path is to run the container with `sample --url-only`, open the generated URL, review the prefilled issue body, and submit it.
 
 If possible, also keep the full JSON output for debugging or attach a reviewed redacted report to the issue. Real samples are useful even when classification is incomplete or partially wrong.
+
+Checked-in real-world sample reports live under `docker/real-world-samples/`.
 
 ## Development
 

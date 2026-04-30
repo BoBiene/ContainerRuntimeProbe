@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
@@ -84,28 +85,106 @@ internal sealed class ProcFilesProbe : IProbe
     public string Id => "proc-files";
     private readonly IReadOnlyList<string> _files;
     private readonly Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> _readFileAsync;
+    private readonly Func<string, IEnumerable<string>> _enumerateFiles;
+
+    private const string KernelSysctlDirectory = "/proc/sys/kernel";
+
+    private static readonly string[] BaseKernelSysctlFiles =
+    [
+        "/proc/sys/kernel/hostname",
+        "/proc/sys/kernel/osrelease",
+        "/proc/sys/kernel/ostype",
+        "/proc/sys/kernel/version"
+    ];
+
+    private static readonly string[] PublicKernelSysctlSuffixes =
+    [
+        "_hw_version",
+        "_hw_revision",
+        "_install_flag"
+    ];
+
+    private static readonly string[] PublicDmiFiles =
+    [
+        "/sys/class/dmi/id/sys_vendor",
+        "/sys/class/dmi/id/product_name",
+        "/sys/class/dmi/id/product_family",
+        "/sys/class/dmi/id/product_version",
+        "/sys/class/dmi/id/board_vendor",
+        "/sys/class/dmi/id/board_name",
+        "/sys/class/dmi/id/chassis_vendor",
+        "/sys/class/dmi/id/bios_vendor",
+        "/sys/class/dmi/id/modalias"
+    ];
+
+    private static readonly string[] PublicDeviceTreeFiles =
+    [
+        "/proc/device-tree/model",
+        "/proc/device-tree/compatible",
+        "/sys/firmware/devicetree/base/model",
+        "/sys/firmware/devicetree/base/compatible"
+    ];
+
+    private static readonly string[] VirtualizationFiles =
+    [
+        "/proc/modules",
+        "/sys/hypervisor/type"
+    ];
+
+    private static readonly string[] InterestingVirtualizationModules =
+    [
+        "hv_vmbus",
+        "hv_utils",
+        "hv_storvsc",
+        "hv_netvsc",
+        "hv_balloon",
+        "hid_hyperv",
+        "vmw_vmci",
+        "vmxnet3",
+        "vmw_pvscsi",
+        "vmw_balloon",
+        "vmwgfx",
+        "vboxguest",
+        "vboxsf",
+        "vboxvideo",
+        "xen_evtchn",
+        "xen_blkfront",
+        "xen_netfront"
+    ];
+
+    private const string VmbusDevicesDirectory = "/sys/bus/vmbus/devices";
 
     private static readonly string[] Files =
     [
         "/proc/1/cgroup", "/proc/self/cgroup",
         "/proc/self/mountinfo", "/proc/1/mountinfo",
         "/proc/net/route", "/etc/resolv.conf",
-        "/etc/hostname", "/proc/sys/kernel/hostname",
+        "/etc/hostname",
         "/etc/os-release", "/usr/lib/os-release",
-        "/proc/version", "/proc/sys/kernel/osrelease", "/proc/sys/kernel/ostype", "/proc/sys/kernel/version",
+        "/proc/version",
+        .. BaseKernelSysctlFiles,
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
+        .. PublicDmiFiles,
+        .. PublicDeviceTreeFiles,
+        .. VirtualizationFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
 
-    public ProcFilesProbe() : this(Files, ProbeIo.ReadFileAsync) { }
+    private readonly Func<string, bool> _directoryExists;
+
+    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.Exists) { }
 
     internal ProcFilesProbe(
         IReadOnlyList<string> files,
-        Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync)
+        Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync,
+        Func<string, IEnumerable<string>>? enumerateFiles = null,
+        Func<string, bool>? directoryExists = null)
     {
         _files = files;
         _readFileAsync = readFileAsync;
+        _enumerateFiles = enumerateFiles ?? Directory.EnumerateFiles;
+        _directoryExists = directoryExists ?? Directory.Exists;
     }
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -119,9 +198,10 @@ internal sealed class ProcFilesProbe : IProbe
         string? kernelOsRelease = null;
         string? kernelOsType = null;
         string? kernelVersion = null;
-        var readTasks = _files.ToDictionary(file => file, file => _readFileAsync(file, context.Timeout, context.CancellationToken));
+        var files = _files.Count == 0 ? BuildDefaultFiles() : _files;
+        var readTasks = files.ToDictionary(file => file, file => _readFileAsync(file, context.Timeout, context.CancellationToken));
 
-        foreach (var file in _files)
+        foreach (var file in files)
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
@@ -194,6 +274,22 @@ internal sealed class ProcFilesProbe : IProbe
                 kernelVersion = text;
                 AddEvidenceIfPresent(evidence, "kernel.version", text?.Trim());
             }
+            else if (file.StartsWith("/proc/sys/kernel/", StringComparison.Ordinal))
+            {
+                var key = file.Split('/').Last();
+                if (string.Equals(key, "hostname", StringComparison.Ordinal))
+                {
+                    var value = text?.Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        evidence.Add(new EvidenceItem(Id, "kernel.hostname", context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                    }
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"kernel.{key}", text?.Trim());
+                }
+            }
             else if (file == "/proc/cpuinfo")
             {
                 var cpu = HostParsing.ParseCpuInfo(text!);
@@ -206,6 +302,7 @@ internal sealed class ProcFilesProbe : IProbe
                 AddEvidenceIfPresent(evidence, "cpu.microcode", cpu.Microcode);
                 AddEvidenceIfPresent(evidence, "cpu.flags.count", cpu.FlagsCount?.ToString());
                 AddEvidenceIfPresent(evidence, "cpu.flags.hash", cpu.FlagsHash is null ? null : $"sha256:{cpu.FlagsHash}");
+                AddEvidenceIfPresent(evidence, "cpu.flag.hypervisor", cpu.HypervisorPresent?.ToString());
                 AddEvidenceIfPresent(evidence, "cpu.hardware", cpu.Hardware);
                 AddEvidenceIfPresent(evidence, "cpu.revision", cpu.Revision);
                 var sanitizedSerial = HostParsing.SanitizeCpuSerial(cpu.Serial, context.IncludeSensitive);
@@ -219,6 +316,37 @@ internal sealed class ProcFilesProbe : IProbe
                 var key = file.Split('/').Last();
                 AddEvidenceIfPresent(evidence, $"cpu.{key}", text?.Trim());
                 AddEvidenceIfPresent(evidence, $"cpu.{key}.count", HostParsing.ParseCpuRangeCount(text)?.ToString());
+            }
+            else if (file.StartsWith("/sys/class/dmi/id/", StringComparison.Ordinal))
+            {
+                var key = file.Split('/').Last();
+                AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+            }
+            else if (file == "/proc/modules")
+            {
+                var loadedModules = text!
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToHashSet(StringComparer.Ordinal);
+
+                foreach (var moduleName in InterestingVirtualizationModules.Where(loadedModules.Contains))
+                {
+                    evidence.Add(new EvidenceItem(Id, $"module.{moduleName}.loaded", bool.TrueString));
+                }
+            }
+            else if (file == "/sys/hypervisor/type")
+            {
+                AddEvidenceIfPresent(evidence, "sys.hypervisor.type", text?.Trim());
+            }
+            else if (file is "/proc/device-tree/model" or "/sys/firmware/devicetree/base/model")
+            {
+                AddEvidenceIfPresent(evidence, "device_tree.model", NormalizeDeviceTreeText(text));
+            }
+            else if (file is "/proc/device-tree/compatible" or "/sys/firmware/devicetree/base/compatible")
+            {
+                AddEvidenceIfPresent(evidence, "device_tree.compatible", NormalizeDeviceTreeText(text));
             }
             else if (file == "/proc/meminfo")
             {
@@ -280,7 +408,13 @@ internal sealed class ProcFilesProbe : IProbe
             }
         }
 
+        if (_directoryExists(VmbusDevicesDirectory))
+        {
+            evidence.Add(new EvidenceItem(Id, "bus.vmbus.present", bool.TrueString));
+        }
+
         var kernel = HostParsing.ParseKernel(procVersion, kernelOsRelease, kernelOsType, kernelVersion);
+        AddEvidenceIfPresent(evidence, "kernel.architecture", HostParsing.NormalizeArchitectureRaw(RuntimeInformation.OSArchitecture));
         AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
         AddEvidenceIfPresent(evidence, "kernel.release", kernel.Release);
         AddEvidenceIfPresent(evidence, "kernel.version", kernel.Version);
@@ -307,10 +441,58 @@ internal sealed class ProcFilesProbe : IProbe
         }
     }
 
+    private IReadOnlyList<string> BuildDefaultFiles()
+        => Files
+            .Concat(DiscoverPublicKernelSysctlFiles())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+    private IReadOnlyList<string> DiscoverPublicKernelSysctlFiles()
+    {
+        try
+        {
+            return _enumerateFiles(KernelSysctlDirectory)
+                .Select(Path.GetFileName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Where(name => PublicKernelSysctlSuffixes.Any(suffix => name!.EndsWith(suffix, StringComparison.Ordinal)))
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .Select(name => $"{KernelSysctlDirectory}/{name}")
+                .ToArray();
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return [];
+        }
+        catch (DirectoryNotFoundException)
+        {
+            return [];
+        }
+        catch (IOException)
+        {
+            return [];
+        }
+    }
+
     private static long? NormalizeCgroupBytes(string? raw)
     {
         var value = raw?.Trim();
         return value == "max" ? null : HostParsing.ParseNullableLong(value);
+    }
+
+    private static string? NormalizeDeviceTreeText(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var parts = raw.Split('\0', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+        {
+            return raw.Trim('\0', '\n', '\r', ' ');
+        }
+
+        return string.Join(", ", parts.Select(part => part.Trim())).Trim();
     }
 }
 

@@ -2,6 +2,7 @@
 
 `ContainerRuntimeReport` fields:
 - `GeneratedAt`, `Duration`
+- `ProbeToolInfo` with semantic `Version` and optional short `GitCommit`
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
 - `Classification`
@@ -33,7 +34,7 @@
 - `RuntimeReportedHostOs`
   - trusted host/node metadata (`Family`, `Name`, `Version`, `KernelVersion`, `Architecture`, `Source`, `Confidence`, `EvidenceReferences`)
 - `Hardware`
-  - normalized host architecture, CPU summary, memory summary, and safe cloud machine type
+  - normalized host architecture, CPU summary, memory summary, structured public DMI fields, structured public device-tree fields, and safe cloud machine type
 - `Fingerprint`
   - `Algorithm = CRP-HOST-FP-v1`
   - `Value = sha256:<lowercase hex>`
@@ -55,6 +56,10 @@
 {
   "GeneratedAt": "2026-04-28T00:00:00+00:00",
   "Duration": "00:00:00.123",
+  "ProbeToolInfo": {
+    "Version": "1.2.3",
+    "GitCommit": "a1b2c3d"
+  },
   "Classification": {
     "IsContainerized": { "Value": "True", "Confidence": "High", "Reasons": [] }
   },
@@ -98,6 +103,16 @@
       "Memory": {
         "MemTotalBytes": 17179869184,
         "CgroupMemoryLimitRaw": "max"
+      },
+      "Dmi": {
+        "SystemVendor": "Microsoft Corporation",
+        "ProductName": "Virtual Machine",
+        "ProductFamily": "Hyper-V",
+        "ChassisVendor": "Microsoft Corporation"
+      },
+      "DeviceTree": {
+        "Model": null,
+        "Compatible": null
       },
       "CloudMachineType": "Standard_D4s_v5"
     },

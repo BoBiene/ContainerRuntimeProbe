@@ -38,6 +38,64 @@ public sealed class ClassifierTests
         Assert.Equal(Confidence.High, report.IsContainerized.Confidence);
     }
 
+    [Fact]
+    public void Classifier_VmwareDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "VMware, Inc."),
+                new EvidenceItem("proc-files", "dmi.product_name", "VMware Virtual Platform")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.VMware, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_VirtualBoxDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "innotek GmbH"),
+                new EvidenceItem("proc-files", "dmi.product_name", "VirtualBox")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.VirtualBox, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_XenHypervisorType_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "xen")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Xen, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_QemuDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "QEMU")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.True(report.Virtualization.Confidence >= Confidence.High);
+    }
+
     // ── ContainerRuntime scenarios ───────────────────────────────────────────
 
     [Fact]
@@ -237,6 +295,30 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_AzureMetadataAndHyperVSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Microsoft Corporation"),
+                new EvidenceItem("proc-files", "dmi.product_family", "Hyper-V"),
+                new EvidenceItem("proc-files", "bus.vmbus.present", bool.TrueString),
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-1015-azure"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.HyperV, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.Azure, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
+        Assert.Equal(HostTypeKind.StandardLinux, report.Host.Type.Value);
+    }
+
+    [Fact]
     public void Classifier_AzureImdsUnavailable_CloudUnknown()
     {
         // Key presence with non-Success value must NOT classify as Azure
@@ -262,6 +344,50 @@ public sealed class ClassifierTests
 
         Assert.Equal(CloudProviderKind.GoogleCloud, report.CloudProvider.Value);
         Assert.True(report.CloudProvider.Confidence >= Confidence.High);
+    }
+
+    [Fact]
+    public void Classifier_GcpMetadataAndKvmSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "kvm"),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Google"),
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-1029-gcp"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.GoogleCloud, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_AwsMetadataAndKvmSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "kvm"),
+                new EvidenceItem("proc-files", "dmi.product_name", "KVM"),
+                new EvidenceItem("proc-files", "kernel.release", "6.1.79-99.167.amzn2023.x86_64"),
+                new EvidenceItem("proc-files", "os.id", "amzn"),
+                new EvidenceItem("proc-files", "os.version_id", "2023")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.AWS, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
     }
 
     [Fact]
@@ -322,6 +448,62 @@ public sealed class ClassifierTests
 
         Assert.Equal(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
+    public void Classifier_SiemensDmiPlusIoTEdge_DetectsIndustrialEdge()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "IOTEDGE_MODULEID", "edge-agent")
+            ]),
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Siemens AG"),
+                new EvidenceItem("proc-files", "device_tree.model", "SIMATIC IPC127E")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
+    public void Classifier_SiemensDmiWithoutIoTEdge_DetectsSiemensHardware()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Siemens AG"),
+                new EvidenceItem("proc-files", "device_tree.compatible", "siemens,simatic-ipc")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Siemens, report.PlatformVendor.Value);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Theory]
+    [InlineData("dmi.sys_vendor", "WAGO Kontakttechnik GmbH & Co. KG")]
+    [InlineData("dmi.chassis_vendor", "Beckhoff Automation")]
+    [InlineData("device_tree.model", "Phoenix Contact PLCnext AXC F 2152")]
+    [InlineData("dmi.sys_vendor", "Advantech Co., Ltd.")]
+    [InlineData("device_tree.compatible", "moxa,uc-8410a")]
+    [InlineData("dmi.sys_vendor", "Bosch Rexroth AG")]
+    [InlineData("dmi.sys_vendor", "Schneider Electric")]
+    [InlineData("dmi.sys_vendor", "B&R Industrial Automation GmbH")]
+    [InlineData("dmi.sys_vendor", "Opto 22")]
+    [InlineData("dmi.product_name", "groov EPIC")]
+    [InlineData("dmi.sys_vendor", "Stratus")]
+    [InlineData("dmi.product_name", "ztC Edge")]
+    public void Classifier_CandidateOtVendorSignals_DoNotYetClassifyVendor(string key, string value)
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", key, value)
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Unknown, report.PlatformVendor.Value);
     }
 
     [Fact]
@@ -598,5 +780,39 @@ public sealed class ClassifierTests
 
         Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Low);
+    }
+
+    [Fact]
+    public void Classifier_SynologyProcAndDmiSignals_DetectsVendorAndApplianceHost()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.syno_hw_version", "DS925+"),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Synology Inc."),
+                new EvidenceItem("proc-files", "dmi.product_name", "DS925+"),
+                new EvidenceItem("proc-files", "dmi.modalias", "dmi:bvnInsydeCorp.:svnSynologyInc.:pnDS925+:pvr1:"),
+                new EvidenceItem("proc-files", "kernel.release", "5.10.55+")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_GenericHwVersionAndBoardDmiSignals_DetectsSynologyVendor()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.vendor_hw_version", "DS925+"),
+                new EvidenceItem("proc-files", "dmi.board_vendor", "Synology Inc."),
+                new EvidenceItem("proc-files", "dmi.board_name", "DiskStation"),
+                new EvidenceItem("proc-files", "kernel.release", "5.10.55+")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Synology, report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
     }
 }

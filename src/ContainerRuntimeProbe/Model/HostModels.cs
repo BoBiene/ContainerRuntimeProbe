@@ -88,7 +88,13 @@ public enum KernelFlavor
 public enum VirtualizationKind
 {
     Unknown,
-    WSL2
+    VirtualMachine,
+    WSL2,
+    HyperV,
+    VMware,
+    VirtualBox,
+    Xen,
+    Kvm
 }
 
 /// <summary>Heuristic source for inferred underlying host OS information.</summary>
@@ -221,12 +227,35 @@ public sealed record HostMemoryInfo(
     long? CgroupMemoryCurrentBytes,
     string? CgroupMemoryLimitRaw);
 
+/// <summary>Normalized public DMI / firmware platform details.</summary>
+public sealed record HostDmiInfo(
+    string? SystemVendor,
+    string? ProductName,
+    string? ProductFamily,
+    string? ProductVersion,
+    string? BoardVendor,
+    string? BoardName,
+    string? ChassisVendor,
+    string? BiosVendor,
+    string? Modalias,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
+/// <summary>Normalized public device-tree platform details.</summary>
+public sealed record HostDeviceTreeInfo(
+    string? Model,
+    string? Compatible,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
 /// <summary>Normalized visible hardware summary.</summary>
 public sealed record HostHardwareInfo(
     ArchitectureKind Architecture,
     string? RawArchitecture,
     HostCpuInfo Cpu,
     HostMemoryInfo Memory,
+    HostDmiInfo Dmi,
+    HostDeviceTreeInfo DeviceTree,
     string? CloudMachineType);
 
 /// <summary>Single host fingerprint component.</summary>

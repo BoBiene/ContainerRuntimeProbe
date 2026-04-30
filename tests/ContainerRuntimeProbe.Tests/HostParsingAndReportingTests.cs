@@ -180,6 +180,21 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void Fingerprint_ExcludesKernelHostname_WhenItIsTheOnlyHostnameSignal()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.17.0-1011-azure"),
+            new EvidenceItem("runtime-api", "docker.info.operating_system", "Ubuntu 24.04.4 LTS"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "kernel.hostname", "redacted", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Equal(1, report.Host.Fingerprint!.ExcludedSensitiveSignalCount);
+        Assert.Contains(report.Host.Fingerprint.Components, component => component.Name == "hostname" && !component.Included);
+    }
+
+    [Fact]
     public void HostReport_Wsl2Kernel_InfersVirtualizationAndUnderlyingWindowsHost()
     {
         var report = BuildHostReport([
@@ -197,6 +212,77 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void HostReport_DmiHyperVSignals_InfersHyperVVirtualization()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "Microsoft Corporation"),
+            new EvidenceItem("proc-files", "dmi.product_name", "Virtual Machine"),
+            new EvidenceItem("proc-files", "dmi.product_family", "Hyper-V")
+        ]);
+
+        Assert.Equal(VirtualizationKind.HyperV, report.Host.Virtualization.Kind);
+        Assert.Equal("Microsoft Hyper-V", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void HostReport_VmwareDmiAndModuleSignals_InfersVmwareVirtualization()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "VMware, Inc."),
+            new EvidenceItem("proc-files", "dmi.product_name", "VMware Virtual Platform"),
+            new EvidenceItem("proc-files", "module.vmxnet3.loaded", bool.TrueString)
+        ]);
+
+        Assert.Equal(VirtualizationKind.VMware, report.Host.Virtualization.Kind);
+        Assert.Equal("VMware", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void HostReport_VirtualBoxDmiSignals_InfersVirtualBoxVirtualization()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "innotek GmbH"),
+            new EvidenceItem("proc-files", "dmi.product_name", "VirtualBox")
+        ]);
+
+        Assert.Equal(VirtualizationKind.VirtualBox, report.Host.Virtualization.Kind);
+        Assert.Equal("Oracle VirtualBox", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void HostReport_XenHypervisorType_InfersXenVirtualization()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "sys.hypervisor.type", "xen"),
+            new EvidenceItem("proc-files", "module.xen_evtchn.loaded", bool.TrueString)
+        ]);
+
+        Assert.Equal(VirtualizationKind.Xen, report.Host.Virtualization.Kind);
+        Assert.Equal("Xen", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void HostReport_QemuDmiSignals_InfersKvmVirtualization()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "QEMU"),
+            new EvidenceItem("proc-files", "dmi.product_name", "Standard PC (Q35 + ICH9, 2009)")
+        ]);
+
+        Assert.Equal(VirtualizationKind.Kvm, report.Host.Virtualization.Kind);
+        Assert.Equal("QEMU", report.Host.Virtualization.PlatformVendor);
+        Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
     public void Renderer_OutputsHostSectionsAndJsonHostObject()
     {
         var report = TestReportFactory.CreateSampleReport();
@@ -206,10 +292,24 @@ public sealed class HostParsingAndReportingTests
         var text = ReportRenderer.ToText(report);
 
         Assert.Contains("## Host OS / Node", markdown);
+        Assert.Contains("## Probe Tool Information", markdown);
+        Assert.Contains("- Git Commit: abcdef1", markdown);
         Assert.Contains("### Virtualization", markdown);
+        Assert.Contains("- Platform Vendor: Microsoft Hyper-V", markdown);
+        Assert.Contains("### Platform / DMI", markdown);
+        Assert.Contains("### Device Tree", markdown);
+        Assert.Contains("- System Vendor: Microsoft Corporation", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"ProbeToolInfo\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"GitCommit\": \"abcdef1\"", json, StringComparison.Ordinal);
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"DeviceTree\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
+        Assert.Contains("HardwareVendor", text);
+        Assert.Contains("Architecture", text);
+        Assert.Contains("DeviceTreeModel", text);
+        Assert.Contains("abcdef1", text);
         Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
     }
 

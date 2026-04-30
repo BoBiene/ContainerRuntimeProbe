@@ -90,7 +90,7 @@ public sealed class ClassifierSampleProbeTests
         {
             if (File.Exists(Path.Combine(directory.FullName, "ContainerRuntimeProbe.sln")))
             {
-                var fixtures = Path.Combine(directory.FullName, "docker", "sample-probes");
+                var fixtures = Path.Combine(directory.FullName, "docker", "real-world-samples");
                 if (Directory.Exists(fixtures))
                 {
                     return fixtures;
@@ -100,6 +100,6 @@ public sealed class ClassifierSampleProbeTests
             directory = directory.Parent;
         }
 
-        throw new DirectoryNotFoundException("Could not locate docker/sample-probes from the test output directory.");
+        throw new DirectoryNotFoundException("Could not locate docker/real-world-samples from the test output directory.");
     }
 }

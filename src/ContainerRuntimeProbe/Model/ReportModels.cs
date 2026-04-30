@@ -12,8 +12,8 @@ public sealed record ProbeResult(string ProbeId, ProbeOutcome Outcome, IReadOnly
 /// <summary>Security warning surfaced at report level.</summary>
 public sealed record SecurityWarning(string Code, string Message);
 
-/// <summary>Probe tool version and source control information. Version uses semver with 7-char git hash as build metadata (e.g. <c>1.2.3+a1b2c3d</c>).</summary>
-public sealed record ProbeToolMetadata(string Version);
+/// <summary>Probe tool version and source control information.</summary>
+public sealed record ProbeToolMetadata(string Version, string? GitCommit);
 
 /// <summary>Reason object including evidence references used for an inferred classification.</summary>
 public sealed record ClassificationReason(string Message, IReadOnlyList<string> EvidenceKeys);
@@ -58,6 +58,24 @@ public enum VirtualizationClassificationKind
 
     /// <summary>No virtualization fingerprint was detected.</summary>
     None,
+
+    /// <summary>Generic hypervisor or VM signals were detected, but provider attribution is not explicit yet.</summary>
+    VirtualMachine,
+
+    /// <summary>Hyper-V guest signals were detected.</summary>
+    HyperV,
+
+    /// <summary>VMware guest signals were detected.</summary>
+    VMware,
+
+    /// <summary>Oracle VirtualBox guest signals were detected.</summary>
+    VirtualBox,
+
+    /// <summary>Xen guest signals were detected.</summary>
+    Xen,
+
+    /// <summary>KVM or QEMU guest signals were detected.</summary>
+    Kvm,
 
     /// <summary>The kernel fingerprint matches WSL2.</summary>
     WSL2
@@ -170,8 +188,41 @@ public enum PlatformVendorKind
     /// <summary>Apple platform signals, typically Docker Desktop on macOS.</summary>
     Apple,
 
+    /// <summary>Siemens hardware platform signals.</summary>
+    Siemens,
+
     /// <summary>Siemens Industrial Edge signals.</summary>
     SiemensIndustrialEdge,
+
+    /// <summary>WAGO hardware platform signals.</summary>
+    Wago,
+
+    /// <summary>Beckhoff hardware platform signals.</summary>
+    Beckhoff,
+
+    /// <summary>Phoenix Contact hardware platform signals.</summary>
+    PhoenixContact,
+
+    /// <summary>Advantech hardware platform signals.</summary>
+    Advantech,
+
+    /// <summary>Moxa hardware platform signals.</summary>
+    Moxa,
+
+    /// <summary>Bosch Rexroth hardware platform signals.</summary>
+    BoschRexroth,
+
+    /// <summary>Schneider Electric hardware platform signals.</summary>
+    SchneiderElectric,
+
+    /// <summary>B&amp;R hardware platform signals.</summary>
+    BAndR,
+
+    /// <summary>Opto 22 groov EPIC and related hardware platform signals.</summary>
+    Opto22,
+
+    /// <summary>Stratus ztC Edge and related hardware platform signals.</summary>
+    Stratus,
 
     /// <summary>Azure IoT Edge signals without Siemens-specific corroboration.</summary>
     IoTEdge

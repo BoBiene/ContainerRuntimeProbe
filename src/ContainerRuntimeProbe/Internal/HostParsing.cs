@@ -49,6 +49,7 @@ internal sealed record ParsedCpuInfo(
     string? Microcode,
     int? FlagsCount,
     string? FlagsHash,
+    bool? HypervisorPresent,
     string? Hardware,
     string? Revision,
     string? Serial);
@@ -220,6 +221,7 @@ internal static class HostParsing
             values.GetValueOrDefault("microcode"),
             normalizedFlags?.Length,
             normalizedFlags is { Length: > 0 } ? ComputeSha256Hex(string.Join('\n', normalizedFlags)) : null,
+            normalizedFlags?.Contains("hypervisor", StringComparer.Ordinal),
             values.GetValueOrDefault("Hardware"),
             values.GetValueOrDefault("Revision"),
             values.GetValueOrDefault("Serial"));

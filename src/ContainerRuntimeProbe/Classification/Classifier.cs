@@ -101,6 +101,22 @@ internal static class Classifier
                     || ContainsAnySignal(osName, DetectionMaps.VendorApplianceSignals)
                     || ContainsAnySignal(prettyName, DetectionMaps.VendorApplianceSignals);
 
+        static bool IsAppliancePlatformVendor(PlatformVendorKind vendor)
+            => vendor is PlatformVendorKind.Synology
+                or PlatformVendorKind.Siemens
+                or PlatformVendorKind.SiemensIndustrialEdge
+                or PlatformVendorKind.Wago
+                or PlatformVendorKind.Beckhoff
+                or PlatformVendorKind.PhoenixContact
+                or PlatformVendorKind.Advantech
+                or PlatformVendorKind.Moxa
+                or PlatformVendorKind.BoschRexroth
+                or PlatformVendorKind.SchneiderElectric
+                or PlatformVendorKind.BAndR
+                or PlatformVendorKind.Opto22
+                or PlatformVendorKind.Stratus
+                or PlatformVendorKind.IoTEdge;
+
         static bool IsKernelUserspaceMismatch(string? osVersion, int? kernelMajor)
         {
             if (kernelMajor is null || kernelMajor >= 4)
@@ -135,23 +151,19 @@ internal static class Classifier
                 : MakeWithConfidence(ContainerizationKind.Unknown, Confidence.Unknown, new ClassificationReason("Container markers were not available", Array.Empty<string>()));
 
         // ── Virtualization / Host / Environment ────────────────────────────────
-        var virtualizationReasons = new List<ClassificationReason>();
-        if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase)))
-        {
-            virtualizationReasons.Add(new("kernel.flavor reports WSL2", new[] { "kernel.flavor" }));
-        }
-        if (e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value)))
-        {
-            virtualizationReasons.Add(new("kernel.release contains microsoft-standard-WSL2", new[] { "kernel.release" }));
-        }
-        if (e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value)))
-        {
-            virtualizationReasons.Add(new("/proc/version contains microsoft-standard-WSL2", new[] { "/proc/version" }));
-        }
+        var virtualizationMatch = VirtualizationDetection.Detect(e);
+        var virtualizationReasons = virtualizationMatch is null
+            ? Array.Empty<ClassificationReason>()
+            : [new ClassificationReason(virtualizationMatch.Summary, virtualizationMatch.EvidenceReferences)];
 
-        var virtualization = virtualizationReasons.Count > 0
-            ? MakeWithConfidence(VirtualizationClassificationKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
-            : MakeWithConfidence(VirtualizationClassificationKind.None, probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown, new ClassificationReason("No WSL2 kernel fingerprint detected", new[] { "kernel.release", "/proc/version" }));
+        var virtualization = virtualizationMatch is not null
+            ? MakeWithConfidence(VirtualizationDetection.ToClassificationKind(virtualizationMatch.Kind), virtualizationMatch.Confidence, virtualizationReasons)
+            : MakeWithConfidence(
+                probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success)
+                    ? VirtualizationClassificationKind.None
+                    : VirtualizationClassificationKind.Unknown,
+                probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown,
+                new ClassificationReason("No virtualization fingerprint detected", new[] { "cpu.flag.hypervisor", "sys.hypervisor.type", "dmi.sys_vendor", "dmi.product_name" }));
 
         var hostFamily = virtualization.Value == VirtualizationClassificationKind.WSL2
             ? MakeWithConfidence(OperatingSystemFamily.Windows, Confidence.High, new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" }))
@@ -165,6 +177,7 @@ internal static class Classifier
         var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
         var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
         var procVersion = GetFirstMatchingValue(e, "/proc/version");
+        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
 
         var applianceScore = 0;
         var applianceReasons = new List<ClassificationReason>();
@@ -193,6 +206,8 @@ internal static class Classifier
             ? MakeWithConfidence(HostTypeKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
             : applianceScore >= 5
                 ? Make(HostTypeKind.Appliance, applianceScore, applianceReasons.ToArray())
+                : IsAppliancePlatformVendor(vendor.Value)
+                    ? MakeWithConfidence(HostTypeKind.Appliance, vendor.Confidence, vendor.Reasons.ToArray())
                 : kernelMajor is >= 5
                     ? MakeWithConfidence(HostTypeKind.StandardLinux, osId is null ? Confidence.Medium : Confidence.High, new ClassificationReason("Modern kernel and userspace do not show appliance mismatch signals", new[] { "kernel.release", "os.id", "os.version_id" }))
                     : MakeWithConfidence(HostTypeKind.Unknown, Confidence.Low, new ClassificationReason("Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance", new[] { "kernel.release", "os.version_id", "kernel.compiler" }));
@@ -325,10 +340,6 @@ internal static class Classifier
         // OCI: metadata server succeeded
         else if (e.Any(x => x.Key == "oci.metadata.outcome" && x.Value == "Success")) { cloud = CloudProviderKind.OracleCloud; cloudScore = 7; }
         var cloudProvider = Make(cloud, cloudScore, new ClassificationReason("Cloud metadata/env markers", new[] { "cloud-metadata" }));
-
-        // ── PlatformVendor ───────────────────────────────────────────────────────
-        // Delegated to VendorDetection for independent maintainability and testability.
-        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
 
         return new ReportClassification(
             isContainerized,
