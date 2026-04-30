@@ -206,15 +206,23 @@ public sealed class HostParsingAndReportingTests
         var text = ReportRenderer.ToText(report);
 
         Assert.Contains("## Host OS / Node", markdown);
+        Assert.Contains("## Probe Tool Information", markdown);
+        Assert.Contains("- Git Commit: abcdef1", markdown);
         Assert.Contains("### Virtualization", markdown);
         Assert.Contains("### Platform / DMI", markdown);
+        Assert.Contains("### Device Tree", markdown);
         Assert.Contains("- System Vendor: Microsoft Corporation", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"ProbeToolInfo\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"GitCommit\": \"abcdef1\"", json, StringComparison.Ordinal);
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"DeviceTree\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
         Assert.Contains("HardwareVendor", text);
         Assert.Contains("Architecture", text);
+        Assert.Contains("DeviceTreeModel", text);
+        Assert.Contains("abcdef1", text);
         Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
     }
 

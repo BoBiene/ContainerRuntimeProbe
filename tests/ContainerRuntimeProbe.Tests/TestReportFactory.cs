@@ -9,7 +9,7 @@ internal static class TestReportFactory
         => new(
             DateTimeOffset.UtcNow,
             TimeSpan.FromSeconds(1),
-            new ProbeToolMetadata("1.0.0-test"),
+            new ProbeToolMetadata("1.0.0-test", "abcdef1"),
             [new ProbeResult("p", ProbeOutcome.Success, [new EvidenceItem("p", "k", "v")])],
             [],
             new ReportClassification(
@@ -88,13 +88,20 @@ internal static class TestReportFactory
                     new HostDmiInfo(
                         "Microsoft Corporation",
                         "Virtual Machine",
+                        "Hyper-V",
                         "7.0",
                         "Microsoft Corporation",
                         "Virtual Machine",
+                        "Microsoft Corporation",
                         "American Megatrends Inc.",
                         "dmi:bvnAmericanMegatrendsInc.:svnMicrosoftCorporation:pnVirtualMachine:",
                         Confidence.High,
                         ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_name"]),
+                    new HostDeviceTreeInfo(
+                        "Unknown",
+                        "Unknown",
+                        Confidence.Unknown,
+                        []),
                     "Standard_D4s_v5"),
                 new HostFingerprint(
                     "CRP-HOST-FP-v1",

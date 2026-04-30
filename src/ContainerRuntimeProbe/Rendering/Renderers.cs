@@ -50,6 +50,7 @@ public static class ReportRenderer
         {
             sb.AppendLine("## Probe Tool Information");
             sb.AppendLine($"- Version: {report.ProbeToolInfo.Version}");
+            sb.AppendLine($"- Git Commit: {ValueOrUnknownString(report.ProbeToolInfo.GitCommit)}");
             sb.AppendLine();
         }
         
@@ -114,11 +115,18 @@ public static class ReportRenderer
         sb.AppendLine("### Platform / DMI");
         sb.AppendLine($"- System Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor)}");
         sb.AppendLine($"- Product Name: {ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName)}");
+        sb.AppendLine($"- Product Family: {ValueOrUnknownString(report.Host.Hardware.Dmi.ProductFamily)}");
         sb.AppendLine($"- Product Version: {ValueOrUnknownString(report.Host.Hardware.Dmi.ProductVersion)}");
         sb.AppendLine($"- Board Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.BoardVendor)}");
         sb.AppendLine($"- Board Name: {ValueOrUnknownString(report.Host.Hardware.Dmi.BoardName)}");
+        sb.AppendLine($"- Chassis Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.ChassisVendor)}");
         sb.AppendLine($"- BIOS Vendor: {ValueOrUnknownString(report.Host.Hardware.Dmi.BiosVendor)}");
         sb.AppendLine($"- Confidence: {report.Host.Hardware.Dmi.Confidence}");
+        sb.AppendLine();
+        sb.AppendLine("### Device Tree");
+        sb.AppendLine($"- Model: {ValueOrUnknownString(report.Host.Hardware.DeviceTree.Model)}");
+        sb.AppendLine($"- Compatible: {ValueOrUnknownString(report.Host.Hardware.DeviceTree.Compatible)}");
+        sb.AppendLine($"- Confidence: {report.Host.Hardware.DeviceTree.Confidence}");
         sb.AppendLine();
         sb.AppendLine("### Host Fingerprint");
         if (report.Host.Fingerprint is null)
@@ -220,6 +228,7 @@ public static class ReportRenderer
             ("Architecture",    report.Host.Hardware.RawArchitecture ?? ValueOrUnknownEnum(report.Host.Hardware.Architecture), null),
             ("HardwareVendor",  ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor),                        report.Host.Hardware.Dmi.Confidence),
             ("ProductName",     ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName),                         report.Host.Hardware.Dmi.Confidence),
+            ("DeviceTreeModel", ValueOrUnknownString(report.Host.Hardware.DeviceTree.Model),                        report.Host.Hardware.DeviceTree.Confidence),
             ("UnderlyingHost",  underlyingHost,                                 null),
             ("HostOS",          hostOs,                                         runtimeHost.Confidence),
             ("HostKernelOS",    kernelHostOs,                                   report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),
@@ -234,8 +243,10 @@ public static class ReportRenderer
 
         if (report.ProbeToolInfo is not null)
         {
-            // Version already has a 7-char build-metadata hash (shortened at source).
-            var header = $"Container Runtime Report  v{report.ProbeToolInfo.Version}";
+            var versionWithCommit = string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommit)
+                ? report.ProbeToolInfo.Version
+                : $"{report.ProbeToolInfo.Version} ({report.ProbeToolInfo.GitCommit})";
+            var header = $"Container Runtime Report  v{versionWithCommit}";
             sb.AppendLine(header);
             sb.AppendLine(new string('-', header.Length));
         }
