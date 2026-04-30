@@ -532,8 +532,8 @@ internal sealed class ProcFilesProbe : IProbe
                         continue;
                     }
 
-                    candidates.Add(Path.Combine(entry, "modalias"));
-                    candidates.Add(Path.Combine(entry, "uevent"));
+                    candidates.Add($"{entry.TrimEnd('/')}/modalias");
+                    candidates.Add($"{entry.TrimEnd('/')}/uevent");
                 }
             }
             catch (UnauthorizedAccessException)
