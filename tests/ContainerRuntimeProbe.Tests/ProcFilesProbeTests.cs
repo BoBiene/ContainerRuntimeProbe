@@ -101,6 +101,29 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
+    public async Task ProcFilesProbe_KernelHostname_RemainsSensitiveWhenDiscoveredThroughGenericSysctlBranch()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/proc/sys/kernel/hostname"] = "edge-host-01\n"
+        };
+
+        var probe = new ProcFilesProbe(
+            values.Keys.ToArray(),
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "kernel.hostname" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "kernel.hostname" && item.Value == "edge-host-01" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
     public async Task ProcFilesProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
     {
         var values = new Dictionary<string, string>

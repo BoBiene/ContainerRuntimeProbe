@@ -5,7 +5,9 @@ namespace ContainerRuntimeProbe.Classification;
 internal sealed record VirtualizationCatalogEntry(
     VirtualizationKind Kind,
     string PlatformVendor,
-    IReadOnlyList<string> DmiEvidenceKeys,
+    IReadOnlyList<string> VendorEvidenceKeys,
+    IReadOnlyList<string> VendorFragments,
+    IReadOnlyList<string> MatchEvidenceKeys,
     IReadOnlyList<string> MatchFragments,
     IReadOnlyList<string> SupportingEvidenceKeys);
 
@@ -57,32 +59,45 @@ internal static class VirtualizationCatalog
         new(
             VirtualizationKind.HyperV,
             "Microsoft Hyper-V",
-            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
-            ["microsoft", "hyper-v", "virtual machine", "microsoftcorporation"],
+            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor"],
+            ["microsoft"],
+            ["dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
+            ["hyper-v", "virtual machine", "microsoftcorporation"],
             HyperVSupportingEvidenceKeys),
         new(
             VirtualizationKind.VMware,
             "VMware",
+            [],
+            [],
             ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
             ["vmware", "vmware virtual platform", "svnvmwareinc.", "esxi"],
             VMwareSupportingEvidenceKeys),
         new(
             VirtualizationKind.VirtualBox,
             "Oracle VirtualBox",
+            [],
+            [],
             ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
             ["virtualbox", "innotek"],
             VirtualBoxSupportingEvidenceKeys),
         new(
             VirtualizationKind.Xen,
             "Xen",
+            [],
+            [],
             ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias", "sys.hypervisor.type"],
             ["xen", "domu", "hvm domu"],
             XenSupportingEvidenceKeys),
         new(
             VirtualizationKind.Kvm,
             "KVM/QEMU",
+            [],
+            [],
             ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias", "sys.hypervisor.type"],
             ["qemu", "kvm"],
             [])
     ];
+
+    internal static VirtualizationCatalogEntry Get(VirtualizationKind kind)
+        => Providers.First(entry => entry.Kind == kind);
 }

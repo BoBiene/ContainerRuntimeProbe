@@ -110,19 +110,22 @@ internal static class VirtualizationDetection
     {
         var references = new HashSet<string>(StringComparer.Ordinal);
 
-        if (HasTrueValue(evidence, "cpu.flag.hypervisor"))
+        foreach (var key in VirtualizationCatalog.HypervisorPresenceEvidenceKeys)
         {
-            AddEvidenceReferences(references, evidence, "cpu.flag.hypervisor");
-        }
+            if (key == "sys.hypervisor.type")
+            {
+                if (!string.IsNullOrWhiteSpace(GetValue(evidence, key)))
+                {
+                    AddEvidenceReferences(references, evidence, key);
+                }
 
-        if (!string.IsNullOrWhiteSpace(GetValue(evidence, "sys.hypervisor.type")))
-        {
-            AddEvidenceReferences(references, evidence, "sys.hypervisor.type");
-        }
+                continue;
+            }
 
-        if (HasTrueValue(evidence, "bus.vmbus.present"))
-        {
-            AddEvidenceReferences(references, evidence, "bus.vmbus.present");
+            if (HasTrueValue(evidence, key))
+            {
+                AddEvidenceReferences(references, evidence, key);
+            }
         }
 
         return references.OrderBy(value => value, StringComparer.Ordinal).ToArray();
@@ -130,10 +133,11 @@ internal static class VirtualizationDetection
 
     private static VirtualizationDetectionResult? DetectHyperV(IReadOnlyList<EvidenceItem> evidence, IReadOnlyList<string> hypervisorReferences)
     {
+        var entry = VirtualizationCatalog.Get(VirtualizationKind.HyperV);
         var references = new HashSet<string>(StringComparer.Ordinal);
-        var vendorReferences = FindContainingReferences(evidence, ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor"], ["microsoft"]);
-        var productReferences = FindContainingReferences(evidence, ["dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"], ["hyper-v", "virtual machine", "microsoftcorporation"]);
-        var supportReferences = GetTrueEvidenceReferences(evidence, VirtualizationCatalog.HyperVSupportingEvidenceKeys);
+        var vendorReferences = FindContainingReferences(evidence, entry.VendorEvidenceKeys, entry.VendorFragments);
+        var productReferences = FindContainingReferences(evidence, entry.MatchEvidenceKeys, entry.MatchFragments);
+        var supportReferences = GetTrueEvidenceReferences(evidence, entry.SupportingEvidenceKeys);
 
         references.UnionWith(vendorReferences);
         references.UnionWith(productReferences);
@@ -143,7 +147,7 @@ internal static class VirtualizationDetection
         {
             return new VirtualizationDetectionResult(
                 VirtualizationKind.HyperV,
-                "Microsoft Hyper-V",
+                entry.PlatformVendor,
                 Confidence.High,
                 "Hyper-V DMI and guest integration signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -154,7 +158,7 @@ internal static class VirtualizationDetection
             references.UnionWith(hypervisorReferences);
             return new VirtualizationDetectionResult(
                 VirtualizationKind.HyperV,
-                "Microsoft Hyper-V",
+                entry.PlatformVendor,
                 Confidence.Medium,
                 "Hyper-V guest integration signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -165,12 +169,10 @@ internal static class VirtualizationDetection
 
     private static VirtualizationDetectionResult? DetectVmware(IReadOnlyList<EvidenceItem> evidence, IReadOnlyList<string> hypervisorReferences)
     {
+        var entry = VirtualizationCatalog.Get(VirtualizationKind.VMware);
         var references = new HashSet<string>(StringComparer.Ordinal);
-        var dmiReferences = FindContainingReferences(
-            evidence,
-            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
-            ["vmware", "vmware virtual platform", "svnvmwareinc.", "esxi"]);
-        var supportReferences = GetTrueEvidenceReferences(evidence, VirtualizationCatalog.VMwareSupportingEvidenceKeys);
+        var dmiReferences = FindContainingReferences(evidence, entry.MatchEvidenceKeys, entry.MatchFragments);
+        var supportReferences = GetTrueEvidenceReferences(evidence, entry.SupportingEvidenceKeys);
 
         references.UnionWith(dmiReferences);
         references.UnionWith(supportReferences);
@@ -179,7 +181,7 @@ internal static class VirtualizationDetection
         {
             return new VirtualizationDetectionResult(
                 VirtualizationKind.VMware,
-                ContainsFragment(evidence, ["dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"], ["esxi"]) ? "VMware ESXi" : "VMware",
+                ContainsFragment(evidence, entry.MatchEvidenceKeys, ["esxi"]) ? "VMware ESXi" : entry.PlatformVendor,
                 Confidence.High,
                 "VMware DMI signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -190,7 +192,7 @@ internal static class VirtualizationDetection
             references.UnionWith(hypervisorReferences);
             return new VirtualizationDetectionResult(
                 VirtualizationKind.VMware,
-                "VMware",
+                entry.PlatformVendor,
                 Confidence.Medium,
                 "VMware guest driver signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -201,12 +203,10 @@ internal static class VirtualizationDetection
 
     private static VirtualizationDetectionResult? DetectVirtualBox(IReadOnlyList<EvidenceItem> evidence, IReadOnlyList<string> hypervisorReferences)
     {
+        var entry = VirtualizationCatalog.Get(VirtualizationKind.VirtualBox);
         var references = new HashSet<string>(StringComparer.Ordinal);
-        var dmiReferences = FindContainingReferences(
-            evidence,
-            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
-            ["virtualbox", "innotek"]);
-        var supportReferences = GetTrueEvidenceReferences(evidence, VirtualizationCatalog.VirtualBoxSupportingEvidenceKeys);
+        var dmiReferences = FindContainingReferences(evidence, entry.MatchEvidenceKeys, entry.MatchFragments);
+        var supportReferences = GetTrueEvidenceReferences(evidence, entry.SupportingEvidenceKeys);
 
         references.UnionWith(dmiReferences);
         references.UnionWith(supportReferences);
@@ -215,7 +215,7 @@ internal static class VirtualizationDetection
         {
             return new VirtualizationDetectionResult(
                 VirtualizationKind.VirtualBox,
-                "Oracle VirtualBox",
+                entry.PlatformVendor,
                 Confidence.High,
                 "VirtualBox DMI signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -226,7 +226,7 @@ internal static class VirtualizationDetection
             references.UnionWith(hypervisorReferences);
             return new VirtualizationDetectionResult(
                 VirtualizationKind.VirtualBox,
-                "Oracle VirtualBox",
+                entry.PlatformVendor,
                 Confidence.Medium,
                 "VirtualBox guest addition signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -237,13 +237,14 @@ internal static class VirtualizationDetection
 
     private static VirtualizationDetectionResult? DetectXen(IReadOnlyList<EvidenceItem> evidence, IReadOnlyList<string> hypervisorReferences)
     {
+        var entry = VirtualizationCatalog.Get(VirtualizationKind.Xen);
         var references = new HashSet<string>(StringComparer.Ordinal);
         var hypervisorTypeReferences = FindContainingReferences(evidence, ["sys.hypervisor.type"], ["xen"]);
         var dmiReferences = FindContainingReferences(
             evidence,
-            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
-            ["xen", "domu", "hvm domu"]);
-        var supportReferences = GetTrueEvidenceReferences(evidence, VirtualizationCatalog.XenSupportingEvidenceKeys);
+            entry.MatchEvidenceKeys.Where(key => key != "sys.hypervisor.type").ToArray(),
+            entry.MatchFragments);
+        var supportReferences = GetTrueEvidenceReferences(evidence, entry.SupportingEvidenceKeys);
 
         references.UnionWith(hypervisorTypeReferences);
         references.UnionWith(dmiReferences);
@@ -253,7 +254,7 @@ internal static class VirtualizationDetection
         {
             return new VirtualizationDetectionResult(
                 VirtualizationKind.Xen,
-                "Xen",
+                entry.PlatformVendor,
                 Confidence.High,
                 "Xen hypervisor signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -264,7 +265,7 @@ internal static class VirtualizationDetection
             references.UnionWith(hypervisorReferences);
             return new VirtualizationDetectionResult(
                 VirtualizationKind.Xen,
-                "Xen",
+                entry.PlatformVendor,
                 Confidence.Medium,
                 "Xen guest driver signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());
@@ -275,12 +276,13 @@ internal static class VirtualizationDetection
 
     private static VirtualizationDetectionResult? DetectKvm(IReadOnlyList<EvidenceItem> evidence, IReadOnlyList<string> hypervisorReferences)
     {
+        var entry = VirtualizationCatalog.Get(VirtualizationKind.Kvm);
         var references = new HashSet<string>(StringComparer.Ordinal);
         var hypervisorTypeReferences = FindContainingReferences(evidence, ["sys.hypervisor.type"], ["kvm"]);
         var dmiReferences = FindContainingReferences(
             evidence,
-            ["dmi.sys_vendor", "dmi.board_vendor", "dmi.chassis_vendor", "dmi.product_name", "dmi.product_family", "dmi.bios_vendor", "dmi.modalias"],
-            ["qemu", "kvm"]);
+            entry.MatchEvidenceKeys.Where(key => key != "sys.hypervisor.type").ToArray(),
+            entry.MatchFragments);
 
         references.UnionWith(hypervisorTypeReferences);
         references.UnionWith(dmiReferences);
@@ -289,9 +291,9 @@ internal static class VirtualizationDetection
         {
             return new VirtualizationDetectionResult(
                 VirtualizationKind.Kvm,
-                ContainsFragment(evidence, ["dmi.sys_vendor", "dmi.product_name", "dmi.product_family", "sys.hypervisor.type"], ["qemu"])
+                ContainsFragment(evidence, entry.MatchEvidenceKeys, ["qemu"])
                     ? "QEMU"
-                    : "KVM/QEMU",
+                    : entry.PlatformVendor,
                 dmiReferences.Count > 0 ? Confidence.High : Confidence.Medium,
                 "KVM/QEMU hypervisor signals detected",
                 references.OrderBy(value => value, StringComparer.Ordinal).ToArray());

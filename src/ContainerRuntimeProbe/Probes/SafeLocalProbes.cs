@@ -277,7 +277,18 @@ internal sealed class ProcFilesProbe : IProbe
             else if (file.StartsWith("/proc/sys/kernel/", StringComparison.Ordinal))
             {
                 var key = file.Split('/').Last();
-                AddEvidenceIfPresent(evidence, $"kernel.{key}", text?.Trim());
+                if (string.Equals(key, "hostname", StringComparison.Ordinal))
+                {
+                    var value = text?.Trim();
+                    if (!string.IsNullOrWhiteSpace(value))
+                    {
+                        evidence.Add(new EvidenceItem(Id, "kernel.hostname", context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                    }
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"kernel.{key}", text?.Trim());
+                }
             }
             else if (file == "/proc/cpuinfo")
             {
