@@ -165,12 +165,9 @@ internal static class Classifier
                 probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown,
                 new ClassificationReason("No virtualization fingerprint detected", new[] { "cpu.flag.hypervisor", "sys.hypervisor.type", "dmi.sys_vendor", "dmi.product_name" }));
 
-        var hostFamily = virtualization.Value == VirtualizationClassificationKind.WSL2
-            ? MakeWithConfidence(OperatingSystemFamily.Windows, Confidence.High, new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" }))
-            : MakeWithConfidence(OperatingSystemFamily.Linux, e.Any(x => x.Key is "kernel.release" or "/proc/version" or "os.id") ? Confidence.High : Confidence.Unknown, new ClassificationReason("Visible kernel does not match WSL2 and remains Linux", new[] { "kernel.release", "/proc/version", "os.id" }));
-
         var kernelRelease = GetFirstMatchingValue(e, "kernel.release");
         var kernelMajor = ParseLeadingMajor(kernelRelease);
+        var kernelName = GetFirstMatchingValue(e, "kernel.name");
         var osId = GetFirstMatchingValue(e, "os.id");
         var osName = GetFirstMatchingValue(e, "os.name");
         var prettyName = GetFirstMatchingValue(e, "os.pretty_name");
@@ -178,6 +175,8 @@ internal static class Classifier
         var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
         var procVersion = GetFirstMatchingValue(e, "/proc/version");
         var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
+
+        var hostFamily = BuildHostFamily(virtualization.Value, kernelName, osId, osName, prettyName, e);
 
         var applianceScore = 0;
         var applianceReasons = new List<ClassificationReason>();
@@ -204,6 +203,8 @@ internal static class Classifier
 
         var hostType = virtualization.Value == VirtualizationClassificationKind.WSL2
             ? MakeWithConfidence(HostTypeKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
+            : !IsLinuxLikeHostFamily(hostFamily.Value)
+                ? MakeWithConfidence(HostTypeKind.Unknown, hostFamily.Value == OperatingSystemFamily.Unknown ? Confidence.Unknown : Confidence.Low, new ClassificationReason("Detected host family does not map to Linux-specific host types", new[] { "kernel.name", "os.id", "os.name", "os.pretty_name" }))
             : applianceScore >= 5
                 ? Make(HostTypeKind.Appliance, applianceScore, applianceReasons.ToArray())
                 : IsAppliancePlatformVendor(vendor.Value)
@@ -352,4 +353,64 @@ internal static class Classifier
             cloudProvider,
             vendor);
     }
+
+    private static ClassificationResult<OperatingSystemFamily> BuildHostFamily(
+        VirtualizationClassificationKind virtualization,
+        string? kernelName,
+        string? osId,
+        string? osName,
+        string? prettyName,
+        IReadOnlyList<EvidenceItem> evidence)
+    {
+        if (virtualization == VirtualizationClassificationKind.WSL2)
+        {
+            return new ClassificationResult<OperatingSystemFamily>(
+                OperatingSystemFamily.Windows,
+                Confidence.High,
+                [new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" })]);
+        }
+
+        var normalizedFamily = HostParsing.NormalizeOperatingSystemFamily(osId, [], osName, prettyName);
+        if (normalizedFamily != OperatingSystemFamily.Unknown)
+        {
+            return new ClassificationResult<OperatingSystemFamily>(
+                normalizedFamily,
+                Confidence.High,
+                [new ClassificationReason("OS release or runtime host metadata identifies the host family", new[] { "os.id", "os.name", "os.pretty_name" })]);
+        }
+
+        normalizedFamily = HostParsing.NormalizeOperatingSystemFamily(kernelName, [], kernelName, kernelName);
+        if (normalizedFamily != OperatingSystemFamily.Unknown)
+        {
+            return new ClassificationResult<OperatingSystemFamily>(
+                normalizedFamily,
+                Confidence.High,
+                [new ClassificationReason("Kernel name identifies the host family", new[] { "kernel.name" })]);
+        }
+
+        if (evidence.Any(x => x.Key is "kernel.release" or "/proc/version"))
+        {
+            return new ClassificationResult<OperatingSystemFamily>(
+                OperatingSystemFamily.Linux,
+                Confidence.High,
+                [new ClassificationReason("Linux kernel signals are present and do not match WSL2", new[] { "kernel.release", "/proc/version" })]);
+        }
+
+        return new ClassificationResult<OperatingSystemFamily>(
+            OperatingSystemFamily.Unknown,
+            Confidence.Unknown,
+            [new ClassificationReason("Host family signals were not available", Array.Empty<string>())]);
+    }
+
+    private static bool IsLinuxLikeHostFamily(OperatingSystemFamily family)
+        => family switch
+        {
+            OperatingSystemFamily.Unknown => false,
+            OperatingSystemFamily.Windows => false,
+            OperatingSystemFamily.WindowsServer => false,
+            OperatingSystemFamily.WindowsNanoServer => false,
+            OperatingSystemFamily.WindowsServerCore => false,
+            OperatingSystemFamily.MacOS => false,
+            _ => true
+        };
 }

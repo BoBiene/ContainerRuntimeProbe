@@ -5,14 +5,14 @@ using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe.Tests;
 
-public sealed class ProcFilesProbeTests
+public sealed class UnixHostProbeTests
 {
     [Fact]
-    public async Task ProcFilesProbe_StartsReadsConcurrently_WhilePreservingFileProcessing()
+    public async Task UnixHostProbe_StartsReadsConcurrently_WhilePreservingFileProcessing()
     {
         var allStarted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         var startedCount = 0;
-        var probe = new ProcFilesProbe(
+        var probe = new UnixHostProbe(
             ["/proc/version", "/proc/sys/kernel/osrelease"],
             async (_, _, cancellationToken) =>
             {
@@ -34,7 +34,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_ExtractsSynologyKernelAndDmiSignals()
+    public async Task UnixHostProbe_ExtractsSynologyKernelAndDmiSignals()
     {
         var values = new Dictionary<string, string>
         {
@@ -49,7 +49,7 @@ public sealed class ProcFilesProbeTests
             ["/sys/class/dmi/id/modalias"] = "dmi:bvnInsydeCorp.:svnSynologyInc.:pnDS925+:pvr1:\n"
         };
 
-        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+        var probe = new UnixHostProbe(values.Keys.ToArray(), (path, _, _) =>
             Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
                 : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
@@ -65,7 +65,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_DiscoversPublicKernelSysctls_AndSkipsOtherNames()
+    public async Task UnixHostProbe_DiscoversPublicKernelSysctls_AndSkipsOtherNames()
     {
         var values = new Dictionary<string, string>
         {
@@ -74,7 +74,7 @@ public sealed class ProcFilesProbeTests
             ["/proc/sys/kernel/syno_install_flag"] = "0\n"
         };
 
-        var probe = new ProcFilesProbe(
+        var probe = new UnixHostProbe(
             [],
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
@@ -101,14 +101,14 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_KernelHostname_RemainsSensitiveWhenDiscoveredThroughGenericSysctlBranch()
+    public async Task UnixHostProbe_KernelHostname_RemainsSensitiveWhenDiscoveredThroughGenericSysctlBranch()
     {
         var values = new Dictionary<string, string>
         {
             ["/proc/sys/kernel/hostname"] = "edge-host-01\n"
         };
 
-        var probe = new ProcFilesProbe(
+        var probe = new UnixHostProbe(
             values.Keys.ToArray(),
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
@@ -124,7 +124,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
+    public async Task UnixHostProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
     {
         var values = new Dictionary<string, string>
         {
@@ -134,7 +134,7 @@ public sealed class ProcFilesProbeTests
             ["/proc/device-tree/compatible"] = "wago,cc100\0fsl,imx6ul\0"
         };
 
-        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+        var probe = new UnixHostProbe(values.Keys.ToArray(), (path, _, _) =>
             Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
                 : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
@@ -149,7 +149,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_ExtractsSocSignals()
+    public async Task UnixHostProbe_ExtractsSocSignals()
     {
         var values = new Dictionary<string, string>
         {
@@ -159,7 +159,7 @@ public sealed class ProcFilesProbeTests
             ["/sys/devices/soc0/revision"] = "1.2\n"
         };
 
-        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+        var probe = new UnixHostProbe(values.Keys.ToArray(), (path, _, _) =>
             Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
                 : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
@@ -174,7 +174,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_DiscoversAndExtractsPlatformMetadataSignals()
+    public async Task UnixHostProbe_DiscoversAndExtractsPlatformMetadataSignals()
     {
         var values = new Dictionary<string, string>
         {
@@ -182,7 +182,7 @@ public sealed class ProcFilesProbeTests
             ["/sys/bus/platform/devices/wsysinit_init/uevent"] = "OF_COMPATIBLE_0=wago,sysinit\nMODALIAS=of:Nwsysinit_initT(null)Cwago,sysinit\n"
         };
 
-        var probe = new ProcFilesProbe(
+        var probe = new UnixHostProbe(
             [],
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
@@ -200,7 +200,7 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
-    public async Task ProcFilesProbe_ExtractsVirtualizationSignals()
+    public async Task UnixHostProbe_ExtractsVirtualizationSignals()
     {
         var values = new Dictionary<string, string>
         {
@@ -209,7 +209,7 @@ public sealed class ProcFilesProbeTests
             ["/sys/hypervisor/type"] = "xen\n"
         };
 
-        var probe = new ProcFilesProbe(
+        var probe = new UnixHostProbe(
             values.Keys.ToArray(),
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)

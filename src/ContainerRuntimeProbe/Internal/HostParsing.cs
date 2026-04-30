@@ -159,7 +159,7 @@ internal static class HostParsing
         }
 
         return new ParsedKernelInfo(
-            name ?? "Linux",
+            name ?? RuntimeInformation.OSDescription,
             release,
             version,
             compiler,

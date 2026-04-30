@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -50,6 +51,15 @@ public sealed class HostParsingAndReportingTests
 
         Assert.Equal(osRelease, parsed.Release);
         Assert.Equal(expectedFlavor, parsed.Flavor);
+    }
+
+    [Fact]
+    public void ParseKernel_WithoutProcSignals_UsesRuntimeOsDescription()
+    {
+        var parsed = HostParsing.ParseKernel(null, null, null, null);
+
+        Assert.Equal(RuntimeInformation.OSDescription, parsed.Name);
+        Assert.Null(parsed.Release);
     }
 
     [Fact]

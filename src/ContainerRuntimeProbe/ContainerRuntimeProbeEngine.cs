@@ -21,7 +21,7 @@ public sealed class ContainerRuntimeProbeEngine
         {
             new MarkerFileProbe(),
             new EnvironmentProbe(),
-            new ProcFilesProbe(),
+            OperatingSystem.IsWindows() ? new WindowsHostProbe() : new UnixHostProbe(),
             new SecuritySandboxProbe(),
             new RuntimeApiProbe(),
             new KubernetesProbe(),
