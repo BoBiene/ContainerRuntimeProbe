@@ -21,6 +21,10 @@ internal static class VendorDetection
         => !string.IsNullOrWhiteSpace(value)
            && fragments.Any(f => value.Contains(f, StringComparison.OrdinalIgnoreCase));
 
+    private static bool ContainsAny(string? value, IEnumerable<string> fragments)
+        => !string.IsNullOrWhiteSpace(value)
+           && fragments.Any(f => value.Contains(f, StringComparison.OrdinalIgnoreCase));
+
     private static string? FirstValue(IEnumerable<EvidenceItem> ev, params string[] keys)
         => ev.FirstOrDefault(x => keys.Contains(x.Key, StringComparer.Ordinal))?.Value;
 
@@ -29,46 +33,36 @@ internal static class VendorDetection
             && x.Key.EndsWith(suffix, StringComparison.Ordinal)
             && !string.IsNullOrWhiteSpace(x.Value));
 
-    private static readonly string[] ExplicitVendorEvidenceKeys =
-    [
-        "dmi.sys_vendor",
-        "dmi.board_vendor",
-        "dmi.product_name",
-        "dmi.board_name",
-        "dmi.product_family",
-        "dmi.chassis_vendor",
-        "dmi.modalias",
-        "device_tree.model",
-        "device_tree.compatible"
-    ];
-
-    private static (PlatformVendorKind vendor, string[] matchedKeys) DetectExplicitPlatformVendor(IReadOnlyList<EvidenceItem> evidence)
+    private static (VendorCatalogEntry? entry, string[] matchedKeys) DetectCatalogPlatformVendor(
+        IReadOnlyList<EvidenceItem> evidence,
+        IReadOnlyList<VendorCatalogEntry> catalog)
     {
         var explicitEvidence = evidence
-            .Where(item => ExplicitVendorEvidenceKeys.Contains(item.Key, StringComparer.Ordinal))
+            .Where(item => VendorCatalog.ExplicitHardwareEvidenceKeys.Contains(item.Key, StringComparer.Ordinal))
             .Where(item => !string.IsNullOrWhiteSpace(item.Value))
             .ToArray();
 
-        foreach (var mapping in DetectionMaps.ExplicitPlatformVendorSignals)
+        foreach (var entry in catalog)
         {
             var matchedKeys = explicitEvidence
-                .Where(item => ContainsAny(item.Value, mapping.Fragments))
+                .Where(item => entry.EvidenceKeys.Contains(item.Key, StringComparer.Ordinal))
+                .Where(item => ContainsAny(item.Value, entry.MatchFragments))
                 .Select(item => item.Key)
                 .Distinct(StringComparer.Ordinal)
                 .ToArray();
 
             if (matchedKeys.Length > 0)
             {
-                return (mapping.Vendor, matchedKeys);
+                return (entry, matchedKeys);
             }
         }
 
-        return (PlatformVendorKind.Unknown, []);
+        return (null, []);
     }
 
     /// <summary>
     /// Evaluates all platform vendor signals and returns the best-matching vendor classification.
-    /// Vendors are checked in priority order: Microsoft (WSL2) → Synology → Apple → Siemens/IoTEdge.
+    /// Vendors are checked in priority order: Microsoft (WSL2) → Synology → Apple → verified hardware catalog → Siemens/IoTEdge.
     /// Each vendor requires a minimum score of 2 to prevent single-weak-signal false positives,
     /// except Microsoft (WSL2) which is a deterministic high-confidence signal.
     /// </summary>
@@ -181,7 +175,8 @@ internal static class VendorDetection
         if (appleScore >= 2)
             return Make(PlatformVendorKind.Apple, appleScore, appleReasons.ToArray());
 
-        var (explicitPlatformVendor, explicitVendorKeys) = DetectExplicitPlatformVendor(e);
+        var (catalogMatch, explicitVendorKeys) = DetectCatalogPlatformVendor(e, VendorCatalog.RuntimeActiveHardwareVendors);
+        var explicitPlatformVendor = catalogMatch?.Vendor ?? PlatformVendorKind.Unknown;
 
         if (explicitPlatformVendor != PlatformVendorKind.Unknown && explicitPlatformVendor != PlatformVendorKind.Siemens)
         {

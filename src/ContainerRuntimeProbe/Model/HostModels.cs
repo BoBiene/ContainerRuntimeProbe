@@ -225,11 +225,20 @@ public sealed record HostMemoryInfo(
 public sealed record HostDmiInfo(
     string? SystemVendor,
     string? ProductName,
+    string? ProductFamily,
     string? ProductVersion,
     string? BoardVendor,
     string? BoardName,
+    string? ChassisVendor,
     string? BiosVendor,
     string? Modalias,
+    Confidence Confidence,
+    IReadOnlyList<string> EvidenceReferences);
+
+/// <summary>Normalized public device-tree platform details.</summary>
+public sealed record HostDeviceTreeInfo(
+    string? Model,
+    string? Compatible,
     Confidence Confidence,
     IReadOnlyList<string> EvidenceReferences);
 
@@ -240,6 +249,7 @@ public sealed record HostHardwareInfo(
     HostCpuInfo Cpu,
     HostMemoryInfo Memory,
     HostDmiInfo Dmi,
+    HostDeviceTreeInfo DeviceTree,
     string? CloudMachineType);
 
 /// <summary>Single host fingerprint component.</summary>

@@ -357,15 +357,15 @@ public sealed class ClassifierTests
     }
 
     [Theory]
-    [InlineData(PlatformVendorKind.Wago, "dmi.sys_vendor", "WAGO Kontakttechnik GmbH & Co. KG")]
-    [InlineData(PlatformVendorKind.Beckhoff, "dmi.chassis_vendor", "Beckhoff Automation")]
-    [InlineData(PlatformVendorKind.PhoenixContact, "device_tree.model", "Phoenix Contact PLCnext AXC F 2152")]
-    [InlineData(PlatformVendorKind.Advantech, "dmi.sys_vendor", "Advantech Co., Ltd.")]
-    [InlineData(PlatformVendorKind.Moxa, "device_tree.compatible", "moxa,uc-8410a")]
-    [InlineData(PlatformVendorKind.BoschRexroth, "dmi.sys_vendor", "Bosch Rexroth AG")]
-    [InlineData(PlatformVendorKind.SchneiderElectric, "dmi.sys_vendor", "Schneider Electric")]
-    [InlineData(PlatformVendorKind.BAndR, "dmi.sys_vendor", "B&R Industrial Automation GmbH")]
-    public void Classifier_ExplicitOtVendorSignals_DetectVendorAndApplianceHost(PlatformVendorKind expectedVendor, string key, string value)
+    [InlineData("dmi.sys_vendor", "WAGO Kontakttechnik GmbH & Co. KG")]
+    [InlineData("dmi.chassis_vendor", "Beckhoff Automation")]
+    [InlineData("device_tree.model", "Phoenix Contact PLCnext AXC F 2152")]
+    [InlineData("dmi.sys_vendor", "Advantech Co., Ltd.")]
+    [InlineData("device_tree.compatible", "moxa,uc-8410a")]
+    [InlineData("dmi.sys_vendor", "Bosch Rexroth AG")]
+    [InlineData("dmi.sys_vendor", "Schneider Electric")]
+    [InlineData("dmi.sys_vendor", "B&R Industrial Automation GmbH")]
+    public void Classifier_CandidateOtVendorSignals_DoNotYetClassifyVendor(string key, string value)
     {
         var report = Classifier.Classify([
             new ProbeResult("proc-files", ProbeOutcome.Success, [
@@ -373,9 +373,7 @@ public sealed class ClassifierTests
             ])
         ]);
 
-        Assert.Equal(expectedVendor, report.PlatformVendor.Value);
-        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
-        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+        Assert.Equal(PlatformVendorKind.Unknown, report.PlatformVendor.Value);
     }
 
     [Fact]

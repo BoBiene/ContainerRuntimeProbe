@@ -271,13 +271,22 @@ internal static class HostReportBuilder
         var dmi = new HostDmiInfo(
             GetValue(evidence, "dmi.sys_vendor"),
             GetValue(evidence, "dmi.product_name"),
+            GetValue(evidence, "dmi.product_family"),
             GetValue(evidence, "dmi.product_version"),
             GetValue(evidence, "dmi.board_vendor"),
             GetValue(evidence, "dmi.board_name"),
+            GetValue(evidence, "dmi.chassis_vendor"),
             GetValue(evidence, "dmi.bios_vendor"),
             GetValue(evidence, "dmi.modalias"),
             dmiReferences.Count == 0 ? Confidence.Unknown : Confidence.High,
             dmiReferences);
+
+        var deviceTreeReferences = GetEvidenceReferences(evidence, "device_tree.");
+        var deviceTree = new HostDeviceTreeInfo(
+            GetValue(evidence, "device_tree.model"),
+            GetValue(evidence, "device_tree.compatible"),
+            deviceTreeReferences.Count == 0 ? Confidence.Unknown : Confidence.High,
+            deviceTreeReferences);
 
         return new HostHardwareInfo(
             HostParsing.NormalizeArchitecture(rawArchitecture),
@@ -285,6 +294,7 @@ internal static class HostReportBuilder
             cpu,
             memory,
             dmi,
+            deviceTree,
             GetValue(evidence, "cloud.machine_type"));
     }
 
