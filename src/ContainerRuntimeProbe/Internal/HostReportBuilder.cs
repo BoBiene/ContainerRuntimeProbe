@@ -129,6 +129,12 @@ internal static class HostReportBuilder
             candidates.Add(cloudCandidate);
         }
 
+        var localCandidate = BuildRuntimeHostFromLocalEvidence(evidence);
+        if (localCandidate is not null)
+        {
+            candidates.Add(localCandidate);
+        }
+
         var selected = candidates.FirstOrDefault();
         if (selected is null)
         {
@@ -146,6 +152,7 @@ internal static class HostReportBuilder
 
         var confidence = selected.Source switch
         {
+            RuntimeReportedHostSource.LocalHost => Confidence.High,
             RuntimeReportedHostSource.DockerInfo or RuntimeReportedHostSource.PodmanInfo or RuntimeReportedHostSource.KubernetesNodeInfo => Confidence.High,
             RuntimeReportedHostSource.AzureImds or RuntimeReportedHostSource.AwsMetadata or RuntimeReportedHostSource.GcpMetadata or RuntimeReportedHostSource.OciMetadata => Confidence.Medium,
             _ => Confidence.Low
@@ -395,6 +402,31 @@ internal static class HostReportBuilder
             architecture,
             source,
             GetEvidenceReferences(evidence, "cloud."));
+    }
+
+    private static ParsedRuntimeHostInfo? BuildRuntimeHostFromLocalEvidence(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var productName = GetValue(evidence, "windows.product_name");
+        if (string.IsNullOrWhiteSpace(productName))
+        {
+            return null;
+        }
+
+        var version = GetValue(evidence, "windows.display_version");
+        var rawArchitecture = GetValue(evidence, "kernel.architecture") ?? GetValue(evidence, "runtime.architecture");
+        var references = GetEvidenceReferences(evidence, "windows.")
+            .Concat(GetEvidenceReferences(evidence, "kernel."))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return new ParsedRuntimeHostInfo(
+            HostParsing.NormalizeOperatingSystemFamily(productName, [], productName, productName),
+            productName,
+            version,
+            GetValue(evidence, "kernel.release"),
+            rawArchitecture,
+            RuntimeReportedHostSource.LocalHost,
+            references);
     }
 
     private static void AddExcludedIfPresent(IReadOnlyList<EvidenceItem> evidence, ICollection<HostFingerprintComponent> excluded, string name, params string[] keys)

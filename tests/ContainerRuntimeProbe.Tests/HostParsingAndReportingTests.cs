@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -50,6 +51,15 @@ public sealed class HostParsingAndReportingTests
 
         Assert.Equal(osRelease, parsed.Release);
         Assert.Equal(expectedFlavor, parsed.Flavor);
+    }
+
+    [Fact]
+    public void ParseKernel_WithoutProcSignals_UsesRuntimeOsDescription()
+    {
+        var parsed = HostParsing.ParseKernel(null, null, null, null);
+
+        Assert.Equal(RuntimeInformation.OSDescription, parsed.Name);
+        Assert.Null(parsed.Release);
     }
 
     [Fact]
@@ -249,6 +259,26 @@ public sealed class HostParsingAndReportingTests
         Assert.Equal(VirtualizationKind.HyperV, report.Host.Virtualization.Kind);
         Assert.Equal("Microsoft Hyper-V", report.Host.Virtualization.PlatformVendor);
         Assert.Equal(Confidence.High, report.Host.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void HostReport_WindowsFriendlyVersion_PopulatesRuntimeHostOsAndTextOutput()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "windows.product_name", "Windows 11 Pro"),
+            new EvidenceItem("proc-files", "windows.display_version", "24H2"),
+            new EvidenceItem("proc-files", "kernel.release", "10.0.26200"),
+            new EvidenceItem("proc-files", "kernel.architecture", "x86_64")
+        ]);
+
+        Assert.Equal(RuntimeReportedHostSource.LocalHost, report.Host.RuntimeReportedHostOs.Source);
+        Assert.Equal(OperatingSystemFamily.Windows, report.Host.RuntimeReportedHostOs.Family);
+        Assert.Equal("Windows 11 Pro", report.Host.RuntimeReportedHostOs.Name);
+        Assert.Equal("24H2", report.Host.RuntimeReportedHostOs.Version);
+        Assert.Equal(Confidence.High, report.Host.RuntimeReportedHostOs.Confidence);
+
+        var text = ReportRenderer.ToText(report);
+        Assert.Contains("Windows 11 Pro 24H2", text, StringComparison.Ordinal);
     }
 
     [Fact]

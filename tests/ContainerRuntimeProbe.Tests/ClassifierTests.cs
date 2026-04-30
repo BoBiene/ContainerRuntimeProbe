@@ -625,6 +625,23 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_NativeWindowsKernelName_DoesNotAssumeLinuxHost()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "kernel.name", "Windows_NT"),
+                new EvidenceItem("proc-files", "kernel.release", "10.0.26200"),
+                new EvidenceItem("proc-files", "kernel.architecture", "x86_64")
+            ])
+        ]);
+
+        Assert.Equal(OperatingSystemFamily.Windows, report.Host.Family.Value);
+        Assert.Equal(Confidence.High, report.Host.Family.Confidence);
+        Assert.Equal(HostTypeKind.Unknown, report.Host.Type.Value);
+        Assert.Equal(VirtualizationClassificationKind.None, report.Virtualization.Value);
+    }
+
+    [Fact]
     public void Classifier_OldKernelMismatchAndCustomCompiler_DetectsAppliance()
     {
         var report = Classifier.Classify([

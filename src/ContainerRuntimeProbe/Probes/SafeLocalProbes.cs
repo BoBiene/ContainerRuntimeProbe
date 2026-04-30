@@ -80,7 +80,7 @@ internal sealed class EnvironmentProbe : IProbe
     }
 }
 
-internal sealed class ProcFilesProbe : IProbe
+internal sealed class UnixHostProbe : IProbe
 {
     public string Id => "proc-files";
     private readonly IReadOnlyList<string> _files;
@@ -188,9 +188,9 @@ internal sealed class ProcFilesProbe : IProbe
 
     private readonly Func<string, bool> _directoryExists;
 
-    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists) { }
+    public UnixHostProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists) { }
 
-    internal ProcFilesProbe(
+    internal UnixHostProbe(
         IReadOnlyList<string> files,
         Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync,
         Func<string, IEnumerable<string>>? enumerateFiles = null,
