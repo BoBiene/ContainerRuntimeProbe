@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Classification;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Internal;
@@ -14,7 +15,7 @@ internal static class HostReportBuilder
         var containerImageOs = BuildContainerImageOs(evidence, defaultArchitectureRaw);
         var visibleKernel = BuildVisibleKernel(evidence, defaultArchitectureRaw);
         var runtimeHostOs = BuildRuntimeReportedHostOs(evidence);
-        var virtualization = BuildVirtualization(evidence, visibleKernel);
+        var virtualization = BuildVirtualization(evidence);
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
@@ -162,46 +163,12 @@ internal static class HostReportBuilder
             selected.EvidenceReferences);
     }
 
-    private static VirtualizationInfo BuildVirtualization(IReadOnlyList<EvidenceItem> evidence, VisibleKernelInfo visibleKernel)
+    private static VirtualizationInfo BuildVirtualization(IReadOnlyList<EvidenceItem> evidence)
     {
-        var release = GetValue(evidence, "kernel.release");
-        var procVersion = GetValue(evidence, "/proc/version");
-        var evidenceReferences = new HashSet<string>(StringComparer.Ordinal);
-
-        if (visibleKernel.Flavor == KernelFlavor.WSL2)
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "kernel.flavor"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (HostParsing.ContainsWsl2Signal(release))
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "kernel.release"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (HostParsing.ContainsWsl2Signal(procVersion))
-        {
-            foreach (var reference in GetEvidenceReferences(evidence, "/proc/version"))
-            {
-                evidenceReferences.Add(reference);
-            }
-        }
-
-        if (evidenceReferences.Count > 0)
-        {
-            return new VirtualizationInfo(
-                VirtualizationKind.WSL2,
-                "Microsoft",
-                Confidence.High,
-                evidenceReferences.OrderBy(value => value, StringComparer.Ordinal).ToArray());
-        }
-
-        return new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, []);
+        var match = VirtualizationDetection.Detect(evidence);
+        return match is null
+            ? new VirtualizationInfo(VirtualizationKind.Unknown, null, Confidence.Unknown, [])
+            : new VirtualizationInfo(match.Kind, match.PlatformVendor, match.Confidence, match.EvidenceReferences);
     }
 
     private static UnderlyingHostOsInfo BuildUnderlyingHostOs(RuntimeReportedHostOsInfo runtimeReportedHostOs, VirtualizationInfo virtualization, VisibleKernelInfo visibleKernel)

@@ -24,6 +24,12 @@ internal static class ClassificationValueFormatter
     public static string Format(VirtualizationClassificationKind value)
         => value switch
         {
+            VirtualizationClassificationKind.VirtualMachine => "Virtual Machine",
+            VirtualizationClassificationKind.HyperV => "Hyper-V",
+            VirtualizationClassificationKind.VMware => "VMware",
+            VirtualizationClassificationKind.VirtualBox => "VirtualBox",
+            VirtualizationClassificationKind.Xen => "Xen",
+            VirtualizationClassificationKind.Kvm => "KVM/QEMU",
             VirtualizationClassificationKind.WSL2 => "WSL2",
             VirtualizationClassificationKind.None => "None",
             _ => KnownValues.Unknown

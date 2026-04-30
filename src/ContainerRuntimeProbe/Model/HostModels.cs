@@ -88,7 +88,13 @@ public enum KernelFlavor
 public enum VirtualizationKind
 {
     Unknown,
-    WSL2
+    VirtualMachine,
+    WSL2,
+    HyperV,
+    VMware,
+    VirtualBox,
+    Xen,
+    Kvm
 }
 
 /// <summary>Heuristic source for inferred underlying host OS information.</summary>

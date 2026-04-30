@@ -38,6 +38,64 @@ public sealed class ClassifierTests
         Assert.Equal(Confidence.High, report.IsContainerized.Confidence);
     }
 
+    [Fact]
+    public void Classifier_VmwareDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "VMware, Inc."),
+                new EvidenceItem("proc-files", "dmi.product_name", "VMware Virtual Platform")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.VMware, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_VirtualBoxDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "innotek GmbH"),
+                new EvidenceItem("proc-files", "dmi.product_name", "VirtualBox")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.VirtualBox, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_XenHypervisorType_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "xen")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Xen, report.Virtualization.Value);
+        Assert.Equal(Confidence.High, report.Virtualization.Confidence);
+    }
+
+    [Fact]
+    public void Classifier_QemuDmiSignals_ClassifiesVirtualization()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "QEMU")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.True(report.Virtualization.Confidence >= Confidence.High);
+    }
+
     // ── ContainerRuntime scenarios ───────────────────────────────────────────
 
     [Fact]
@@ -237,6 +295,30 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_AzureMetadataAndHyperVSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Microsoft Corporation"),
+                new EvidenceItem("proc-files", "dmi.product_family", "Hyper-V"),
+                new EvidenceItem("proc-files", "bus.vmbus.present", bool.TrueString),
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-1015-azure"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "azure.imds.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.HyperV, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.Azure, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
+        Assert.Equal(HostTypeKind.StandardLinux, report.Host.Type.Value);
+    }
+
+    [Fact]
     public void Classifier_AzureImdsUnavailable_CloudUnknown()
     {
         // Key presence with non-Success value must NOT classify as Azure
@@ -262,6 +344,50 @@ public sealed class ClassifierTests
 
         Assert.Equal(CloudProviderKind.GoogleCloud, report.CloudProvider.Value);
         Assert.True(report.CloudProvider.Confidence >= Confidence.High);
+    }
+
+    [Fact]
+    public void Classifier_GcpMetadataAndKvmSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "kvm"),
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Google"),
+                new EvidenceItem("proc-files", "kernel.release", "6.8.0-1029-gcp"),
+                new EvidenceItem("proc-files", "os.id", "ubuntu"),
+                new EvidenceItem("proc-files", "os.version_id", "24.04")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "gcp.metadata.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.GoogleCloud, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
+    }
+
+    [Fact]
+    public void Classifier_AwsMetadataAndKvmSignals_CoexistWithoutConflict()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+                new EvidenceItem("proc-files", "sys.hypervisor.type", "kvm"),
+                new EvidenceItem("proc-files", "dmi.product_name", "KVM"),
+                new EvidenceItem("proc-files", "kernel.release", "6.1.79-99.167.amzn2023.x86_64"),
+                new EvidenceItem("proc-files", "os.id", "amzn"),
+                new EvidenceItem("proc-files", "os.version_id", "2023")
+            ]),
+            new ProbeResult("cloud-metadata", ProbeOutcome.Success, [
+                new EvidenceItem("cloud-metadata", "aws.imds.identity.outcome", "Success")
+            ])
+        ]);
+
+        Assert.Equal(VirtualizationClassificationKind.Kvm, report.Virtualization.Value);
+        Assert.Equal(CloudProviderKind.AWS, report.CloudProvider.Value);
+        Assert.Equal(EnvironmentTypeKind.Cloud, report.Environment.Type.Value);
     }
 
     [Fact]

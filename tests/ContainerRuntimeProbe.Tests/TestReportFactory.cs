@@ -15,7 +15,7 @@ internal static class TestReportFactory
             new ReportClassification(
                 new(ContainerizationKind.@True, Confidence.High, []),
                 new(ContainerRuntimeKind.Docker, Confidence.Medium, []),
-                new(VirtualizationClassificationKind.None, Confidence.Medium, []),
+                new(VirtualizationClassificationKind.HyperV, Confidence.High, [new ClassificationReason("Hyper-V DMI and guest integration signals detected", ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_family"])]),
                 new(new(OperatingSystemFamily.Linux, Confidence.High, []), new(HostTypeKind.StandardLinux, Confidence.High, [])),
                 new(new(EnvironmentTypeKind.Cloud, Confidence.Medium, [])),
                 new(RuntimeApiKind.DockerEngineApi, Confidence.Medium, []),
@@ -68,10 +68,10 @@ internal static class TestReportFactory
                     Confidence.High,
                     ["runtime-api:docker.info.operating_system"]),
                 new VirtualizationInfo(
-                    VirtualizationKind.Unknown,
-                    null,
-                    Confidence.Unknown,
-                    []),
+                    VirtualizationKind.HyperV,
+                    "Microsoft Hyper-V",
+                    Confidence.High,
+                    ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_family"]),
                 new UnderlyingHostOsInfo(
                     OperatingSystemFamily.Unknown,
                     null,

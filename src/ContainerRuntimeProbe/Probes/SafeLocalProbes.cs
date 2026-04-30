@@ -125,6 +125,35 @@ internal sealed class ProcFilesProbe : IProbe
         "/sys/firmware/devicetree/base/compatible"
     ];
 
+    private static readonly string[] VirtualizationFiles =
+    [
+        "/proc/modules",
+        "/sys/hypervisor/type"
+    ];
+
+    private static readonly string[] InterestingVirtualizationModules =
+    [
+        "hv_vmbus",
+        "hv_utils",
+        "hv_storvsc",
+        "hv_netvsc",
+        "hv_balloon",
+        "hid_hyperv",
+        "vmw_vmci",
+        "vmxnet3",
+        "vmw_pvscsi",
+        "vmw_balloon",
+        "vmwgfx",
+        "vboxguest",
+        "vboxsf",
+        "vboxvideo",
+        "xen_evtchn",
+        "xen_blkfront",
+        "xen_netfront"
+    ];
+
+    private const string VmbusDevicesDirectory = "/sys/bus/vmbus/devices";
+
     private static readonly string[] Files =
     [
         "/proc/1/cgroup", "/proc/self/cgroup",
@@ -137,20 +166,25 @@ internal sealed class ProcFilesProbe : IProbe
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
         .. PublicDmiFiles,
         .. PublicDeviceTreeFiles,
+        .. VirtualizationFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
 
-    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles) { }
+    private readonly Func<string, bool> _directoryExists;
+
+    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.Exists) { }
 
     internal ProcFilesProbe(
         IReadOnlyList<string> files,
         Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync,
-        Func<string, IEnumerable<string>>? enumerateFiles = null)
+        Func<string, IEnumerable<string>>? enumerateFiles = null,
+        Func<string, bool>? directoryExists = null)
     {
         _files = files;
         _readFileAsync = readFileAsync;
         _enumerateFiles = enumerateFiles ?? Directory.EnumerateFiles;
+        _directoryExists = directoryExists ?? Directory.Exists;
     }
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -257,6 +291,7 @@ internal sealed class ProcFilesProbe : IProbe
                 AddEvidenceIfPresent(evidence, "cpu.microcode", cpu.Microcode);
                 AddEvidenceIfPresent(evidence, "cpu.flags.count", cpu.FlagsCount?.ToString());
                 AddEvidenceIfPresent(evidence, "cpu.flags.hash", cpu.FlagsHash is null ? null : $"sha256:{cpu.FlagsHash}");
+                AddEvidenceIfPresent(evidence, "cpu.flag.hypervisor", cpu.HypervisorPresent?.ToString());
                 AddEvidenceIfPresent(evidence, "cpu.hardware", cpu.Hardware);
                 AddEvidenceIfPresent(evidence, "cpu.revision", cpu.Revision);
                 var sanitizedSerial = HostParsing.SanitizeCpuSerial(cpu.Serial, context.IncludeSensitive);
@@ -275,6 +310,24 @@ internal sealed class ProcFilesProbe : IProbe
             {
                 var key = file.Split('/').Last();
                 AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+            }
+            else if (file == "/proc/modules")
+            {
+                var loadedModules = text!
+                    .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(line => line.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault())
+                    .Where(name => !string.IsNullOrWhiteSpace(name))
+                    .Distinct(StringComparer.Ordinal)
+                    .ToHashSet(StringComparer.Ordinal);
+
+                foreach (var moduleName in InterestingVirtualizationModules.Where(loadedModules.Contains))
+                {
+                    evidence.Add(new EvidenceItem(Id, $"module.{moduleName}.loaded", bool.TrueString));
+                }
+            }
+            else if (file == "/sys/hypervisor/type")
+            {
+                AddEvidenceIfPresent(evidence, "sys.hypervisor.type", text?.Trim());
             }
             else if (file is "/proc/device-tree/model" or "/sys/firmware/devicetree/base/model")
             {
@@ -342,6 +395,11 @@ internal sealed class ProcFilesProbe : IProbe
             {
                 evidence.Add(new EvidenceItem(Id, $"ns.{ns}", "unavailable"));
             }
+        }
+
+        if (_directoryExists(VmbusDevicesDirectory))
+        {
+            evidence.Add(new EvidenceItem(Id, "bus.vmbus.present", bool.TrueString));
         }
 
         var kernel = HostParsing.ParseKernel(procVersion, kernelOsRelease, kernelOsType, kernelVersion);

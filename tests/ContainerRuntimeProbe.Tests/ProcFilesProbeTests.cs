@@ -125,6 +125,35 @@ public sealed class ProcFilesProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "device_tree.compatible" && item.Value == "wago,cc100, fsl,imx6ul");
     }
 
+    [Fact]
+    public async Task ProcFilesProbe_ExtractsVirtualizationSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/proc/cpuinfo"] = "processor : 0\nflags : fpu hypervisor vmx\n",
+            ["/proc/modules"] = "hv_vmbus 16384 0 - Live 0x00000000\nvmxnet3 16384 0 - Live 0x00000000\nvboxguest 16384 0 - Live 0x00000000\nxen_evtchn 16384 0 - Live 0x00000000\n",
+            ["/sys/hypervisor/type"] = "xen\n"
+        };
+
+        var probe = new ProcFilesProbe(
+            values.Keys.ToArray(),
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            directoryExists: path => path == "/sys/bus/vmbus/devices");
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "cpu.flag.hypervisor" && item.Value == bool.TrueString);
+        Assert.Contains(result.Evidence, item => item.Key == "module.hv_vmbus.loaded" && item.Value == bool.TrueString);
+        Assert.Contains(result.Evidence, item => item.Key == "module.vmxnet3.loaded" && item.Value == bool.TrueString);
+        Assert.Contains(result.Evidence, item => item.Key == "module.vboxguest.loaded" && item.Value == bool.TrueString);
+        Assert.Contains(result.Evidence, item => item.Key == "module.xen_evtchn.loaded" && item.Value == bool.TrueString);
+        Assert.Contains(result.Evidence, item => item.Key == "sys.hypervisor.type" && item.Value == "xen");
+        Assert.Contains(result.Evidence, item => item.Key == "bus.vmbus.present" && item.Value == bool.TrueString);
+    }
+
     private static string NormalizeArchitectureRaw(Architecture architecture)
         => architecture switch
         {

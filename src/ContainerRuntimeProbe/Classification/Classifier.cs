@@ -149,23 +149,19 @@ internal static class Classifier
                 : MakeWithConfidence(ContainerizationKind.Unknown, Confidence.Unknown, new ClassificationReason("Container markers were not available", Array.Empty<string>()));
 
         // ── Virtualization / Host / Environment ────────────────────────────────
-        var virtualizationReasons = new List<ClassificationReason>();
-        if (e.Any(x => x.Key == "kernel.flavor" && string.Equals(x.Value, "WSL2", StringComparison.OrdinalIgnoreCase)))
-        {
-            virtualizationReasons.Add(new("kernel.flavor reports WSL2", new[] { "kernel.flavor" }));
-        }
-        if (e.Any(x => x.Key == "kernel.release" && HostParsing.ContainsWsl2Signal(x.Value)))
-        {
-            virtualizationReasons.Add(new("kernel.release contains microsoft-standard-WSL2", new[] { "kernel.release" }));
-        }
-        if (e.Any(x => x.Key == "/proc/version" && HostParsing.ContainsWsl2Signal(x.Value)))
-        {
-            virtualizationReasons.Add(new("/proc/version contains microsoft-standard-WSL2", new[] { "/proc/version" }));
-        }
+        var virtualizationMatch = VirtualizationDetection.Detect(e);
+        var virtualizationReasons = virtualizationMatch is null
+            ? Array.Empty<ClassificationReason>()
+            : [new ClassificationReason(virtualizationMatch.Summary, virtualizationMatch.EvidenceReferences)];
 
-        var virtualization = virtualizationReasons.Count > 0
-            ? MakeWithConfidence(VirtualizationClassificationKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
-            : MakeWithConfidence(VirtualizationClassificationKind.None, probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown, new ClassificationReason("No WSL2 kernel fingerprint detected", new[] { "kernel.release", "/proc/version" }));
+        var virtualization = virtualizationMatch is not null
+            ? MakeWithConfidence(VirtualizationDetection.ToClassificationKind(virtualizationMatch.Kind), virtualizationMatch.Confidence, virtualizationReasons)
+            : MakeWithConfidence(
+                probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success)
+                    ? VirtualizationClassificationKind.None
+                    : VirtualizationClassificationKind.Unknown,
+                probes.Any(probe => probe.ProbeId == "proc-files" && probe.Outcome == ProbeOutcome.Success) ? Confidence.Medium : Confidence.Unknown,
+                new ClassificationReason("No virtualization fingerprint detected", new[] { "cpu.flag.hypervisor", "sys.hypervisor.type", "dmi.sys_vendor", "dmi.product_name" }));
 
         var hostFamily = virtualization.Value == VirtualizationClassificationKind.WSL2
             ? MakeWithConfidence(OperatingSystemFamily.Windows, Confidence.High, new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" }))

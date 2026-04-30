@@ -59,6 +59,24 @@ public enum VirtualizationClassificationKind
     /// <summary>No virtualization fingerprint was detected.</summary>
     None,
 
+    /// <summary>Generic hypervisor or VM signals were detected, but provider attribution is not explicit yet.</summary>
+    VirtualMachine,
+
+    /// <summary>Hyper-V guest signals were detected.</summary>
+    HyperV,
+
+    /// <summary>VMware guest signals were detected.</summary>
+    VMware,
+
+    /// <summary>Oracle VirtualBox guest signals were detected.</summary>
+    VirtualBox,
+
+    /// <summary>Xen guest signals were detected.</summary>
+    Xen,
+
+    /// <summary>KVM or QEMU guest signals were detected.</summary>
+    Kvm,
+
     /// <summary>The kernel fingerprint matches WSL2.</summary>
     WSL2
 }
