@@ -61,7 +61,7 @@ RUN target_os="${TARGETOS:-linux}" \
         minver_args="$minver_args -p:MinVerVersionOverride=$minver_version_override"; \
     fi \
     && if [ -n "$minver_build_metadata" ]; then \
-        minver_args="$minver_args -p:MinVerBuildMetadata=$minver_build_metadata"; \
+        minver_args="$minver_args -p:MinVerBuildMetadata=$minver_build_metadata -p:SourceRevisionId=$minver_build_metadata -p:IncludeSourceRevisionInInformationalVersion=true"; \
     fi \
     && dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
         -c Release \
