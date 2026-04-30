@@ -491,6 +491,10 @@ public sealed class ClassifierTests
     [InlineData("dmi.sys_vendor", "Bosch Rexroth AG")]
     [InlineData("dmi.sys_vendor", "Schneider Electric")]
     [InlineData("dmi.sys_vendor", "B&R Industrial Automation GmbH")]
+    [InlineData("dmi.sys_vendor", "Opto 22")]
+    [InlineData("dmi.product_name", "groov EPIC")]
+    [InlineData("dmi.sys_vendor", "Stratus")]
+    [InlineData("dmi.product_name", "ztC Edge")]
     public void Classifier_CandidateOtVendorSignals_DoNotYetClassifyVendor(string key, string value)
     {
         var report = Classifier.Classify([

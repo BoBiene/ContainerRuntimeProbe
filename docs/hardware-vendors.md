@@ -42,6 +42,8 @@ These entries can influence `PlatformVendor` at runtime.
 - `BoschRexroth`
 - `SchneiderElectric`
 - `BAndR`
+- `Opto22`
+- `Stratus`
 
 These entries stay in the catalog for review and future promotion, but do not currently affect runtime classification.
 

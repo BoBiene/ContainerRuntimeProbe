@@ -218,6 +218,12 @@ public enum PlatformVendorKind
     /// <summary>B&amp;R hardware platform signals.</summary>
     BAndR,
 
+    /// <summary>Opto 22 groov EPIC and related hardware platform signals.</summary>
+    Opto22,
+
+    /// <summary>Stratus ztC Edge and related hardware platform signals.</summary>
+    Stratus,
+
     /// <summary>Azure IoT Edge signals without Siemens-specific corroboration.</summary>
     IoTEdge
 }

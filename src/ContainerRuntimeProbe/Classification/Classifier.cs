@@ -113,6 +113,8 @@ internal static class Classifier
                 or PlatformVendorKind.BoschRexroth
                 or PlatformVendorKind.SchneiderElectric
                 or PlatformVendorKind.BAndR
+                or PlatformVendorKind.Opto22
+                or PlatformVendorKind.Stratus
                 or PlatformVendorKind.IoTEdge;
 
         static bool IsKernelUserspaceMismatch(string? osVersion, int? kernelMajor)

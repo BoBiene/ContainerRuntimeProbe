@@ -51,7 +51,9 @@ internal static class VendorCatalog
         new(PlatformVendorKind.Moxa, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["moxa", "moxart"]),
         new(PlatformVendorKind.BoschRexroth, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["bosch rexroth", "boschrexroth", "rexroth", "ctrlx"]),
         new(PlatformVendorKind.SchneiderElectric, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["schneider electric", "schneiderelectric", "modicon"]),
-        new(PlatformVendorKind.BAndR, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["b&r", "bernecker", "rainer", "br automation", "brautomation"])
+        new(PlatformVendorKind.BAndR, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["b&r", "bernecker", "rainer", "br automation", "brautomation"]),
+        new(PlatformVendorKind.Opto22, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["opto 22", "opto22", "groov epic"]),
+        new(PlatformVendorKind.Stratus, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["stratus", "ztc edge", "stratus ztc edge"])
     ];
 
     internal static IReadOnlyList<VendorCatalogEntry> RuntimeActiveHardwareVendors { get; } =

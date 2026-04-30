@@ -72,6 +72,8 @@ internal static class ClassificationValueFormatter
             PlatformVendorKind.BoschRexroth => "Bosch Rexroth",
             PlatformVendorKind.SchneiderElectric => "Schneider Electric",
             PlatformVendorKind.BAndR => "B&R",
+            PlatformVendorKind.Opto22 => "Opto 22",
+            PlatformVendorKind.Stratus => "Stratus",
             PlatformVendorKind.Unknown => KnownValues.Unknown,
             _ => value.ToString()
         };
