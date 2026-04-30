@@ -100,6 +100,31 @@ public sealed class ProcFilesProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "kernel.architecture" && item.Value == NormalizeArchitectureRaw(RuntimeInformation.OSArchitecture));
     }
 
+    [Fact]
+    public async Task ProcFilesProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/sys/class/dmi/id/product_family"] = "CX\n",
+            ["/sys/class/dmi/id/chassis_vendor"] = "Beckhoff Automation\n",
+            ["/proc/device-tree/model"] = "WAGO CC100\0",
+            ["/proc/device-tree/compatible"] = "wago,cc100\0fsl,imx6ul\0"
+        };
+
+        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+            Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "dmi.product_family" && item.Value == "CX");
+        Assert.Contains(result.Evidence, item => item.Key == "dmi.chassis_vendor" && item.Value == "Beckhoff Automation");
+        Assert.Contains(result.Evidence, item => item.Key == "device_tree.model" && item.Value == "WAGO CC100");
+        Assert.Contains(result.Evidence, item => item.Key == "device_tree.compatible" && item.Value == "wago,cc100, fsl,imx6ul");
+    }
+
     private static string NormalizeArchitectureRaw(Architecture architecture)
         => architecture switch
         {

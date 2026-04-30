@@ -101,6 +101,20 @@ internal static class Classifier
                     || ContainsAnySignal(osName, DetectionMaps.VendorApplianceSignals)
                     || ContainsAnySignal(prettyName, DetectionMaps.VendorApplianceSignals);
 
+        static bool IsAppliancePlatformVendor(PlatformVendorKind vendor)
+            => vendor is PlatformVendorKind.Synology
+                or PlatformVendorKind.Siemens
+                or PlatformVendorKind.SiemensIndustrialEdge
+                or PlatformVendorKind.Wago
+                or PlatformVendorKind.Beckhoff
+                or PlatformVendorKind.PhoenixContact
+                or PlatformVendorKind.Advantech
+                or PlatformVendorKind.Moxa
+                or PlatformVendorKind.BoschRexroth
+                or PlatformVendorKind.SchneiderElectric
+                or PlatformVendorKind.BAndR
+                or PlatformVendorKind.IoTEdge;
+
         static bool IsKernelUserspaceMismatch(string? osVersion, int? kernelMajor)
         {
             if (kernelMajor is null || kernelMajor >= 4)
@@ -194,7 +208,7 @@ internal static class Classifier
             ? MakeWithConfidence(HostTypeKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
             : applianceScore >= 5
                 ? Make(HostTypeKind.Appliance, applianceScore, applianceReasons.ToArray())
-                : vendor.Value is PlatformVendorKind.Synology or PlatformVendorKind.SiemensIndustrialEdge or PlatformVendorKind.IoTEdge
+                : IsAppliancePlatformVendor(vendor.Value)
                     ? MakeWithConfidence(HostTypeKind.Appliance, vendor.Confidence, vendor.Reasons.ToArray())
                 : kernelMajor is >= 5
                     ? MakeWithConfidence(HostTypeKind.StandardLinux, osId is null ? Confidence.Medium : Confidence.High, new ClassificationReason("Modern kernel and userspace do not show appliance mismatch signals", new[] { "kernel.release", "os.id", "os.version_id" }))

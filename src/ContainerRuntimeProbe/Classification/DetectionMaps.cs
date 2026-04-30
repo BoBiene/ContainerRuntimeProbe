@@ -3,6 +3,7 @@ using ContainerRuntimeProbe.Model;
 namespace ContainerRuntimeProbe.Classification;
 
 internal readonly record struct KernelFlavorSignal(string Signal, KernelFlavor Flavor);
+internal readonly record struct PlatformVendorSignal(PlatformVendorKind Vendor, string[] Fragments);
 
 internal static class DetectionMaps
 {
@@ -160,6 +161,19 @@ internal static class DetectionMaps
         "dsm",
         "diskstation",
         "ubios"
+    ];
+
+    internal static readonly IReadOnlyList<PlatformVendorSignal> ExplicitPlatformVendorSignals =
+    [
+        new(PlatformVendorKind.Siemens, ["siemens", "simatic"]),
+        new(PlatformVendorKind.Wago, ["wago"]),
+        new(PlatformVendorKind.Beckhoff, ["beckhoff"]),
+        new(PlatformVendorKind.PhoenixContact, ["phoenix contact", "phoenixcontact"]),
+        new(PlatformVendorKind.Advantech, ["advantech"]),
+        new(PlatformVendorKind.Moxa, ["moxa"]),
+        new(PlatformVendorKind.BoschRexroth, ["bosch rexroth", "boschrexroth", "rexroth"]),
+        new(PlatformVendorKind.SchneiderElectric, ["schneider electric", "schneiderelectric"]),
+        new(PlatformVendorKind.BAndR, ["b&r", "bernecker", "rainer", "br automation", "brautomation"])
     ];
 
     internal static readonly IReadOnlyList<string> HomeDnsSignals =

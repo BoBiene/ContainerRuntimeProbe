@@ -59,7 +59,13 @@ internal static class ClassificationValueFormatter
     public static string Format(PlatformVendorKind value)
         => value switch
         {
+            PlatformVendorKind.Siemens => "Siemens",
             PlatformVendorKind.SiemensIndustrialEdge => "Siemens Industrial Edge",
+            PlatformVendorKind.Wago => "WAGO",
+            PlatformVendorKind.PhoenixContact => "Phoenix Contact",
+            PlatformVendorKind.BoschRexroth => "Bosch Rexroth",
+            PlatformVendorKind.SchneiderElectric => "Schneider Electric",
+            PlatformVendorKind.BAndR => "B&R",
             PlatformVendorKind.Unknown => KnownValues.Unknown,
             _ => value.ToString()
         };

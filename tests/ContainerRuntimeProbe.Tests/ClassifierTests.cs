@@ -325,6 +325,60 @@ public sealed class ClassifierTests
     }
 
     [Fact]
+    public void Classifier_SiemensDmiPlusIoTEdge_DetectsIndustrialEdge()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("environment", ProbeOutcome.Success, [
+                new EvidenceItem("environment", "IOTEDGE_MODULEID", "edge-agent")
+            ]),
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Siemens AG"),
+                new EvidenceItem("proc-files", "device_tree.model", "SIMATIC IPC127E")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
+    public void Classifier_SiemensDmiWithoutIoTEdge_DetectsSiemensHardware()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "dmi.sys_vendor", "Siemens AG"),
+                new EvidenceItem("proc-files", "device_tree.compatible", "siemens,simatic-ipc")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Siemens, report.PlatformVendor.Value);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Theory]
+    [InlineData(PlatformVendorKind.Wago, "dmi.sys_vendor", "WAGO Kontakttechnik GmbH & Co. KG")]
+    [InlineData(PlatformVendorKind.Beckhoff, "dmi.chassis_vendor", "Beckhoff Automation")]
+    [InlineData(PlatformVendorKind.PhoenixContact, "device_tree.model", "Phoenix Contact PLCnext AXC F 2152")]
+    [InlineData(PlatformVendorKind.Advantech, "dmi.sys_vendor", "Advantech Co., Ltd.")]
+    [InlineData(PlatformVendorKind.Moxa, "device_tree.compatible", "moxa,uc-8410a")]
+    [InlineData(PlatformVendorKind.BoschRexroth, "dmi.sys_vendor", "Bosch Rexroth AG")]
+    [InlineData(PlatformVendorKind.SchneiderElectric, "dmi.sys_vendor", "Schneider Electric")]
+    [InlineData(PlatformVendorKind.BAndR, "dmi.sys_vendor", "B&R Industrial Automation GmbH")]
+    public void Classifier_ExplicitOtVendorSignals_DetectVendorAndApplianceHost(PlatformVendorKind expectedVendor, string key, string value)
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", key, value)
+            ])
+        ]);
+
+        Assert.Equal(expectedVendor, report.PlatformVendor.Value);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Fact]
     public void Classifier_DockerInfoDockerDesktopLinuxkit_DetectsAppleVendor()
     {
         var report = Classifier.Classify([

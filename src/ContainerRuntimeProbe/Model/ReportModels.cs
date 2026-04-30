@@ -170,8 +170,35 @@ public enum PlatformVendorKind
     /// <summary>Apple platform signals, typically Docker Desktop on macOS.</summary>
     Apple,
 
+    /// <summary>Siemens hardware platform signals.</summary>
+    Siemens,
+
     /// <summary>Siemens Industrial Edge signals.</summary>
     SiemensIndustrialEdge,
+
+    /// <summary>WAGO hardware platform signals.</summary>
+    Wago,
+
+    /// <summary>Beckhoff hardware platform signals.</summary>
+    Beckhoff,
+
+    /// <summary>Phoenix Contact hardware platform signals.</summary>
+    PhoenixContact,
+
+    /// <summary>Advantech hardware platform signals.</summary>
+    Advantech,
+
+    /// <summary>Moxa hardware platform signals.</summary>
+    Moxa,
+
+    /// <summary>Bosch Rexroth hardware platform signals.</summary>
+    BoschRexroth,
+
+    /// <summary>Schneider Electric hardware platform signals.</summary>
+    SchneiderElectric,
+
+    /// <summary>B&amp;R hardware platform signals.</summary>
+    BAndR,
 
     /// <summary>Azure IoT Edge signals without Siemens-specific corroboration.</summary>
     IoTEdge

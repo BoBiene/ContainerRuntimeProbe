@@ -108,11 +108,21 @@ internal sealed class ProcFilesProbe : IProbe
     [
         "/sys/class/dmi/id/sys_vendor",
         "/sys/class/dmi/id/product_name",
+        "/sys/class/dmi/id/product_family",
         "/sys/class/dmi/id/product_version",
         "/sys/class/dmi/id/board_vendor",
         "/sys/class/dmi/id/board_name",
+        "/sys/class/dmi/id/chassis_vendor",
         "/sys/class/dmi/id/bios_vendor",
         "/sys/class/dmi/id/modalias"
+    ];
+
+    private static readonly string[] PublicDeviceTreeFiles =
+    [
+        "/proc/device-tree/model",
+        "/proc/device-tree/compatible",
+        "/sys/firmware/devicetree/base/model",
+        "/sys/firmware/devicetree/base/compatible"
     ];
 
     private static readonly string[] Files =
@@ -126,6 +136,7 @@ internal sealed class ProcFilesProbe : IProbe
         .. BaseKernelSysctlFiles,
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
         .. PublicDmiFiles,
+        .. PublicDeviceTreeFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
     ];
@@ -265,6 +276,14 @@ internal sealed class ProcFilesProbe : IProbe
                 var key = file.Split('/').Last();
                 AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
             }
+            else if (file is "/proc/device-tree/model" or "/sys/firmware/devicetree/base/model")
+            {
+                AddEvidenceIfPresent(evidence, "device_tree.model", NormalizeDeviceTreeText(text));
+            }
+            else if (file is "/proc/device-tree/compatible" or "/sys/firmware/devicetree/base/compatible")
+            {
+                AddEvidenceIfPresent(evidence, "device_tree.compatible", NormalizeDeviceTreeText(text));
+            }
             else if (file == "/proc/meminfo")
             {
                 var memory = HostParsing.ParseMemInfo(text!);
@@ -389,6 +408,22 @@ internal sealed class ProcFilesProbe : IProbe
     {
         var value = raw?.Trim();
         return value == "max" ? null : HostParsing.ParseNullableLong(value);
+    }
+
+    private static string? NormalizeDeviceTreeText(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return null;
+        }
+
+        var parts = raw.Split('\0', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length == 0)
+        {
+            return raw.Trim('\0', '\n', '\r', ' ');
+        }
+
+        return string.Join(", ", parts.Select(part => part.Trim())).Trim();
     }
 }
 
