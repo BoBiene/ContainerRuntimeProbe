@@ -8,9 +8,12 @@ on:
 jobs:
   publish-check:
     runs-on: ubuntu-latest
+    env:
+      SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_COMMIT_SHA }}
           fetch-depth: 0  # required for MinVer tag resolution
       - uses: actions/setup-dotnet@v4
         with:

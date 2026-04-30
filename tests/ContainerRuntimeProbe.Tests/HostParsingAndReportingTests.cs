@@ -180,6 +180,21 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void Fingerprint_ExcludesKernelHostname_WhenItIsTheOnlyHostnameSignal()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.17.0-1011-azure"),
+            new EvidenceItem("runtime-api", "docker.info.operating_system", "Ubuntu 24.04.4 LTS"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "kernel.hostname", "redacted", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Equal(1, report.Host.Fingerprint!.ExcludedSensitiveSignalCount);
+        Assert.Contains(report.Host.Fingerprint.Components, component => component.Name == "hostname" && !component.Included);
+    }
+
+    [Fact]
     public void HostReport_Wsl2Kernel_InfersVirtualizationAndUnderlyingWindowsHost()
     {
         var report = BuildHostReport([

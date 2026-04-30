@@ -10,6 +10,8 @@ on:
 jobs:
   docker-harness:
     runs-on: ubuntu-latest
+    env:
+      SOURCE_COMMIT_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     strategy:
       fail-fast: false
       matrix:
@@ -30,6 +32,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.SOURCE_COMMIT_SHA }}
           fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
@@ -54,7 +57,7 @@ jobs:
             -f docker/Dockerfile.test \
             -t container-runtime-probe:test \
             --build-arg MINVER_VERSION_OVERRIDE=${{ steps.version.outputs.version }} \
-            --build-arg MINVER_BUILD_METADATA=${{ github.sha }} \
+            --build-arg MINVER_BUILD_METADATA=${{ env.SOURCE_COMMIT_SHA }} \
             .
       - name: Run harness container
         run: |

@@ -312,7 +312,7 @@ internal static class HostReportBuilder
         }
 
         var excluded = new List<HostFingerprintComponent>();
-        AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "HOSTNAME");
+        AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "kernel.hostname", "HOSTNAME");
         AddExcludedIfPresent(evidence, excluded, "cpu.serial", "cpu.serial");
         AddExcludedIfPresent(evidence, excluded, "container.inspect", "container.inspect.status", "container.inspect.outcome");
         AddExcludedIfPresent(evidence, excluded, "cloud.project", "gcp.project_id");
