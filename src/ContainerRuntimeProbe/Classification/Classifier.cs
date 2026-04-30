@@ -203,7 +203,7 @@ internal static class Classifier
 
         var hostType = virtualization.Value == VirtualizationClassificationKind.WSL2
             ? MakeWithConfidence(HostTypeKind.WSL2, Confidence.High, virtualizationReasons.ToArray())
-            : !IsLinuxLikeHostFamily(hostFamily.Value)
+            : IsExplicitlyNonLinuxHostFamily(hostFamily.Value)
                 ? MakeWithConfidence(HostTypeKind.Unknown, hostFamily.Value == OperatingSystemFamily.Unknown ? Confidence.Unknown : Confidence.Low, new ClassificationReason("Detected host family does not map to Linux-specific host types", new[] { "kernel.name", "os.id", "os.name", "os.pretty_name" }))
             : applianceScore >= 5
                 ? Make(HostTypeKind.Appliance, applianceScore, applianceReasons.ToArray())
@@ -370,13 +370,19 @@ internal static class Classifier
                 [new ClassificationReason("WSL2 implies a Windows underlying host OS", new[] { "kernel.release", "/proc/version" })]);
         }
 
-        var normalizedFamily = HostParsing.NormalizeOperatingSystemFamily(osId, [], osName, prettyName);
+        var osIdLike = evidence.Where(item => item.Key == "os.id_like")
+            .Select(item => item.Value)
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .Select(value => value!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+        var normalizedFamily = HostParsing.NormalizeOperatingSystemFamily(osId, osIdLike, osName, prettyName);
         if (normalizedFamily != OperatingSystemFamily.Unknown)
         {
             return new ClassificationResult<OperatingSystemFamily>(
-                normalizedFamily,
+                CollapseToHostFamily(normalizedFamily),
                 Confidence.High,
-                [new ClassificationReason("OS release or runtime host metadata identifies the host family", new[] { "os.id", "os.name", "os.pretty_name" })]);
+                [new ClassificationReason("OS release or runtime host metadata identifies the host family", new[] { "os.id", "os.id_like", "os.name", "os.pretty_name" })]);
         }
 
         normalizedFamily = HostParsing.NormalizeOperatingSystemFamily(kernelName, [], kernelName, kernelName);
@@ -402,15 +408,48 @@ internal static class Classifier
             [new ClassificationReason("Host family signals were not available", Array.Empty<string>())]);
     }
 
+    private static bool IsExplicitlyNonLinuxHostFamily(OperatingSystemFamily family)
+        => family != OperatingSystemFamily.Unknown && !IsLinuxLikeHostFamily(family);
+
     private static bool IsLinuxLikeHostFamily(OperatingSystemFamily family)
         => family switch
         {
-            OperatingSystemFamily.Unknown => false,
-            OperatingSystemFamily.Windows => false,
-            OperatingSystemFamily.WindowsServer => false,
-            OperatingSystemFamily.WindowsNanoServer => false,
-            OperatingSystemFamily.WindowsServerCore => false,
-            OperatingSystemFamily.MacOS => false,
-            _ => true
+            OperatingSystemFamily.Linux => true,
+            OperatingSystemFamily.Debian => true,
+            OperatingSystemFamily.Ubuntu => true,
+            OperatingSystemFamily.Alpine => true,
+            OperatingSystemFamily.Arch => true,
+            OperatingSystemFamily.OpenWrt => true,
+            OperatingSystemFamily.RedHatEnterpriseLinux => true,
+            OperatingSystemFamily.CentOS => true,
+            OperatingSystemFamily.Fedora => true,
+            OperatingSystemFamily.RockyLinux => true,
+            OperatingSystemFamily.AlmaLinux => true,
+            OperatingSystemFamily.AmazonLinux => true,
+            OperatingSystemFamily.AzureLinux => true,
+            OperatingSystemFamily.Mariner => true,
+            OperatingSystemFamily.Suse => true,
+            OperatingSystemFamily.OpenSuse => true,
+            OperatingSystemFamily.OracleLinux => true,
+            OperatingSystemFamily.Wolfi => true,
+            OperatingSystemFamily.BusyBox => true,
+            OperatingSystemFamily.Distroless => true,
+            OperatingSystemFamily.PhotonOS => true,
+            OperatingSystemFamily.Flatcar => true,
+            OperatingSystemFamily.Bottlerocket => true,
+            OperatingSystemFamily.RancherOS => true,
+            OperatingSystemFamily.Talos => true,
+            OperatingSystemFamily.ContainerOptimizedOS => true,
+            OperatingSystemFamily.CoreOS => true,
+            OperatingSystemFamily.NixOS => true,
+            OperatingSystemFamily.VoidLinux => true,
+            OperatingSystemFamily.Gentoo => true,
+            OperatingSystemFamily.OpenEuler => true,
+            OperatingSystemFamily.ClearLinux => true,
+            OperatingSystemFamily.Embedded => true,
+            _ => false
         };
+
+    private static OperatingSystemFamily CollapseToHostFamily(OperatingSystemFamily family)
+        => IsLinuxLikeHostFamily(family) ? OperatingSystemFamily.Linux : family;
 }
