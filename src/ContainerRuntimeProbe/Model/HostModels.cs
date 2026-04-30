@@ -109,6 +109,7 @@ public enum UnderlyingHostOsSource
 public enum RuntimeReportedHostSource
 {
     Unknown,
+    LocalHost,
     DockerInfo,
     PodmanInfo,
     KubernetesNodeInfo,

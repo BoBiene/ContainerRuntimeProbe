@@ -13,9 +13,11 @@ namespace ContainerRuntimeProbe.Probes;
 internal sealed class WindowsHostProbe : IProbe
 {
     private const string BiosRegistryKeyPath = @"HKEY_LOCAL_MACHINE\HARDWARE\DESCRIPTION\System\BIOS";
+    private const string CurrentVersionRegistryKeyPath = @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion";
 
     private readonly Func<bool> _isWindows;
-    private readonly Func<string, string?> _readRegistryValue;
+    private readonly Func<string, string?> _readBiosRegistryValue;
+    private readonly Func<string, string?> _readCurrentVersionRegistryValue;
     private readonly Func<Architecture> _getOsArchitecture;
     private readonly Func<string> _getOsDescription;
     private readonly Func<int> _getLogicalProcessorCount;
@@ -25,7 +27,8 @@ internal sealed class WindowsHostProbe : IProbe
     public WindowsHostProbe()
         : this(
             () => OperatingSystem.IsWindows(),
-            ReadRegistryValueIfSupported,
+            ReadBiosRegistryValueIfSupported,
+            ReadCurrentVersionRegistryValueIfSupported,
             () => RuntimeInformation.OSArchitecture,
             () => RuntimeInformation.OSDescription,
             () => Environment.ProcessorCount)
@@ -34,13 +37,15 @@ internal sealed class WindowsHostProbe : IProbe
 
     internal WindowsHostProbe(
         Func<bool> isWindows,
-        Func<string, string?> readRegistryValue,
+        Func<string, string?> readBiosRegistryValue,
+        Func<string, string?> readCurrentVersionRegistryValue,
         Func<Architecture> getOsArchitecture,
         Func<string> getOsDescription,
         Func<int> getLogicalProcessorCount)
     {
         _isWindows = isWindows;
-        _readRegistryValue = readRegistryValue;
+        _readBiosRegistryValue = readBiosRegistryValue;
+        _readCurrentVersionRegistryValue = readCurrentVersionRegistryValue;
         _getOsArchitecture = getOsArchitecture;
         _getOsDescription = getOsDescription;
         _getLogicalProcessorCount = getLogicalProcessorCount;
@@ -64,6 +69,8 @@ internal sealed class WindowsHostProbe : IProbe
         AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
         AddEvidenceIfPresent(evidence, "kernel.release", kernel.Release);
         AddEvidenceIfPresent(evidence, "kernel.version", kernel.Version);
+        AddEvidenceIfPresent(evidence, "windows.product_name", _readCurrentVersionRegistryValue("ProductName"));
+        AddEvidenceIfPresent(evidence, "windows.display_version", _readCurrentVersionRegistryValue("DisplayVersion") ?? _readCurrentVersionRegistryValue("ReleaseId"));
 
         AddRegistryEvidence(evidence, "SystemManufacturer", "dmi.sys_vendor");
         AddRegistryEvidence(evidence, "SystemProductName", "dmi.product_name");
@@ -78,7 +85,7 @@ internal sealed class WindowsHostProbe : IProbe
     }
 
     private void AddRegistryEvidence(List<EvidenceItem> evidence, string registryValueName, string evidenceKey)
-        => AddEvidenceIfPresent(evidence, evidenceKey, _readRegistryValue(registryValueName));
+        => AddEvidenceIfPresent(evidence, evidenceKey, _readBiosRegistryValue(registryValueName));
 
     private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
     {
@@ -88,15 +95,18 @@ internal sealed class WindowsHostProbe : IProbe
         }
     }
 
-    private static string? ReadRegistryValueIfSupported(string valueName)
-        => OperatingSystem.IsWindows() ? ReadRegistryValue(valueName) : null;
+    private static string? ReadBiosRegistryValueIfSupported(string valueName)
+        => OperatingSystem.IsWindows() ? ReadRegistryValue(BiosRegistryKeyPath, valueName) : null;
+
+    private static string? ReadCurrentVersionRegistryValueIfSupported(string valueName)
+        => OperatingSystem.IsWindows() ? ReadRegistryValue(CurrentVersionRegistryKeyPath, valueName) : null;
 
     [SupportedOSPlatform("windows")]
-    private static string? ReadRegistryValue(string valueName)
+    private static string? ReadRegistryValue(string keyPath, string valueName)
     {
         try
         {
-            return Registry.GetValue(BiosRegistryKeyPath, valueName, null)?.ToString();
+            return Registry.GetValue(keyPath, valueName, null)?.ToString();
         }
         catch
         {

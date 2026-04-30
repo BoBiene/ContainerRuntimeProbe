@@ -23,6 +23,12 @@ public sealed class WindowsHostProbeTests
         var probe = new WindowsHostProbe(
             () => true,
             valueName => registryValues.TryGetValue(valueName, out var value) ? value : null,
+            valueName => valueName switch
+            {
+                "ProductName" => "Windows 11 Pro",
+                "DisplayVersion" => "24H2",
+                _ => null
+            },
             () => Architecture.X64,
             () => "Microsoft Windows 10.0.26200",
             () => 16);
@@ -35,6 +41,8 @@ public sealed class WindowsHostProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "kernel.name" && item.Value == "Microsoft Windows");
         Assert.Contains(result.Evidence, item => item.Key == "kernel.release" && item.Value == "10.0.26200");
         Assert.Contains(result.Evidence, item => item.Key == "kernel.architecture" && item.Value == "x86_64");
+        Assert.Contains(result.Evidence, item => item.Key == "windows.product_name" && item.Value == "Windows 11 Pro");
+        Assert.Contains(result.Evidence, item => item.Key == "windows.display_version" && item.Value == "24H2");
         Assert.Contains(result.Evidence, item => item.Key == "cpu.logical_processors" && item.Value == "16");
         Assert.Contains(result.Evidence, item => item.Key == "dmi.sys_vendor" && item.Value == "Microsoft Corporation");
         Assert.Contains(result.Evidence, item => item.Key == "dmi.product_name" && item.Value == "Virtual Machine");
@@ -50,6 +58,7 @@ public sealed class WindowsHostProbeTests
         var probe = new WindowsHostProbe(
             () => false,
             _ => throw new InvalidOperationException("Registry access should not occur when probe is unsupported."),
+            _ => throw new InvalidOperationException("CurrentVersion registry access should not occur when probe is unsupported."),
             () => Architecture.X64,
             () => "Microsoft Windows 10.0.26200",
             () => 16);
