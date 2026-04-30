@@ -15,6 +15,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for MinVer tag resolution
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
+      - name: Export MinVer override
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "MINVERVERSIONOVERRIDE=${{ steps.version.outputs.version }}"
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -54,6 +64,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for MinVer tag resolution
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
+      - name: Export MinVer override
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "MINVERVERSIONOVERRIDE=${{ steps.version.outputs.version }}"
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
@@ -101,6 +121,13 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for MinVer tag resolution
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
       - name: Set up QEMU
         if: ${{ matrix.setup_qemu }}
         uses: docker/setup-qemu-action@v3
@@ -115,9 +142,6 @@ jobs:
       - name: Compute image name
         id: image
         run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-      - name: Extract version from tag
-        id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Build and push release image
         uses: docker/build-push-action@v6
         with:
@@ -126,10 +150,12 @@ jobs:
           platforms: ${{ matrix.platform }}
           build-args: |
             ARM64_PUBLISH_AOT=${{ matrix.arm64_publish_aot }}
+            MINVER_VERSION_OVERRIDE=${{ steps.version.outputs.version }}
+            MINVER_BUILD_METADATA=${{ github.sha }}
           push: true
           tags: |
             ${{ steps.image.outputs.name }}:latest-${{ matrix.suffix }}
-            ${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-${{ matrix.suffix }}
+            ${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}-${{ matrix.suffix }}
             ${{ steps.image.outputs.name }}:${{ github.ref_name }}-${{ matrix.suffix }}
           cache-from: type=gha,scope=docker-release-${{ matrix.suffix }}
           cache-to: type=gha,mode=max,scope=docker-release-${{ matrix.suffix }}
@@ -138,6 +164,16 @@ jobs:
     needs: docker-release-arch
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to GitHub Container Registry
@@ -149,9 +185,6 @@ jobs:
       - name: Compute image name
         id: image
         run: echo "name=ghcr.io/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
-      - name: Extract version from tag
-        id: ver
-        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
       - name: Create latest manifest
         run: |
           docker buildx imagetools create \
@@ -162,10 +195,10 @@ jobs:
       - name: Create version manifest
         run: |
           docker buildx imagetools create \
-            -t "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}" \
-            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-amd64" \
-            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-arm64" \
-            "${{ steps.image.outputs.name }}:${{ steps.ver.outputs.version }}-armv7"
+            -t "${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}" \
+            "${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}-amd64" \
+            "${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}-arm64" \
+            "${{ steps.image.outputs.name }}:${{ steps.version.outputs.version }}-armv7"
       - name: Create ref manifest
         run: |
           docker buildx imagetools create \

@@ -10,9 +10,11 @@ internal static class VersionInfo
     /// <summary>Returns probe tool metadata with version and git commit hash if available.</summary>
     public static ProbeToolMetadata GetProbeToolMetadata()
     {
-        var informationalVersion = GetInformationalVersion();
-        return new ProbeToolMetadata(GetSemanticVersion(informationalVersion), GetShortGitCommit(informationalVersion));
+        return ParseProbeToolMetadata(GetInformationalVersion());
     }
+
+    internal static ProbeToolMetadata ParseProbeToolMetadata(string informationalVersion)
+        => new(GetSemanticVersion(informationalVersion), GetShortGitCommit(informationalVersion));
 
     private static string GetInformationalVersion()
     {
@@ -23,7 +25,7 @@ internal static class VersionInfo
             ?? "unknown";
     }
 
-    private static string GetSemanticVersion(string informationalVersion)
+    internal static string GetSemanticVersion(string informationalVersion)
     {
         if (string.IsNullOrWhiteSpace(informationalVersion))
         {
@@ -34,7 +36,7 @@ internal static class VersionInfo
         return plus >= 0 ? informationalVersion[..plus] : informationalVersion;
     }
 
-    private static string? GetShortGitCommit(string informationalVersion)
+    internal static string? GetShortGitCommit(string informationalVersion)
     {
         if (string.IsNullOrWhiteSpace(informationalVersion))
         {

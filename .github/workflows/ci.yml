@@ -20,6 +20,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # required for MinVer tag resolution
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
+      - name: Export MinVer override
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_ENV -Value "MINVERVERSIONOVERRIDE=${{ steps.version.outputs.version }}"
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'

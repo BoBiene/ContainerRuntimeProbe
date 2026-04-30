@@ -16,29 +16,47 @@ jobs:
         include:
           - name: docker-default
             runtime: docker
-            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
             run-command: docker run --rm container-runtime-probe:test
           - name: docker-privileged
             runtime: docker
-            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
             run-command: docker run --rm --privileged container-runtime-probe:test
           - name: docker-host-network
             runtime: docker
-            build-command: docker build -f docker/Dockerfile.test -t container-runtime-probe:test .
             run-command: docker run --rm --network host container-runtime-probe:test
           - name: podman-rootless
             runtime: podman
-            build-command: podman build -f docker/Dockerfile.test -t container-runtime-probe:test .
             run-command: podman run --rm container-runtime-probe:test
     name: docker-harness (${{ matrix.name }})
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Compute MinVer version
+        id: version
+        uses: thefringeninja/action-minver@d17a9972b2438ac870b45a6438c02311f91603ad # 2.0.0-preview1
+        with:
+          default-pre-release-phase: preview
+          minimum-major-minor: 0.1.0
+          tag-prefix: v
       - name: Install Podman
         if: matrix.runtime == 'podman'
         run: |
           sudo apt-get update
           sudo apt-get install -y podman
       - name: Build harness image
-        run: ${{ matrix.build-command }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ${{ matrix.runtime }} build \
+            -f docker/Dockerfile.test \
+            -t container-runtime-probe:test \
+            --build-arg MINVER_VERSION_OVERRIDE=${{ steps.version.outputs.version }} \
+            --build-arg MINVER_BUILD_METADATA=${{ github.sha }} \
+            .
       - name: Run harness container
-        run: ${{ matrix.run-command }}
+        run: |
+          set -euo pipefail
+          ${{ matrix.run-command }} | tee harness.out
+          grep -q -- '## Probe Tool Information' harness.out
+          grep -Eq -- '- Git Commit: [0-9a-f]{7,}' harness.out
+          grep -vq -- '- Git Commit: Unknown' harness.out

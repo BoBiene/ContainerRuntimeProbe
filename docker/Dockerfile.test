@@ -1,9 +1,24 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0-alpine AS build
+ARG MINVER_VERSION_OVERRIDE
+ARG MINVER_BUILD_METADATA
 WORKDIR /src
 RUN apk add --no-cache clang llvm musl-dev zlib-dev zlib-static
 COPY . .
-RUN dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
-    -c Release -r linux-musl-x64 -p:PublishTrimmed=true -p:PublishAot=true --self-contained -o /app
+RUN minver_args="" \
+    && if [ -n "$MINVER_VERSION_OVERRIDE" ]; then \
+        minver_args="$minver_args -p:MinVerVersionOverride=$MINVER_VERSION_OVERRIDE"; \
+    fi \
+    && if [ -n "$MINVER_BUILD_METADATA" ]; then \
+        minver_args="$minver_args -p:MinVerBuildMetadata=$MINVER_BUILD_METADATA"; \
+    fi \
+    && dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
+        -c Release \
+        -r linux-musl-x64 \
+        -p:PublishTrimmed=true \
+        -p:PublishAot=true \
+        --self-contained \
+        $minver_args \
+        -o /app
 
 FROM mcr.microsoft.com/dotnet/runtime-deps:10.0-alpine
 WORKDIR /app
