@@ -67,6 +67,24 @@ public sealed class ClassifierSampleProbeTests
     }
 
     [Theory]
+    [InlineData("wago-752-9401.json")]
+    public void WagoSampleProbes_ReclassifyAsWagoVendor(string fixtureName)
+    {
+        var fixturePath = Path.Combine(FindSampleProbeDirectory(), fixtureName);
+        var report = JsonSerializer.Deserialize(
+            File.ReadAllText(fixturePath),
+            ReportJsonContext.Default.ContainerRuntimeReport);
+
+        Assert.NotNull(report);
+
+        var classification = Classifier.Classify(report!.Probes);
+
+        Assert.Equal(ContainerRuntimeKind.Docker, classification.ContainerRuntime.Value);
+        Assert.Equal(PlatformVendorKind.Wago, classification.PlatformVendor.Value);
+        Assert.True(classification.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
+    [Theory]
     [InlineData("Debian-VM-Intel-CPU-ispone.json")]
     public void DebianVmSampleProbes_ReclassifyWithDockerAndDebianKernel(string fixtureName)
     {

@@ -149,6 +149,57 @@ public sealed class ProcFilesProbeTests
     }
 
     [Fact]
+    public async Task ProcFilesProbe_ExtractsSocSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/sys/devices/soc0/machine"] = "WAGO CC100\n",
+            ["/sys/devices/soc0/family"] = "Freescale i.MX\n",
+            ["/sys/devices/soc0/soc_id"] = "i.MX6UL\n",
+            ["/sys/devices/soc0/revision"] = "1.2\n"
+        };
+
+        var probe = new ProcFilesProbe(values.Keys.ToArray(), (path, _, _) =>
+            Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "soc.machine" && item.Value == "WAGO CC100");
+        Assert.Contains(result.Evidence, item => item.Key == "soc.family" && item.Value == "Freescale i.MX");
+        Assert.Contains(result.Evidence, item => item.Key == "soc.soc_id" && item.Value == "i.MX6UL");
+        Assert.Contains(result.Evidence, item => item.Key == "soc.revision" && item.Value == "1.2");
+    }
+
+    [Fact]
+    public async Task ProcFilesProbe_DiscoversAndExtractsPlatformMetadataSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/sys/bus/platform/devices/wsysinit_init/modalias"] = "of:Nwsysinit_initT(null)Cwago,sysinit\n",
+            ["/sys/bus/platform/devices/wsysinit_init/uevent"] = "OF_COMPATIBLE_0=wago,sysinit\nMODALIAS=of:Nwsysinit_initT(null)Cwago,sysinit\n"
+        };
+
+        var probe = new ProcFilesProbe(
+            [],
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            enumerateFiles: path => path == "/proc/sys/kernel" ? [] : [],
+            enumerateEntries: path => path == "/sys/bus/platform/devices"
+                ? ["/sys/bus/platform/devices/wsysinit_init", "/sys/bus/platform/devices/10050000.sram"]
+                : []);
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "platform.of_compatible" && item.Value == "wago,sysinit");
+        Assert.Contains(result.Evidence, item => item.Key == "platform.modalias" && item.Value == "of:Nwsysinit_initT(null)Cwago,sysinit");
+    }
+
+    [Fact]
     public async Task ProcFilesProbe_ExtractsVirtualizationSignals()
     {
         var values = new Dictionary<string, string>

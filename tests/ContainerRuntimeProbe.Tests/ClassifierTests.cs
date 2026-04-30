@@ -482,8 +482,22 @@ public sealed class ClassifierTests
         Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
     }
 
+    [Fact]
+    public void Classifier_WagoPlatformMetadata_DetectsWagoHardware()
+    {
+        var report = Classifier.Classify([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "platform.of_compatible", "wago,sysinit"),
+                new EvidenceItem("proc-files", "platform.modalias", "of:Nwsysinit_initT(null)Cwago,sysinit")
+            ])
+        ]);
+
+        Assert.Equal(PlatformVendorKind.Wago, report.PlatformVendor.Value);
+        Assert.Equal(HostTypeKind.Appliance, report.Host.Type.Value);
+        Assert.True(report.PlatformVendor.Confidence >= Confidence.Medium);
+    }
+
     [Theory]
-    [InlineData("dmi.sys_vendor", "WAGO Kontakttechnik GmbH & Co. KG")]
     [InlineData("dmi.chassis_vendor", "Beckhoff Automation")]
     [InlineData("device_tree.model", "Phoenix Contact PLCnext AXC F 2152")]
     [InlineData("dmi.sys_vendor", "Advantech Co., Ltd.")]
