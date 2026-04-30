@@ -46,20 +46,25 @@ jobs:
             --skip-duplicate
 
   cli-release:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runs_on }}
     strategy:
       matrix:
         include:
           - rid: linux-x64
             asset_suffix: linux-x64
+            runs_on: ubuntu-latest
           - rid: linux-arm64
             asset_suffix: linux-arm64
+            runs_on: ubuntu-24.04-arm
           - rid: win-x64
             asset_suffix: win-x64.exe
+            runs_on: windows-latest
           - rid: osx-x64
             asset_suffix: osx-x64
+            runs_on: macos-13
           - rid: osx-arm64
             asset_suffix: osx-arm64
+            runs_on: macos-14
     steps:
       - uses: actions/checkout@v4
         with:
@@ -78,6 +83,7 @@ jobs:
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_ENV -Value "MINVERVERSIONOVERRIDE=${{ steps.version.outputs.version }}"
       - name: Publish self-contained binary
+        shell: bash
         run: |
           dotnet publish src/ContainerRuntimeProbe.Tool/ContainerRuntimeProbe.Tool.csproj \
             -c Release -r ${{ matrix.rid }} \
@@ -85,6 +91,7 @@ jobs:
             -o artifacts/cli/${{ matrix.rid }}
       - name: Prepare asset
         id: prepare_asset
+        shell: bash
         run: |
           BIN=artifacts/cli/${{ matrix.rid }}/ContainerRuntimeProbe.Tool
           [[ "${{ matrix.rid }}" == win-* ]] && BIN="${BIN}.exe"

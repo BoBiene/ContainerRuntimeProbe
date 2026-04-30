@@ -1,6 +1,6 @@
 {
-  "GeneratedAt": "2026-04-30T10:11:54.9020916+00:00",
-  "Duration": "00:00:14.2825741",
+  "GeneratedAt": "2026-04-30T10:15:15.2433221+00:00",
+  "Duration": "00:00:02.0695570",
   "ProbeToolInfo": {
     "Version": "0.1.0-preview.3.2",
     "GitCommit": "6cf5671"
@@ -24,7 +24,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0399700"
+      "Duration": "00:00:00.0000612"
     },
     {
       "ProbeId": "environment",
@@ -44,7 +44,7 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.4774439"
+      "Duration": "00:00:00.0001702"
     },
     {
       "ProbeId": "proc-files",
@@ -53,145 +53,91 @@
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "10:pids:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "8:devices:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "9:net_prio:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "7:freezer:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "8:perf_event:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "6:cpu:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "7:net_cls:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "5:cpuset:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "6:freezer:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "4:memory:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "5:devices:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "3:cpuacct:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/1/cgroup:signal",
-          "Value": "4:memory:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/1/cgroup:signal",
-          "Value": "3:blkio:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/1/cgroup:signal",
-          "Value": "2:cpuacct:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/1/cgroup:signal",
-          "Value": "1:cpu:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "1:name=systemd:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "10:pids:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "8:devices:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "9:net_prio:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "7:freezer:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "8:perf_event:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "6:cpu:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "7:net_cls:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "5:cpuset:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "6:freezer:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "4:memory:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "5:devices:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
+          "Value": "3:cpuacct:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "/proc/self/cgroup:signal",
-          "Value": "4:memory:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/self/cgroup:signal",
-          "Value": "3:blkio:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/self/cgroup:signal",
-          "Value": "2:cpuacct:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/self/cgroup:signal",
-          "Value": "1:cpu:/docker/96a33cd05c331f95a1ed6f11acaccb25bcbb83555ca6018a3c4e654ce9965610",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/self/mountinfo:signal",
-          "Value": "overlay",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/proc/1/mountinfo:signal",
-          "Value": "overlay",
+          "Value": "1:name=systemd:/docker/15cf649a92f815a675374509839123b73e7285ec0b419492c205c61062489c5a",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "default-route-device",
           "Value": "eth0",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "dns-search",
-          "Value": "inray.local",
           "Sensitivity": "Public"
         },
         {
@@ -239,7 +185,7 @@
         {
           "ProbeId": "proc-files",
           "Key": "/proc/version",
-          "Value": "Linux version 5.15.86-rt56-w04.01.07 (user@0c5f1ccb67e3) (arm-linux-gnueabihf-gcc (GCC) 11.2.1 20220111, GNU ld (GNU Binutils) 2.37.20220122) #1 SMP PREEMPT_RT Wed Mar 22 17:44:46 UTC 2023",
+          "Value": "Linux version 5.10.55\u002B (root@build7) (x86_64-pc-linux-gnu-gcc (GCC) 12.2.0, GNU ld (GNU Binutils) 2.38) #86009 SMP Wed Nov 26 18:45:22 CST 2025",
           "Sensitivity": "Public"
         },
         {
@@ -251,7 +197,7 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "5.15.86-rt56-w04.01.07",
+          "Value": "5.10.55\u002B",
           "Sensitivity": "Public"
         },
         {
@@ -263,43 +209,61 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP PREEMPT_RT Wed Mar 22 17:44:46 UTC 2023",
+          "Value": "#86009 SMP Wed Nov 26 18:45:22 CST 2025",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.logical_processors",
-          "Value": "1",
+          "Value": "2",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.vendor",
-          "Value": "0x41",
+          "Value": "AuthenticAMD",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.model_name",
-          "Value": "ARMv7 Processor rev 5 (v7l)",
+          "Value": "AMD Ryzen Embedded V1500B",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.family",
-          "Value": "7",
+          "Value": "23",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "17",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0x810100b",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.flags.count",
-          "Value": "15",
+          "Value": "113",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.flags.hash",
-          "Value": "sha256:e6fc06400cd058b6527c52c0b874a7a5b07eee47217df7de89a0d5ec978b84ff",
+          "Value": "sha256:4c119c1a676a18d2d74e760f2b0c31cb4c3fbbd3dadaa6d66961f0314259eb67",
           "Sensitivity": "Public"
         },
         {
@@ -310,110 +274,92 @@
         },
         {
           "ProbeId": "proc-files",
-          "Key": "cpu.hardware",
-          "Value": "Generic DT based system",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "cpu.revision",
-          "Value": "0000",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "cpu.serial",
-          "Value": "redacted",
-          "Sensitivity": "Sensitive"
-        },
-        {
-          "ProbeId": "proc-files",
           "Key": "cpu.online",
-          "Value": "0",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.online.count",
-          "Value": "1",
+          "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible",
-          "Value": "0",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.possible.count",
-          "Value": "1",
+          "Value": "8",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present",
-          "Value": "0",
+          "Value": "0-7",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "cpu.present.count",
+          "Value": "8",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.sys_vendor",
+          "Value": "Synology Inc.",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_name",
+          "Value": "DS925\u002B",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_family",
+          "Value": "DiskStation",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_version",
           "Value": "1",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/sys_vendor",
-          "Value": "Unavailable",
+          "Key": "dmi.board_vendor",
+          "Value": "AMD",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/product_name",
-          "Value": "Unavailable",
+          "Key": "dmi.board_name",
+          "Value": "Bilby",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/product_family",
-          "Value": "Unavailable",
+          "Key": "dmi.chassis_vendor",
+          "Value": "Chassis Manufacturer",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/product_version",
-          "Value": "Unavailable",
+          "Key": "dmi.bios_vendor",
+          "Value": "Insyde Corp.",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/board_vendor",
-          "Value": "Unavailable",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/board_name",
-          "Value": "Unavailable",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/chassis_vendor",
-          "Value": "Unavailable",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/bios_vendor",
-          "Value": "Unavailable",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "/sys/class/dmi/id/modalias",
-          "Value": "Unavailable",
+          "Key": "dmi.modalias",
+          "Value": "dmi:bvnInsydeCorp.:bvrM.L11.00:bd11/14/2024:br5.4:svnSynologyInc.:pnDS925\u002B:pvr1:rvnAMD:rnBilby:rvrBaseBoardVersion:cvnChassisManufacturer:ct10:cvrChassisVersion:",
           "Sensitivity": "Public"
         },
         {
@@ -473,13 +419,13 @@
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_total_bytes",
-          "Value": "518221824",
+          "Value": "33607180288",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.mem_available_bytes",
-          "Value": "339820544",
+          "Value": "29255954432",
           "Sensitivity": "Public"
         },
         {
@@ -497,19 +443,19 @@
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.limit_raw",
-          "Value": "8796093018112",
+          "Value": "9223372036854771712",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.limit_bytes",
-          "Value": "8796093018112",
+          "Value": "9223372036854771712",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "memory.cgroup.current_bytes",
-          "Value": "9588736",
+          "Value": "14364672",
           "Sensitivity": "Public"
         },
         {
@@ -520,8 +466,116 @@
         },
         {
           "ProbeId": "proc-files",
-          "Key": "cpu.cgroup.quota",
-          "Value": "-1",
+          "Key": "/sys/fs/cgroup/cpu/cpu.cfs_quota_us",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.syno_hw_version",
+          "Value": "DS925\u002B",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.syno_install_flag",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0010:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0010:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0010:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0010:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0020:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0020:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0020:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0020:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0030:AMDI0030:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0030:AMDI0030:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0061:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "acpi:AMDI0061:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "of:NDX525T(null)CSynology",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.of_compatible",
+          "Value": "Synology",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.of_compatible",
+          "Value": "1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "platform.modalias",
+          "Value": "of:NDX525T(null)CSynology",
           "Sensitivity": "Public"
         },
         {
@@ -539,283 +593,97 @@
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NPAC-Operating-Mode-SwitchT(null)Cgpio-keys",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "gpio-keys",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "acpi:MSFT0101:MSFT0101:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NPAC-Operating-Mode-SwitchT(null)Cgpio-keys",
+          "Value": "acpi:MSFT0101:MSFT0101:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NahbT(null)Cst,mlahbCsimple-bus",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "st,mlahb",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "simple-bus",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "2",
+          "Value": "acpi:PNP0103:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NahbT(null)Cst,mlahbCsimple-bus",
+          "Value": "acpi:PNP0103:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Narm-pmuT(null)Carm,cortex-a7-pmu",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "arm,cortex-a7-pmu",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "acpi:PNP0800:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Narm-pmuT(null)Carm,cortex-a7-pmu",
+          "Value": "acpi:PNP0800:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NbootstateT(null)Cbarebox,state",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "barebox,state",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "acpi:PNP0C04:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NbootstateT(null)Cbarebox,state",
+          "Value": "acpi:PNP0C04:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Ndout_drvT(null)Celrest,dout_drv",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "elrest,dout_drv",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "acpi:PNP0C0C:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Ndout_drvT(null)Celrest,dout_drv",
+          "Value": "acpi:PNP0C0C:",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Ngpio_mdioT(null)Cvirtual,mdio-gpio",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "virtual,mdio-gpio",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "platform:efivars",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:Ngpio_mdioT(null)Cvirtual,mdio-gpio",
+          "Value": "platform:efivars",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NledT(null)Cgpio-leds",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "gpio-leds",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "platform:platform-framebuffer",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NledT(null)Cgpio-leds",
+          "Value": "platform:platform-framebuffer",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NpsciT(null)Carm,psci-1.0",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "arm,psci-1.0",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
+          "Value": "platform:rtc-efi",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
-          "Value": "of:NpsciT(null)Carm,psci-1.0",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "platform:reg-dummy",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "platform:reg-dummy",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-rs485-5vT(null)Cregulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "regulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-rs485-5vT(null)Cregulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-sd_switchT(null)Cregulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "regulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-sd_switchT(null)Cregulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-vrefT(null)Cregulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "regulator-fixed",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nregulator-vrefT(null)Cregulator-fixed",
+          "Value": "platform:rtc-efi",
           "Sensitivity": "Public"
         },
         {
@@ -828,186 +696,42 @@
           "ProbeId": "proc-files",
           "Key": "platform.modalias",
           "Value": "platform:serial8250",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:NsocT(null)Csimple-bus",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "simple-bus",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:NsocT(null)Csimple-bus",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Npin-controller-zT(null)Cst,stm32mp157-z-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "st,stm32mp157-z-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Npin-controller-zT(null)Cst,stm32mp157-z-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Npin-controllerT(null)Cst,stm32mp157-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "st,stm32mp157-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Npin-controllerT(null)Cst,stm32mp157-pinctrl",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nswcfg_ksz8863T(null)Cswcfg,ksz8863",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "swcfg,ksz8863",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nswcfg_ksz8863T(null)Cswcfg,ksz8863",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:NtimerT(null)Carm,armv7-timer",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "arm,armv7-timer",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:NtimerT(null)Carm,armv7-timer",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nwsysinit_initT(null)Cwago,sysinit",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "wago,sysinit",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.of_compatible",
-          "Value": "1",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "proc-files",
-          "Key": "platform.modalias",
-          "Value": "of:Nwsysinit_initT(null)Cwago,sysinit",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.pid",
-          "Value": "pid:[4026532764]",
+          "Value": "pid:[4026533237]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.mnt",
-          "Value": "mnt:[4026532761]",
+          "Value": "mnt:[4026533165]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.net",
-          "Value": "net:[4026532765]",
+          "Value": "net:[4026533239]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.uts",
-          "Value": "uts:[4026532762]",
+          "Value": "uts:[4026533235]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "ns.ipc",
-          "Value": "ipc:[4026532763]",
+          "Value": "ipc:[4026533236]",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.architecture",
-          "Value": "arm",
+          "Value": "x86_64",
           "Sensitivity": "Public"
         },
         {
@@ -1019,13 +743,13 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.release",
-          "Value": "5.15.86-rt56-w04.01.07",
+          "Value": "5.10.55\u002B",
           "Sensitivity": "Public"
         },
         {
           "ProbeId": "proc-files",
           "Key": "kernel.version",
-          "Value": "#1 SMP PREEMPT_RT Wed Mar 22 17:44:46 UTC 2023",
+          "Value": "#86009 SMP Wed Nov 26 18:45:22 CST 2025",
           "Sensitivity": "Public"
         },
         {
@@ -1049,12 +773,12 @@
         {
           "ProbeId": "proc-files",
           "Key": "kernel.flavor",
-          "Value": "Realtime",
+          "Value": "Generic",
           "Sensitivity": "Public"
         }
       ],
       "Message": null,
-      "Duration": "00:00:04.1616969"
+      "Duration": "00:00:00.0664377"
     },
     {
       "ProbeId": "security-sandbox",
@@ -1092,14 +816,8 @@
         },
         {
           "ProbeId": "security-sandbox",
-          "Key": "status.Seccomp",
-          "Value": "2",
-          "Sensitivity": "Public"
-        },
-        {
-          "ProbeId": "security-sandbox",
-          "Key": "status.Seccomp",
-          "Value": "1",
+          "Key": "apparmor.profile",
+          "Value": "docker-default (enforce)",
           "Sensitivity": "Public"
         },
         {
@@ -1116,21 +834,21 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:00.0160851"
+      "Duration": "00:00:00.0002971"
     },
     {
       "ProbeId": "runtime-api",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "No docker/podman socket found",
-      "Duration": "00:00:00.0062359"
+      "Duration": "00:00:00.0000657"
     },
     {
       "ProbeId": "kubernetes",
       "Outcome": "Unavailable",
       "Evidence": [],
       "Message": "Kubernetes env/token missing",
-      "Duration": "00:00:00.0019687"
+      "Duration": "00:00:00.0000102"
     },
     {
       "ProbeId": "cloud-metadata",
@@ -1139,7 +857,7 @@
         {
           "ProbeId": "cloud-metadata",
           "Key": "azure.imds.outcome",
-          "Value": "Unavailable",
+          "Value": "Timeout",
           "Sensitivity": "Public"
         },
         {
@@ -1168,14 +886,14 @@
         }
       ],
       "Message": null,
-      "Duration": "00:00:04.4163709"
+      "Duration": "00:00:02.0007813"
     }
   ],
   "SecurityWarnings": [],
   "Classification": {
     "IsContainerized": {
       "Value": "True",
-      "Confidence": "High",
+      "Confidence": "Medium",
       "Reasons": [
         {
           "Message": "/.dockerenv exists",
@@ -1188,13 +906,6 @@
           "EvidenceKeys": [
             "/proc/self/cgroup",
             "/proc/1/cgroup"
-          ]
-        },
-        {
-          "Message": "Overlay mount detected",
-          "EvidenceKeys": [
-            "/proc/self/mountinfo",
-            "/proc/1/mountinfo"
           ]
         }
       ]
@@ -1246,10 +957,17 @@
         "Confidence": "High",
         "Reasons": [
           {
-            "Message": "DMI or device-tree identifies the underlying OT hardware vendor",
+            "Message": "Public kernel hardware-version sysctl exposed host hardware model",
             "EvidenceKeys": [
-              "platform.modalias",
-              "platform.of_compatible"
+              "kernel.syno_hw_version"
+            ]
+          },
+          {
+            "Message": "DMI vendor identifies a Synology system",
+            "EvidenceKeys": [
+              "dmi.sys_vendor",
+              "dmi.board_vendor",
+              "dmi.modalias"
             ]
           }
         ]
@@ -1270,9 +988,9 @@
             ]
           },
           {
-            "Message": "DNS search domain looks like a home or LAN network",
+            "Message": "CPU model resembles a consumer/workstation system",
             "EvidenceKeys": [
-              "dns-search"
+              "cpu.model_name"
             ]
           },
           {
@@ -1327,14 +1045,21 @@
       ]
     },
     "PlatformVendor": {
-      "Value": "Wago",
+      "Value": "Synology",
       "Confidence": "High",
       "Reasons": [
         {
-          "Message": "DMI or device-tree identifies the underlying OT hardware vendor",
+          "Message": "Public kernel hardware-version sysctl exposed host hardware model",
           "EvidenceKeys": [
-            "platform.modalias",
-            "platform.of_compatible"
+            "kernel.syno_hw_version"
+          ]
+        },
+        {
+          "Message": "DMI vendor identifies a Synology system",
+          "EvidenceKeys": [
+            "dmi.sys_vendor",
+            "dmi.board_vendor",
+            "dmi.modalias"
           ]
         }
       ]
@@ -1356,8 +1081,8 @@
       "HomeUrl": "https://alpinelinux.org/",
       "SupportUrl": null,
       "BugReportUrl": "https://gitlab.alpinelinux.org/alpine/aports/-/issues",
-      "Architecture": "Arm",
-      "RawArchitecture": "arm",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Confidence": "High",
       "EvidenceReferences": [
         "proc-files:os.bug_report_url",
@@ -1370,11 +1095,11 @@
     },
     "VisibleKernel": {
       "Name": "Linux",
-      "Release": "5.15.86-rt56-w04.01.07",
-      "Version": "#1 SMP PREEMPT_RT Wed Mar 22 17:44:46 UTC 2023",
-      "Architecture": "Arm",
-      "RawArchitecture": "arm",
-      "Flavor": "Realtime",
+      "Release": "5.10.55\u002B",
+      "Version": "#86009 SMP Wed Nov 26 18:45:22 CST 2025",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Flavor": "Generic",
       "Compiler": {
         "Name": "GCC",
         "Version": null,
@@ -1392,6 +1117,8 @@
         "proc-files:kernel.hostname",
         "proc-files:kernel.name",
         "proc-files:kernel.release",
+        "proc-files:kernel.syno_hw_version",
+        "proc-files:kernel.syno_install_flag",
         "proc-files:kernel.version"
       ]
     },
@@ -1422,37 +1149,47 @@
       "EvidenceReferences": []
     },
     "Hardware": {
-      "Architecture": "Arm",
-      "RawArchitecture": "arm",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
       "Cpu": {
-        "LogicalProcessorCount": 1,
-        "VisibleProcessorCount": 1,
-        "Vendor": "0x41",
-        "ModelName": "ARMv7 Processor rev 5 (v7l)",
-        "Family": "ARM",
-        "FlagsHash": "sha256:e6fc06400cd058b6527c52c0b874a7a5b07eee47217df7de89a0d5ec978b84ff",
-        "FlagsCount": 15,
-        "CgroupCpuQuota": -1,
+        "LogicalProcessorCount": 2,
+        "VisibleProcessorCount": 8,
+        "Vendor": "AuthenticAMD",
+        "ModelName": "AMD Ryzen Embedded V1500B",
+        "Family": "AMD",
+        "FlagsHash": "sha256:4c119c1a676a18d2d74e760f2b0c31cb4c3fbbd3dadaa6d66961f0314259eb67",
+        "FlagsCount": 113,
+        "CgroupCpuQuota": null,
         "CgroupCpuMax": null
       },
       "Memory": {
-        "MemTotalBytes": 518221824,
-        "CgroupMemoryLimitBytes": 8796093018112,
-        "CgroupMemoryCurrentBytes": 9588736,
-        "CgroupMemoryLimitRaw": "8796093018112"
+        "MemTotalBytes": 33607180288,
+        "CgroupMemoryLimitBytes": 9223372036854771712,
+        "CgroupMemoryCurrentBytes": 14364672,
+        "CgroupMemoryLimitRaw": "9223372036854771712"
       },
       "Dmi": {
-        "SystemVendor": null,
-        "ProductName": null,
-        "ProductFamily": null,
-        "ProductVersion": null,
-        "BoardVendor": null,
-        "BoardName": null,
-        "ChassisVendor": null,
-        "BiosVendor": null,
-        "Modalias": null,
-        "Confidence": "Unknown",
-        "EvidenceReferences": []
+        "SystemVendor": "Synology Inc.",
+        "ProductName": "DS925\u002B",
+        "ProductFamily": "DiskStation",
+        "ProductVersion": "1",
+        "BoardVendor": "AMD",
+        "BoardName": "Bilby",
+        "ChassisVendor": "Chassis Manufacturer",
+        "BiosVendor": "Insyde Corp.",
+        "Modalias": "dmi:bvnInsydeCorp.:bvrM.L11.00:bd11/14/2024:br5.4:svnSynologyInc.:pnDS925\u002B:pvr1:rvnAMD:rnBilby:rvrBaseBoardVersion:cvnChassisManufacturer:ct10:cvrChassisVersion:",
+        "Confidence": "High",
+        "EvidenceReferences": [
+          "proc-files:dmi.bios_vendor",
+          "proc-files:dmi.board_name",
+          "proc-files:dmi.board_vendor",
+          "proc-files:dmi.chassis_vendor",
+          "proc-files:dmi.modalias",
+          "proc-files:dmi.product_family",
+          "proc-files:dmi.product_name",
+          "proc-files:dmi.product_version",
+          "proc-files:dmi.sys_vendor"
+        ]
       },
       "DeviceTree": {
         "Model": null,
@@ -1464,58 +1201,53 @@
     },
     "Fingerprint": {
       "Algorithm": "CRP-HOST-FP-v1",
-      "Value": "sha256:674f0a059a494c19526736218691e83f30023730fee03ecaa4c3c7aacb01c88e",
+      "Value": "sha256:41e8f62b955d3baaa2c2450a601f459ae8ffc9a11325a655b7022c899d5dad30",
       "Stability": "KernelOnly",
       "IncludedSignalCount": 8,
-      "ExcludedSensitiveSignalCount": 2,
+      "ExcludedSensitiveSignalCount": 1,
       "Components": [
         {
           "Name": "architecture.normalized",
           "Included": true,
-          "RawValueRedacted": "Arm"
+          "RawValueRedacted": "X64"
         },
         {
           "Name": "cpu.family",
           "Included": true,
-          "RawValueRedacted": "ARM"
+          "RawValueRedacted": "AMD"
         },
         {
           "Name": "cpu.flags.hash",
           "Included": true,
-          "RawValueRedacted": "sha256:e6fc06400cd058b6527c52c0b874a7a5b07eee47217df7de89a0d5ec978b84ff"
+          "RawValueRedacted": "sha256:4c119c1a676a18d2d74e760f2b0c31cb4c3fbbd3dadaa6d66961f0314259eb67"
         },
         {
           "Name": "cpu.modelName.normalized",
           "Included": true,
-          "RawValueRedacted": "ARMv7 Processor rev 5 (v7l)"
+          "RawValueRedacted": "AMD Ryzen Embedded V1500B"
         },
         {
           "Name": "cpu.vendor",
           "Included": true,
-          "RawValueRedacted": "0x41"
+          "RawValueRedacted": "AuthenticAMD"
         },
         {
           "Name": "kernel.flavor",
           "Included": true,
-          "RawValueRedacted": "Realtime"
+          "RawValueRedacted": "Generic"
         },
         {
           "Name": "kernel.release",
           "Included": true,
-          "RawValueRedacted": "5.15.86-rt56-w04.01.07"
+          "RawValueRedacted": "5.10.55\u002B"
         },
         {
           "Name": "memory.total.bucket",
           "Included": true,
-          "RawValueRedacted": "1GiB"
+          "RawValueRedacted": "31GiB"
         },
         {
           "Name": "hostname",
-          "Included": false,
-          "RawValueRedacted": "redacted"
-        },
-        {
-          "Name": "cpu.serial",
           "Included": false,
           "RawValueRedacted": "redacted"
         }
