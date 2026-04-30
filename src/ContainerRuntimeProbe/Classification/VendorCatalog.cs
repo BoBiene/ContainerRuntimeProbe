@@ -37,14 +37,16 @@ internal static class VendorCatalog
         "dmi.chassis_vendor",
         "dmi.modalias",
         "device_tree.model",
-        "device_tree.compatible"
+        "device_tree.compatible",
+        "platform.modalias",
+        "platform.of_compatible"
     ];
 
     internal static readonly IReadOnlyList<VendorCatalogEntry> HardwareVendors =
     [
         new(PlatformVendorKind.Synology, VendorCatalogEntryStatus.VerifiedFromUserSample, SynologyHardwareEvidenceKeys, ["synology", "diskstation", "rackstation", "flashstation", "svnsynologyinc."]),
         new(PlatformVendorKind.Siemens, VendorCatalogEntryStatus.VerifiedFromPublicSource, ExplicitHardwareEvidenceKeys, ["siemens", "simatic"]),
-        new(PlatformVendorKind.Wago, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["wago"]),
+        new(PlatformVendorKind.Wago, VendorCatalogEntryStatus.VerifiedFromUserSample, ExplicitHardwareEvidenceKeys, ["wago"]),
         new(PlatformVendorKind.Beckhoff, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["beckhoff"]),
         new(PlatformVendorKind.PhoenixContact, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["phoenix contact", "phoenixcontact", "plcnext"]),
         new(PlatformVendorKind.Advantech, VendorCatalogEntryStatus.Candidate, ExplicitHardwareEvidenceKeys, ["advantech"]),

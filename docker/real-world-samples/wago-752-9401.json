@@ -1,0 +1,1099 @@
+{
+  "GeneratedAt": "2026-04-30T08:47:28.8037143+00:00",
+  "Duration": "00:00:01.0443935",
+  "ProbeToolInfo": {
+    "Version": "0.1.0-preview.3.1",
+    "GitCommit": "ed12bcf"
+  },
+  "Probes": [
+    {
+      "ProbeId": "marker-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "marker-files",
+          "Key": "/.dockerenv",
+          "Value": "True",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "marker-files",
+          "Key": "/run/.containerenv",
+          "Value": "False",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0001121"
+    },
+    {
+      "ProbeId": "environment",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "environment",
+          "Key": "DOTNET_RUNNING_IN_CONTAINER",
+          "Value": "true",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "environment",
+          "Key": "HOSTNAME",
+          "Value": "\u003Credacted\u003E",
+          "Sensitivity": "Sensitive"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0003545"
+    },
+    {
+      "ProbeId": "proc-files",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "11:memory:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "10:rdma:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "9:pids:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "8:cpu,cpuacct:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "7:net_cls,net_prio:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "6:devices:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "5:freezer:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "4:cpuset:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "3:perf_event:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "2:blkio:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "1:name=systemd:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/cgroup:signal",
+          "Value": "0::/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "11:memory:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "10:rdma:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "9:pids:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "8:cpu,cpuacct:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "7:net_cls,net_prio:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "6:devices:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "5:freezer:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "4:cpuset:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "3:perf_event:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "2:blkio:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "1:name=systemd:/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/cgroup:signal",
+          "Value": "0::/docker/a3caaa1b04069df40639289f98e090704eaccab3f343845e48a2555957da46c2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/self/mountinfo:signal",
+          "Value": "overlay",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/1/mountinfo:signal",
+          "Value": "overlay",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "default-route-device",
+          "Value": "eth0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dns-search",
+          "Value": "inray.local",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/etc/hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.id",
+          "Value": "alpine",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.name",
+          "Value": "Alpine Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.pretty_name",
+          "Value": "Alpine Linux v3.23",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.version_id",
+          "Value": "3.23.4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.home_url",
+          "Value": "https://alpinelinux.org/",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "os.bug_report_url",
+          "Value": "https://gitlab.alpinelinux.org/alpine/aports/-/issues",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/version",
+          "Value": "Linux version 4.19.0-10-amd64 (debian-kernel@lists.debian.org) (gcc version 8.3.0 (Debian 8.3.0-6)) #1 SMP Debian 4.19.132-1 (2020-07-24)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.hostname",
+          "Value": "redacted",
+          "Sensitivity": "Sensitive"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "4.19.0-10-amd64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#1 SMP Debian 4.19.132-1 (2020-07-24)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.logical_processors",
+          "Value": "3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.vendor",
+          "Value": "GenuineIntel",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model_name",
+          "Value": "Intel(R) Atom(TM) CPU  E3845  @ 1.91GHz",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.family",
+          "Value": "6",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.model",
+          "Value": "55",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.stepping",
+          "Value": "9",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.microcode",
+          "Value": "0x90a",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.count",
+          "Value": "80",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flags.hash",
+          "Value": "sha256:40d9b4e87883522fc29bbdce598abb16d997e677ea95ae76d58a5ad00acf8447",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.flag.hypervisor",
+          "Value": "False",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online",
+          "Value": "0-3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.online.count",
+          "Value": "4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible",
+          "Value": "0-3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.possible.count",
+          "Value": "4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present",
+          "Value": "0-3",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.present.count",
+          "Value": "4",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.sys_vendor",
+          "Value": "WAGO",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_name",
+          "Value": "752-940x",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_family",
+          "Value": "To be filled by O.E.M.",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.product_version",
+          "Value": "To be filled by O.E.M.",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.board_vendor",
+          "Value": "WAGO",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.board_name",
+          "Value": "752-940x",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.chassis_vendor",
+          "Value": "To Be Filled By O.E.M.",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.bios_vendor",
+          "Value": "American Megatrends Inc.",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "dmi.modalias",
+          "Value": "dmi:bvnAmericanMegatrendsInc.:bvr5.6.5:bd07/23/2020:svnWAGO:pn752-940x:pvrTobefilledbyO.E.M.:rvnWAGO:rn752-940x:rvrTobefilledbyO.E.M.:cvnToBeFilledByO.E.M.:ct3:cvrToBeFilledByO.E.M.:",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/device-tree/model",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/proc/device-tree/compatible",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/firmware/devicetree/base/model",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/firmware/devicetree/base/compatible",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/hypervisor/type",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_total_bytes",
+          "Value": "8251510784",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.mem_available_bytes",
+          "Value": "5340397568",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/memory.current",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.cgroup.limit_raw",
+          "Value": "9223372036854771712",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.cgroup.limit_bytes",
+          "Value": "9223372036854771712",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "memory.cgroup.current_bytes",
+          "Value": "4435968",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "/sys/fs/cgroup/cpu.max",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "cpu.cgroup.quota",
+          "Value": "-1",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.pid",
+          "Value": "pid:[4026532551]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.mnt",
+          "Value": "mnt:[4026532548]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.net",
+          "Value": "net:[4026532553]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.uts",
+          "Value": "uts:[4026532549]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "ns.ipc",
+          "Value": "ipc:[4026532550]",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.architecture",
+          "Value": "x86_64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.name",
+          "Value": "Linux",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.release",
+          "Value": "4.19.0-10-amd64",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.version",
+          "Value": "#1 SMP Debian 4.19.132-1 (2020-07-24)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler",
+          "Value": "gcc version 8.3.0 (Debian 8.3.0-6)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler.raw",
+          "Value": "gcc version 8.3.0 (Debian 8.3.0-6)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler.name",
+          "Value": "gcc",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler.version",
+          "Value": "8.3.0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.compiler.distribution_hint",
+          "Value": "Debian",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "proc-files",
+          "Key": "kernel.flavor",
+          "Value": "Debian",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0208105"
+    },
+    {
+      "ProbeId": "security-sandbox",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "proc.self.status.outcome",
+          "Value": "Success",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapPrm",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapEff",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.CapBnd",
+          "Value": "00000000a80425fb",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.NoNewPrivs",
+          "Value": "0",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "status.Seccomp",
+          "Value": "2",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "apparmor.profile",
+          "Value": "docker-default (enforce)",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "selinux.mount.present",
+          "Value": "False",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "security-sandbox",
+          "Key": "selinux.enforce.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:00.0005263"
+    },
+    {
+      "ProbeId": "runtime-api",
+      "Outcome": "Unavailable",
+      "Evidence": [],
+      "Message": "No docker/podman socket found",
+      "Duration": "00:00:00.0001336"
+    },
+    {
+      "ProbeId": "kubernetes",
+      "Outcome": "Unavailable",
+      "Evidence": [],
+      "Message": "Kubernetes env/token missing",
+      "Duration": "00:00:00.0000415"
+    },
+    {
+      "ProbeId": "cloud-metadata",
+      "Outcome": "Success",
+      "Evidence": [
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "azure.imds.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.machine_type.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.zone.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "gcp.metadata.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        },
+        {
+          "ProbeId": "cloud-metadata",
+          "Key": "oci.metadata.outcome",
+          "Value": "Unavailable",
+          "Sensitivity": "Public"
+        }
+      ],
+      "Message": null,
+      "Duration": "00:00:01.0165742"
+    }
+  ],
+  "SecurityWarnings": [],
+  "Classification": {
+    "IsContainerized": {
+      "Value": "True",
+      "Confidence": "High",
+      "Reasons": [
+        {
+          "Message": "/.dockerenv exists",
+          "EvidenceKeys": [
+            "/.dockerenv"
+          ]
+        },
+        {
+          "Message": "Cgroup contains docker path",
+          "EvidenceKeys": [
+            "/proc/self/cgroup",
+            "/proc/1/cgroup"
+          ]
+        },
+        {
+          "Message": "Overlay mount detected",
+          "EvidenceKeys": [
+            "/proc/self/mountinfo",
+            "/proc/1/mountinfo"
+          ]
+        }
+      ]
+    },
+    "ContainerRuntime": {
+      "Value": "Docker",
+      "Confidence": "Low",
+      "Reasons": [
+        {
+          "Message": "Docker cgroup path",
+          "EvidenceKeys": [
+            "proc-files"
+          ]
+        }
+      ]
+    },
+    "Virtualization": {
+      "Value": "None",
+      "Confidence": "Medium",
+      "Reasons": [
+        {
+          "Message": "No virtualization fingerprint detected",
+          "EvidenceKeys": [
+            "cpu.flag.hypervisor",
+            "sys.hypervisor.type",
+            "dmi.sys_vendor",
+            "dmi.product_name"
+          ]
+        }
+      ]
+    },
+    "Host": {
+      "Family": {
+        "Value": "Linux",
+        "Confidence": "High",
+        "Reasons": [
+          {
+            "Message": "Visible kernel does not match WSL2 and remains Linux",
+            "EvidenceKeys": [
+              "kernel.release",
+              "/proc/version",
+              "os.id"
+            ]
+          }
+        ]
+      },
+      "Type": {
+        "Value": "Unknown",
+        "Confidence": "Low",
+        "Reasons": [
+          {
+            "Message": "Linux host signals are incomplete or not conclusive enough for StandardLinux/Appliance",
+            "EvidenceKeys": [
+              "kernel.release",
+              "os.version_id",
+              "kernel.compiler"
+            ]
+          }
+        ]
+      }
+    },
+    "Environment": {
+      "Type": {
+        "Value": "OnPrem",
+        "Confidence": "Medium",
+        "Reasons": [
+          {
+            "Message": "No cloud metadata endpoint succeeded",
+            "EvidenceKeys": [
+              "aws.imds.identity.outcome",
+              "azure.imds.outcome",
+              "gcp.metadata.outcome",
+              "oci.metadata.outcome"
+            ]
+          },
+          {
+            "Message": "DNS search domain looks like a home or LAN network",
+            "EvidenceKeys": [
+              "dns-search"
+            ]
+          },
+          {
+            "Message": "Default route device is visible from the host network stack",
+            "EvidenceKeys": [
+              "default-route-device"
+            ]
+          }
+        ]
+      }
+    },
+    "RuntimeApi": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Runtime API probe outcomes",
+          "EvidenceKeys": [
+            "runtime-api"
+          ]
+        }
+      ]
+    },
+    "Orchestrator": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No orchestrator markers",
+          "EvidenceKeys": []
+        }
+      ]
+    },
+    "CloudProvider": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "Cloud metadata/env markers",
+          "EvidenceKeys": [
+            "cloud-metadata"
+          ]
+        }
+      ]
+    },
+    "PlatformVendor": {
+      "Value": "Unknown",
+      "Confidence": "Unknown",
+      "Reasons": [
+        {
+          "Message": "No vendor-specific proofs",
+          "EvidenceKeys": []
+        }
+      ]
+    }
+  },
+  "Host": {
+    "ContainerImageOs": {
+      "Family": "Alpine",
+      "Id": "alpine",
+      "IdLike": [],
+      "Name": "Alpine Linux",
+      "PrettyName": "Alpine Linux v3.23",
+      "Version": null,
+      "VersionId": "3.23.4",
+      "VersionCodename": null,
+      "BuildId": null,
+      "Variant": null,
+      "VariantId": null,
+      "HomeUrl": "https://alpinelinux.org/",
+      "SupportUrl": null,
+      "BugReportUrl": "https://gitlab.alpinelinux.org/alpine/aports/-/issues",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Confidence": "High",
+      "EvidenceReferences": [
+        "proc-files:os.bug_report_url",
+        "proc-files:os.home_url",
+        "proc-files:os.id",
+        "proc-files:os.name",
+        "proc-files:os.pretty_name",
+        "proc-files:os.version_id"
+      ]
+    },
+    "VisibleKernel": {
+      "Name": "Linux",
+      "Release": "4.19.0-10-amd64",
+      "Version": "#1 SMP Debian 4.19.132-1 (2020-07-24)",
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Flavor": "Debian",
+      "Compiler": {
+        "Name": "gcc",
+        "Version": "8.3.0",
+        "Raw": "gcc version 8.3.0 (Debian 8.3.0-6)",
+        "DistributionHint": "Debian",
+        "DistributionVersionHint": null
+      },
+      "Confidence": "Medium",
+      "EvidenceReferences": [
+        "proc-files:kernel.architecture",
+        "proc-files:kernel.compiler",
+        "proc-files:kernel.compiler.distribution_hint",
+        "proc-files:kernel.compiler.name",
+        "proc-files:kernel.compiler.raw",
+        "proc-files:kernel.compiler.version",
+        "proc-files:kernel.flavor",
+        "proc-files:kernel.hostname",
+        "proc-files:kernel.name",
+        "proc-files:kernel.release",
+        "proc-files:kernel.version"
+      ]
+    },
+    "RuntimeReportedHostOs": {
+      "Family": "Unknown",
+      "Name": null,
+      "Version": null,
+      "KernelVersion": null,
+      "Architecture": "Unknown",
+      "RawArchitecture": null,
+      "Source": "Unknown",
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "Virtualization": {
+      "Kind": "Unknown",
+      "PlatformVendor": null,
+      "Confidence": "Unknown",
+      "EvidenceReferences": []
+    },
+    "UnderlyingHostOs": {
+      "Family": "Debian",
+      "Name": "Debian kernel flavor",
+      "Version": null,
+      "VersionHint": null,
+      "Source": "VisibleKernel",
+      "Confidence": "Medium",
+      "EvidenceReferences": [
+        "proc-files:kernel.architecture",
+        "proc-files:kernel.compiler",
+        "proc-files:kernel.compiler.distribution_hint",
+        "proc-files:kernel.compiler.name",
+        "proc-files:kernel.compiler.raw",
+        "proc-files:kernel.compiler.version",
+        "proc-files:kernel.flavor",
+        "proc-files:kernel.hostname",
+        "proc-files:kernel.name",
+        "proc-files:kernel.release",
+        "proc-files:kernel.version"
+      ]
+    },
+    "Hardware": {
+      "Architecture": "X64",
+      "RawArchitecture": "x86_64",
+      "Cpu": {
+        "LogicalProcessorCount": 3,
+        "VisibleProcessorCount": 4,
+        "Vendor": "GenuineIntel",
+        "ModelName": "Intel(R) Atom(TM) CPU  E3845  @ 1.91GHz",
+        "Family": "IntelXeon",
+        "FlagsHash": "sha256:40d9b4e87883522fc29bbdce598abb16d997e677ea95ae76d58a5ad00acf8447",
+        "FlagsCount": 80,
+        "CgroupCpuQuota": -1,
+        "CgroupCpuMax": null
+      },
+      "Memory": {
+        "MemTotalBytes": 8251510784,
+        "CgroupMemoryLimitBytes": 9223372036854771712,
+        "CgroupMemoryCurrentBytes": 4435968,
+        "CgroupMemoryLimitRaw": "9223372036854771712"
+      },
+      "Dmi": {
+        "SystemVendor": "WAGO",
+        "ProductName": "752-940x",
+        "ProductFamily": "To be filled by O.E.M.",
+        "ProductVersion": "To be filled by O.E.M.",
+        "BoardVendor": "WAGO",
+        "BoardName": "752-940x",
+        "ChassisVendor": "To Be Filled By O.E.M.",
+        "BiosVendor": "American Megatrends Inc.",
+        "Modalias": "dmi:bvnAmericanMegatrendsInc.:bvr5.6.5:bd07/23/2020:svnWAGO:pn752-940x:pvrTobefilledbyO.E.M.:rvnWAGO:rn752-940x:rvrTobefilledbyO.E.M.:cvnToBeFilledByO.E.M.:ct3:cvrToBeFilledByO.E.M.:",
+        "Confidence": "High",
+        "EvidenceReferences": [
+          "proc-files:dmi.bios_vendor",
+          "proc-files:dmi.board_name",
+          "proc-files:dmi.board_vendor",
+          "proc-files:dmi.chassis_vendor",
+          "proc-files:dmi.modalias",
+          "proc-files:dmi.product_family",
+          "proc-files:dmi.product_name",
+          "proc-files:dmi.product_version",
+          "proc-files:dmi.sys_vendor"
+        ]
+      },
+      "DeviceTree": {
+        "Model": null,
+        "Compatible": null,
+        "Confidence": "Unknown",
+        "EvidenceReferences": []
+      },
+      "CloudMachineType": null
+    },
+    "Fingerprint": {
+      "Algorithm": "CRP-HOST-FP-v1",
+      "Value": "sha256:84a18cb2b03fa3d6a291d14cc573ce9e01852f820a7b7740ed058b3bc4a810b7",
+      "Stability": "KernelOnly",
+      "IncludedSignalCount": 8,
+      "ExcludedSensitiveSignalCount": 1,
+      "Components": [
+        {
+          "Name": "architecture.normalized",
+          "Included": true,
+          "RawValueRedacted": "X64"
+        },
+        {
+          "Name": "cpu.family",
+          "Included": true,
+          "RawValueRedacted": "IntelXeon"
+        },
+        {
+          "Name": "cpu.flags.hash",
+          "Included": true,
+          "RawValueRedacted": "sha256:40d9b4e87883522fc29bbdce598abb16d997e677ea95ae76d58a5ad00acf8447"
+        },
+        {
+          "Name": "cpu.modelName.normalized",
+          "Included": true,
+          "RawValueRedacted": "Intel(R) Atom(TM) CPU E3845 @ 1.91GHz"
+        },
+        {
+          "Name": "cpu.vendor",
+          "Included": true,
+          "RawValueRedacted": "GenuineIntel"
+        },
+        {
+          "Name": "kernel.flavor",
+          "Included": true,
+          "RawValueRedacted": "Debian"
+        },
+        {
+          "Name": "kernel.release",
+          "Included": true,
+          "RawValueRedacted": "4.19.0-10-amd64"
+        },
+        {
+          "Name": "memory.total.bucket",
+          "Included": true,
+          "RawValueRedacted": "8GiB"
+        },
+        {
+          "Name": "hostname",
+          "Included": false,
+          "RawValueRedacted": "redacted"
+        }
+      ],
+      "Warnings": [
+        "Fingerprint is diagnostic only and not a security identity."
+      ]
+    }
+  }
+}

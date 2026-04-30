@@ -24,17 +24,48 @@ The catalog only uses public, non-identity-oriented hardware signals:
 - `dmi.modalias`
 - `device_tree.model`
 - `device_tree.compatible`
+- `platform.modalias`
+- `platform.of_compatible`
 
 ## Runtime-Active Vendors
 
 - `Synology` — `VerifiedFromUserSample`
 - `Siemens` — `VerifiedFromPublicSource`
+- `Wago` — `VerifiedFromUserSample`
 
 These entries can influence `PlatformVendor` at runtime.
 
+## Vendor Notes
+
+### Wago
+
+The project now treats `Wago` as runtime-active based on real project samples from two visibility profiles:
+
+- sample fixtures:
+	- `docker/real-world-samples/wago-752-9401.json` shows the direct DMI-rich case on a WAGO x86 controller.
+	- `docker/real-world-samples/wago-cc100.json` captures the constrained ARM container case where DMI and device-tree may be hidden.
+- x86-style WAGO controllers can expose direct DMI signals such as `dmi.sys_vendor`, `dmi.board_vendor`, `dmi.product_name`, and `dmi.modalias`.
+- constrained ARM container views may not expose DMI or device-tree files, but can still expose WAGO-specific platform metadata via `platform.of_compatible` and `platform.modalias`, for example `wago,sysinit`.
+
+The following signals are useful for WAGO classification:
+
+- `dmi.sys_vendor`
+- `dmi.board_vendor`
+- `dmi.product_name`
+- `dmi.board_name`
+- `dmi.modalias`
+- `platform.of_compatible`
+- `platform.modalias`
+
+The following signals are not treated as sufficient on their own:
+
+- generic ARM cpuinfo values such as `CPU part`
+- generic `cpu.hardware` values such as `Generic DT based system`
+- realtime kernel markers such as `PREEMPT_RT`
+- opaque kernel release suffixes without a vendor fragment
+
 ## Candidate Vendors
 
-- `Wago`
 - `Beckhoff`
 - `PhoenixContact`
 - `Advantech`

@@ -195,15 +195,17 @@ internal static class HostParsing
     {
         var sections = text.Split("\n\n", StringSplitOptions.RemoveEmptyEntries);
         var first = sections.FirstOrDefault() ?? string.Empty;
-        var values = Parsing.ParseKeyValueLines(first.Split('\n'), ':');
+        var firstValues = Parsing.ParseKeyValueLines(first.Split('\n'), ':');
+        var allValues = Parsing.ParseKeyValueLines(text.Split('\n', StringSplitOptions.RemoveEmptyEntries), ':');
         var logicalCount = sections.SelectMany(section => section.Split('\n'))
             .Count(line => line.TrimStart().StartsWith("processor", StringComparison.OrdinalIgnoreCase));
-        if (logicalCount == 0 && values.TryGetValue("processor", out _))
+        if (logicalCount == 0 && firstValues.TryGetValue("processor", out _))
         {
             logicalCount = 1;
         }
 
-        var flags = GetFirstValue(values, "flags", "Features");
+        var flags = GetFirstValue(firstValues, "flags", "Features")
+            ?? GetFirstValue(allValues, "flags", "Features");
         var normalizedFlags = flags?
             .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(flag => flag.Trim().ToLowerInvariant())
@@ -213,18 +215,18 @@ internal static class HostParsing
 
         return new ParsedCpuInfo(
             logicalCount == 0 ? null : logicalCount,
-            GetFirstValue(values, "vendor_id", "CPU implementer"),
-            GetFirstValue(values, "model name", "Processor"),
-            GetFirstValue(values, "cpu family", "CPU architecture"),
-            values.GetValueOrDefault("model"),
-            values.GetValueOrDefault("stepping"),
-            values.GetValueOrDefault("microcode"),
+            GetFirstValue(firstValues, "vendor_id", "CPU implementer") ?? GetFirstValue(allValues, "vendor_id", "CPU implementer"),
+            GetFirstValue(firstValues, "model name", "Processor") ?? GetFirstValue(allValues, "model name", "Processor"),
+            GetFirstValue(firstValues, "cpu family", "CPU architecture") ?? GetFirstValue(allValues, "cpu family", "CPU architecture"),
+            firstValues.GetValueOrDefault("model") ?? allValues.GetValueOrDefault("model"),
+            firstValues.GetValueOrDefault("stepping") ?? allValues.GetValueOrDefault("stepping"),
+            firstValues.GetValueOrDefault("microcode") ?? allValues.GetValueOrDefault("microcode"),
             normalizedFlags?.Length,
             normalizedFlags is { Length: > 0 } ? ComputeSha256Hex(string.Join('\n', normalizedFlags)) : null,
             normalizedFlags?.Contains("hypervisor", StringComparer.Ordinal),
-            values.GetValueOrDefault("Hardware"),
-            values.GetValueOrDefault("Revision"),
-            values.GetValueOrDefault("Serial"));
+            allValues.GetValueOrDefault("Hardware"),
+            allValues.GetValueOrDefault("Revision"),
+            allValues.GetValueOrDefault("Serial"));
     }
 
     public static string? SanitizeCpuSerial(string? serial, bool includeSensitive)

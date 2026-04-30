@@ -100,6 +100,32 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void ParseCpuInfo_Arm_ExtractsBoardHintsOutsideFirstProcessorSection()
+    {
+        const string cpuInfo = """
+            processor   : 0
+            model name  : ARMv7 Processor rev 5 (v7l)
+            Features    : half thumb fastmult vfp edsp neon vfpv3 tls vfpd32 
+
+            processor   : 1
+            model name  : ARMv7 Processor rev 5 (v7l)
+            Features    : half thumb fastmult vfp edsp neon vfpv3 tls vfpd32 
+
+            Hardware    : Generic DT based system
+            Revision    : 0000
+            Serial      : 0000000000000000
+            """;
+
+        var parsed = HostParsing.ParseCpuInfo(cpuInfo);
+
+        Assert.Equal(2, parsed.LogicalProcessorCount);
+        Assert.Equal("ARMv7 Processor rev 5 (v7l)", parsed.ModelName);
+        Assert.Equal("Generic DT based system", parsed.Hardware);
+        Assert.Equal("0000", parsed.Revision);
+        Assert.Equal("0000000000000000", parsed.Serial);
+    }
+
+    [Fact]
     public void ParseMemInfo_ParsesBytes()
     {
         var parsed = HostParsing.ParseMemInfo("MemTotal:       16384000 kB\nMemAvailable:   12000000 kB\n");

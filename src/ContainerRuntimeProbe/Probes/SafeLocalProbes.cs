@@ -86,6 +86,7 @@ internal sealed class ProcFilesProbe : IProbe
     private readonly IReadOnlyList<string> _files;
     private readonly Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> _readFileAsync;
     private readonly Func<string, IEnumerable<string>> _enumerateFiles;
+    private readonly Func<string, IEnumerable<string>> _enumerateEntries;
 
     private const string KernelSysctlDirectory = "/proc/sys/kernel";
 
@@ -125,10 +126,23 @@ internal sealed class ProcFilesProbe : IProbe
         "/sys/firmware/devicetree/base/compatible"
     ];
 
+    private static readonly string[] PublicSocFiles =
+    [
+        "/sys/devices/soc0/machine",
+        "/sys/devices/soc0/family",
+        "/sys/devices/soc0/soc_id",
+        "/sys/devices/soc0/revision"
+    ];
+
     private static readonly string[] VirtualizationFiles =
     [
         "/proc/modules",
         "/sys/hypervisor/type"
+    ];
+
+    private static readonly string[] PlatformDeviceRoots =
+    [
+        "/sys/bus/platform/devices"
     ];
 
     private static readonly string[] InterestingVirtualizationModules =
@@ -166,6 +180,7 @@ internal sealed class ProcFilesProbe : IProbe
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
         .. PublicDmiFiles,
         .. PublicDeviceTreeFiles,
+        .. PublicSocFiles,
         .. VirtualizationFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
@@ -173,17 +188,19 @@ internal sealed class ProcFilesProbe : IProbe
 
     private readonly Func<string, bool> _directoryExists;
 
-    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.Exists) { }
+    public ProcFilesProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists) { }
 
     internal ProcFilesProbe(
         IReadOnlyList<string> files,
         Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync,
         Func<string, IEnumerable<string>>? enumerateFiles = null,
+        Func<string, IEnumerable<string>>? enumerateEntries = null,
         Func<string, bool>? directoryExists = null)
     {
         _files = files;
         _readFileAsync = readFileAsync;
         _enumerateFiles = enumerateFiles ?? Directory.EnumerateFiles;
+        _enumerateEntries = enumerateEntries ?? Directory.EnumerateFileSystemEntries;
         _directoryExists = directoryExists ?? Directory.Exists;
     }
 
@@ -322,6 +339,11 @@ internal sealed class ProcFilesProbe : IProbe
                 var key = file.Split('/').Last();
                 AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
             }
+            else if (file.StartsWith("/sys/devices/soc0/", StringComparison.Ordinal))
+            {
+                var key = file.Split('/').Last();
+                AddEvidenceIfPresent(evidence, $"soc.{key}", text?.Trim());
+            }
             else if (file == "/proc/modules")
             {
                 var loadedModules = text!
@@ -339,6 +361,26 @@ internal sealed class ProcFilesProbe : IProbe
             else if (file == "/sys/hypervisor/type")
             {
                 AddEvidenceIfPresent(evidence, "sys.hypervisor.type", text?.Trim());
+            }
+            else if (file.EndsWith("/modalias", StringComparison.Ordinal)
+                && file.StartsWith("/sys/bus/platform/devices/", StringComparison.Ordinal))
+            {
+                AddEvidenceIfPresent(evidence, "platform.modalias", text?.Trim());
+            }
+            else if (file.EndsWith("/uevent", StringComparison.Ordinal)
+                && file.StartsWith("/sys/bus/platform/devices/", StringComparison.Ordinal))
+            {
+                foreach (var line in text!.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    if (line.StartsWith("OF_COMPATIBLE_", StringComparison.Ordinal))
+                    {
+                        AddEvidenceIfPresent(evidence, "platform.of_compatible", SplitUeventValue(line));
+                    }
+                    else if (line.StartsWith("MODALIAS=", StringComparison.Ordinal))
+                    {
+                        AddEvidenceIfPresent(evidence, "platform.modalias", SplitUeventValue(line));
+                    }
+                }
             }
             else if (file is "/proc/device-tree/model" or "/sys/firmware/devicetree/base/model")
             {
@@ -444,6 +486,7 @@ internal sealed class ProcFilesProbe : IProbe
     private IReadOnlyList<string> BuildDefaultFiles()
         => Files
             .Concat(DiscoverPublicKernelSysctlFiles())
+            .Concat(DiscoverPlatformMetadataFiles())
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -471,6 +514,49 @@ internal sealed class ProcFilesProbe : IProbe
         {
             return [];
         }
+    }
+
+    private IReadOnlyList<string> DiscoverPlatformMetadataFiles()
+    {
+        var candidates = new List<string>();
+
+        foreach (var root in PlatformDeviceRoots)
+        {
+            try
+            {
+                foreach (var entry in _enumerateEntries(root))
+                {
+                    var name = Path.GetFileName(entry);
+                    if (string.IsNullOrWhiteSpace(name) || char.IsDigit(name[0]))
+                    {
+                        continue;
+                    }
+
+                    candidates.Add(Path.Combine(entry, "modalias"));
+                    candidates.Add(Path.Combine(entry, "uevent"));
+                }
+            }
+            catch (UnauthorizedAccessException)
+            {
+            }
+            catch (DirectoryNotFoundException)
+            {
+            }
+            catch (IOException)
+            {
+            }
+        }
+
+        return candidates
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static string? SplitUeventValue(string line)
+    {
+        var idx = line.IndexOf('=');
+        return idx < 0 ? null : line[(idx + 1)..].Trim();
     }
 
     private static long? NormalizeCgroupBytes(string? raw)
