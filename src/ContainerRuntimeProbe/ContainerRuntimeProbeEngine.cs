@@ -82,10 +82,8 @@ public sealed class ContainerRuntimeProbeEngine
 
         var classification = Classifier.Classify(results);
         var host = HostReportBuilder.Build(results, classification, options.FingerprintMode);
-        var platformEvidence = PlatformEvidenceBuilder.Build(results);
-        var trustedPlatforms = TrustedPlatformBuilder.Build(results);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
+        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host);
     }
 }

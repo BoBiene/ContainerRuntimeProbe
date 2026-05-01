@@ -247,14 +247,10 @@ static ContainerRuntimeReport NormalizeImportedReport(ContainerRuntimeReport rep
     var classification = Classifier.Classify(report.Probes);
     var importedFingerprintMode = report.Host?.Fingerprint is null ? FingerprintMode.None : FingerprintMode.Safe;
     var host = HostReportBuilder.Build(report.Probes, classification, importedFingerprintMode);
-    var platformEvidence = PlatformEvidenceBuilder.Build(report.Probes);
-    var trustedPlatforms = TrustedPlatformBuilder.Build(report.Probes);
     return report with
     {
         Classification = classification,
-        Host = host,
-        PlatformEvidence = platformEvidence,
-        TrustedPlatforms = trustedPlatforms
+        Host = host
     };
 }
 

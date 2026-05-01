@@ -18,140 +18,6 @@ public sealed record ProbeToolMetadata(string Version, string? GitCommit);
 /// <summary>Reason object including evidence references used for an inferred classification.</summary>
 public sealed record ClassificationReason(string Message, IReadOnlyList<string> EvidenceKeys);
 
-/// <summary>Classifies the strength of heuristic platform evidence.</summary>
-public enum PlatformEvidenceLevel
-{
-    /// <summary>No platform evidence is available.</summary>
-    None,
-
-    /// <summary>Only weak hints are available.</summary>
-    WeakHint,
-
-    /// <summary>Evidence is strong enough for a heuristic platform conclusion.</summary>
-    Heuristic,
-
-    /// <summary>Evidence is strongly corroborated by multiple sources.</summary>
-    StrongHeuristic
-}
-
-/// <summary>Represents the trust state of an explicit platform claim.</summary>
-public enum TrustedPlatformState
-{
-    /// <summary>No explicit trusted platform claim is available.</summary>
-    None,
-
-    /// <summary>An explicit platform claim exists but is not locally verified.</summary>
-    Claimed,
-
-    /// <summary>An explicit platform claim is locally verified.</summary>
-    Verified,
-
-    /// <summary>An explicit platform claim is backed by stronger attestation.</summary>
-    Attested
-}
-
-/// <summary>Identifies a generic platform evidence item category.</summary>
-public enum PlatformEvidenceType
-{
-    /// <summary>Generic platform signal.</summary>
-    Signal,
-
-    /// <summary>Hardware or firmware corroboration.</summary>
-    Hardware,
-
-    /// <summary>Runtime metadata corroboration.</summary>
-    RuntimeMetadata,
-
-    /// <summary>Hostname or DNS context hint.</summary>
-    NetworkContext,
-
-    /// <summary>Environment variable hint.</summary>
-    Environment,
-
-    /// <summary>Mount or cgroup context hint.</summary>
-    ExecutionContext,
-
-    /// <summary>Trust-related artifact reference.</summary>
-    TrustArtifact
-}
-
-/// <summary>Identifies the origin of a trusted platform claim.</summary>
-public enum TrustedPlatformSourceType
-{
-    /// <summary>The source type is not known.</summary>
-    Unknown,
-
-    /// <summary>The claim originates from a local mounted file.</summary>
-    LocalFile,
-
-    /// <summary>The claim originates from local runtime metadata.</summary>
-    RuntimeMetadata,
-
-    /// <summary>The claim originates from a local endpoint validation flow.</summary>
-    LocalEndpoint,
-
-    /// <summary>The claim originates from local TLS or certificate verification.</summary>
-    TlsBinding
-}
-
-/// <summary>Identifies the scope of a trusted platform claim.</summary>
-public enum TrustedPlatformClaimScope
-{
-    /// <summary>Generic platform presence or identity.</summary>
-    PlatformPresence,
-
-    /// <summary>Runtime or device presence.</summary>
-    RuntimePresence,
-
-    /// <summary>Management plane presence.</summary>
-    ManagementPlane
-}
-
-/// <summary>Represents a normalized heuristic platform evidence item.</summary>
-public sealed record PlatformEvidenceItem(
-    PlatformEvidenceType Type,
-    string Key,
-    string? Value,
-    Confidence Confidence,
-    string Description);
-
-/// <summary>Represents a summarized heuristic platform hypothesis.</summary>
-public sealed record PlatformEvidenceSummary(
-    string PlatformKey,
-    int Score,
-    PlatformEvidenceLevel EvidenceLevel,
-    Confidence Confidence,
-    IReadOnlyList<PlatformEvidenceItem> Evidence,
-    IReadOnlyList<string> Warnings);
-
-/// <summary>Represents a trusted platform claim exposed to applications.</summary>
-public sealed record TrustedPlatformClaim(
-    TrustedPlatformClaimScope Scope,
-    string Type,
-    string? Value,
-    Confidence Confidence,
-    string Description);
-
-/// <summary>Represents explicit evidence used for a trusted platform claim.</summary>
-public sealed record TrustedPlatformEvidence(
-    TrustedPlatformSourceType SourceType,
-    string Key,
-    string? Value,
-    Confidence Confidence,
-    string Description);
-
-/// <summary>Represents a summarized trusted platform entry.</summary>
-public sealed record TrustedPlatformSummary(
-    string PlatformKey,
-    TrustedPlatformState State,
-    string? VerificationMethod,
-    string? Issuer,
-    string? Subject,
-    DateTimeOffset? ExpiresAt,
-    IReadOnlyList<TrustedPlatformClaim> Claims,
-    IReadOnlyList<TrustedPlatformEvidence> Evidence,
-    IReadOnlyList<string> Warnings);
-
 /// <summary>Classifies whether the current process appears to run in a container.</summary>
 public enum ContainerizationKind
 {
@@ -395,9 +261,7 @@ public sealed record ContainerRuntimeReport(
     IReadOnlyList<ProbeResult> Probes,
     IReadOnlyList<SecurityWarning> SecurityWarnings,
     ReportClassification Classification,
-    HostReport Host,
-    IReadOnlyList<PlatformEvidenceSummary>? PlatformEvidence = null,
-    IReadOnlyList<TrustedPlatformSummary>? TrustedPlatforms = null);
+    HostReport Host);
 
 /// <summary>Source-generation context for JSON serialization.</summary>
 [JsonSerializable(typeof(ContainerRuntimeReport))]
@@ -411,18 +275,6 @@ public sealed record ContainerRuntimeReport(
 [JsonSerializable(typeof(ClassificationResult<OrchestratorKind>))]
 [JsonSerializable(typeof(ClassificationResult<CloudProviderKind>))]
 [JsonSerializable(typeof(ClassificationResult<PlatformVendorKind>))]
-[JsonSerializable(typeof(PlatformEvidenceSummary))]
-[JsonSerializable(typeof(PlatformEvidenceItem))]
-[JsonSerializable(typeof(TrustedPlatformSummary))]
-[JsonSerializable(typeof(TrustedPlatformClaim))]
-[JsonSerializable(typeof(TrustedPlatformEvidence))]
-[JsonSerializable(typeof(PlatformEvidenceLevel))]
-[JsonSerializable(typeof(TrustedPlatformState))]
-[JsonSerializable(typeof(PlatformEvidenceType))]
-[JsonSerializable(typeof(TrustedPlatformSourceType))]
-[JsonSerializable(typeof(TrustedPlatformClaimScope))]
-[JsonSerializable(typeof(List<PlatformEvidenceSummary>))]
-[JsonSerializable(typeof(List<TrustedPlatformSummary>))]
 [JsonSerializable(typeof(string[]))]
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 public partial class ReportJsonContext : JsonSerializerContext;
