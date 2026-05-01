@@ -150,11 +150,7 @@ public sealed record TrustedPlatformSummary(
     DateTimeOffset? ExpiresAt,
     IReadOnlyList<TrustedPlatformClaim> Claims,
     IReadOnlyList<TrustedPlatformEvidence> Evidence,
-    IReadOnlyList<string> Warnings)
-{
-    /// <summary>Monotonic local verification level for the trusted platform entry.</summary>
-    public int VerificationLevel { get; init; }
-}
+    IReadOnlyList<string> Warnings);
 
 /// <summary>Classifies whether the current process appears to run in a container.</summary>
 public enum ContainerizationKind
