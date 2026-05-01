@@ -205,5 +205,153 @@ internal static class PlatformEvidenceBuilder
 internal static class TrustedPlatformBuilder
 {
     internal static IReadOnlyList<TrustedPlatformSummary> Build(IReadOnlyList<ProbeResult> probes)
-        => [];
+    {
+        var flattened = probes.SelectMany(probe => probe.Evidence).ToArray();
+        var siemensIedRuntime = BuildSiemensIedRuntime(flattened);
+        return siemensIedRuntime is null ? [] : [siemensIedRuntime];
+    }
+
+    private static TrustedPlatformSummary? BuildSiemensIedRuntime(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var certsipsOutcome = evidence.FirstOrDefault(item => item.ProbeId == "platform-context"
+            && item.Key == "trust.ied.certsips.outcome");
+        var certsipsOutcomeValue = certsipsOutcome?.Value;
+        if (!string.Equals(certsipsOutcomeValue, ProbeOutcome.Success.ToString(), StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var warnings = new List<string>();
+        var trustEvidence = new List<TrustedPlatformEvidence>
+        {
+            new(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.outcome",
+                certsipsOutcomeValue,
+                Confidence.Low,
+                "Documented IED runtime artifact is present at the expected local path.")
+        };
+
+        var parseError = evidence.Any(item => item.ProbeId == "platform-context"
+            && item.Key == "trust.ied.certsips.parse_error");
+        var authApiPath = FirstValue(evidence, "trust.ied.certsips.auth_api_path");
+        var secureStoragePath = FirstValue(evidence, "trust.ied.certsips.secure_storage_api_path");
+        var serviceName = FirstValue(evidence, "trust.ied.certsips.service_name");
+        var hasCertificateChain = HasTrustKey(evidence, "trust.ied.certsips.cert_chain_present")
+            || HasTrustKey(evidence, "trust.ied.certsips.certificates_chain_present");
+
+        var plausible = !parseError
+            && IsAbsoluteApiPath(authApiPath)
+            && IsPlausibleServiceName(serviceName)
+            && hasCertificateChain;
+
+        var level = plausible ? 2 : 1;
+        var claimConfidence = plausible ? Confidence.Medium : Confidence.Low;
+
+        if (!string.IsNullOrWhiteSpace(authApiPath))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.auth_api_path",
+                authApiPath,
+                Confidence.Medium,
+                "The artifact exposes a local auth API path for the IED runtime."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(secureStoragePath))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.secure_storage_api_path",
+                secureStoragePath,
+                Confidence.Low,
+                "The artifact exposes a local secure storage API path."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(serviceName))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.service_name",
+                serviceName,
+                Confidence.Medium,
+                "The artifact names the local service expected to back the IED runtime APIs."));
+        }
+
+        if (hasCertificateChain)
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.certificate_chain",
+                bool.TrueString,
+                Confidence.Medium,
+                "The artifact includes certificate material for later endpoint binding checks."));
+        }
+
+        if (parseError)
+        {
+            warnings.Add("certsips.json is present but could not be parsed; trust remains at artifact-presence only.");
+        }
+        else if (!plausible)
+        {
+            warnings.Add("certsips.json is present but misses one or more plausibility checks for auth path, service name, or certificate material.");
+        }
+
+        var claims = new List<TrustedPlatformClaim>
+        {
+            new(
+                TrustedPlatformClaimScope.RuntimePresence,
+                "siemens-ied-runtime",
+                plausible ? "documented-and-plausible" : "artifact-present",
+                claimConfidence,
+                plausible
+                    ? "A documented local IED runtime artifact is present and structurally plausible."
+                    : "A documented local IED runtime artifact is present, but local verification is still limited.")
+        };
+
+        if (!string.IsNullOrWhiteSpace(serviceName))
+        {
+            claims.Add(new TrustedPlatformClaim(
+                TrustedPlatformClaimScope.RuntimePresence,
+                "local-service-name",
+                serviceName,
+                claimConfidence,
+                "The documented IED runtime service name is available for later local connectivity checks."));
+        }
+
+        return new TrustedPlatformSummary(
+            "siemens-ied-runtime",
+            TrustedPlatformState.Claimed,
+            "local-runtime-artifact",
+            null,
+            serviceName,
+            null,
+            claims,
+            trustEvidence,
+            warnings)
+        {
+            VerificationLevel = level
+        };
+    }
+
+    private static string? FirstValue(IReadOnlyList<EvidenceItem> evidence, string key)
+        => evidence.FirstOrDefault(item => item.ProbeId == "platform-context" && item.Key == key)?.Value;
+
+    private static bool HasTrustKey(IReadOnlyList<EvidenceItem> evidence, string key)
+        => evidence.Any(item => item.ProbeId == "platform-context" && item.Key == key);
+
+    private static bool IsAbsoluteApiPath(string? path)
+        => !string.IsNullOrWhiteSpace(path)
+           && path.StartsWith("/", StringComparison.Ordinal)
+           && path.Length > 1;
+
+    private static bool IsPlausibleServiceName(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsWhiteSpace))
+        {
+            return false;
+        }
+
+        return value.All(character => char.IsLetterOrDigit(character) || character is '-' or '.');
+    }
 }
