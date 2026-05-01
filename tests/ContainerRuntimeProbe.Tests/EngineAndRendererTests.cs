@@ -29,49 +29,6 @@ public sealed class EngineAndRendererTests
     }
 
     [Fact]
-    public void Renderers_IncludeGenericPlatformSections()
-    {
-        var report = TestReportFactory.CreateSampleReport() with
-        {
-            PlatformEvidence = [
-                new PlatformEvidenceSummary(
-                    "siemens-industrial-edge",
-                    9,
-                    PlatformEvidenceLevel.StrongHeuristic,
-                    Confidence.High,
-                    [new PlatformEvidenceItem(PlatformEvidenceType.ExecutionContext, "mountinfo.signal", "industrial-edge", Confidence.High, "Industrial Edge path detected")],
-                    [])
-            ],
-            TrustedPlatforms = [
-                new TrustedPlatformSummary(
-                    "siemens-ied-runtime",
-                    TrustedPlatformState.Verified,
-                    "local-runtime-tls-binding",
-                    null,
-                    "edge-iot-core.proxy-redirect",
-                    null,
-                    [new TrustedPlatformClaim(TrustedPlatformClaimScope.RuntimePresence, "siemens-ied-runtime", "tls-bound", Confidence.High, "TLS-bound runtime claim")],
-                    [new TrustedPlatformEvidence(TrustedPlatformSourceType.TlsBinding, "trust.ied.endpoint.tls.binding", "matched", Confidence.High, "TLS binding matched")],
-                    [])
-                {
-                    VerificationLevel = 4
-                }
-            ]
-        };
-
-        var markdown = ReportRenderer.ToMarkdown(report);
-        var text = ReportRenderer.ToText(report);
-        var json = ReportRenderer.ToJson(report);
-
-        Assert.Contains("## Platform Evidence", markdown);
-        Assert.Contains("## Trusted Platforms", markdown);
-        Assert.Contains("PlatformEvidence : siemens-industrial-edge", text);
-        Assert.Contains("TrustedPlatform  : siemens-ied-runtime", text);
-        Assert.Contains("\"PlatformEvidence\":", json, StringComparison.Ordinal);
-        Assert.Contains("\"TrustedPlatforms\":", json, StringComparison.Ordinal);
-    }
-
-    [Fact]
     public async Task JsonRenderer_ContainsClassification()
     {
         var engine = new ContainerRuntimeProbeEngine();

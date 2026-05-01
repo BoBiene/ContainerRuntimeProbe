@@ -420,35 +420,6 @@ public sealed class ClassifierTests
     }
 
     [Fact]
-    public void Classifier_TrustedIedArtifact_ClassifiesAsSiemensIndustrialEdge()
-    {
-        var report = Classifier.Classify([
-            new ProbeResult("platform-context", ProbeOutcome.Success, [
-                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive)
-            ])
-        ]);
-
-        Assert.Equal(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
-        Assert.True(report.PlatformVendor.Confidence >= Confidence.High);
-    }
-
-    [Fact]
-    public void Classifier_GenericIotEdgeEvidence_RemainsIoTEdge()
-    {
-        var report = Classifier.Classify([
-            new ProbeResult("platform-context", ProbeOutcome.Success, [
-                new EvidenceItem("platform-context", "env.signal", "iotedge")
-            ])
-        ]);
-
-        Assert.Equal(PlatformVendorKind.IoTEdge, report.PlatformVendor.Value);
-        Assert.NotEqual(PlatformVendorKind.SiemensIndustrialEdge, report.PlatformVendor.Value);
-    }
-
-    [Fact]
     public void Classifier_SiemensSignalWithCompose_IoTEdgeOnly_NoSiemensSpecific()
     {
         // iotedge.module key + compose.service but no Siemens-specific indicator

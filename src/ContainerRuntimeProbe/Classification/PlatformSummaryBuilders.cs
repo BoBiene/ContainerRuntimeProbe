@@ -24,9 +24,7 @@ internal static class PlatformEvidenceBuilder
         var siemensHardware = FindSiemensHardwareEvidence(evidence);
         var siemensTextual = FindPlatformContextSignal(evidence, ["siemens"])
             ?? evidence.FirstOrDefault(item => item.ProbeId == "environment"
-                && item.Key.StartsWith("SIEMENS", StringComparison.OrdinalIgnoreCase))
-            ?? evidence.FirstOrDefault(item => item.ProbeId == "runtime-api"
-                && (Contains(item.Key, "siemens") || Contains(item.Value, "siemens")));
+                && item.Key.StartsWith("SIEMENS", StringComparison.OrdinalIgnoreCase));
         var tokenSignal = FindPlatformContextSignal(evidence, ["iem", "ied"]);
         var composeHint = evidence.FirstOrDefault(item => item.ProbeId == "runtime-api"
             && item.Key.StartsWith("compose.label.", StringComparison.Ordinal));

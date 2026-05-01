@@ -66,18 +66,7 @@ internal static class VendorDetection
     /// Each vendor requires a minimum score of 2 to prevent single-weak-signal false positives,
     /// except Microsoft (WSL2) which is a deterministic high-confidence signal.
     /// </summary>
-    private static int TrustedIedScore(TrustedPlatformSummary summary)
-        => summary.VerificationLevel switch
-        {
-            >= 4 => 12,
-            3 => 10,
-            2 => 8,
-            1 => 6,
-            _ => 0
-        };
-
     internal static ClassificationResult<PlatformVendorKind> Detect(
-        IReadOnlyList<ProbeResult> probes,
         IReadOnlyList<EvidenceItem> e,
         string? osId,
         string? osName,
@@ -188,16 +177,6 @@ internal static class VendorDetection
 
         var (catalogMatch, explicitVendorKeys) = DetectCatalogPlatformVendor(e, VendorCatalog.RuntimeActiveHardwareVendors);
         var explicitPlatformVendor = catalogMatch?.Vendor ?? PlatformVendorKind.Unknown;
-        var platformEvidence = PlatformEvidenceBuilder.Build(probes);
-        var trustedPlatforms = TrustedPlatformBuilder.Build(probes);
-        var trustedIed = trustedPlatforms.FirstOrDefault(summary => summary.PlatformKey == "siemens-ied-runtime"
-            && summary.State != TrustedPlatformState.None);
-        var siemensIndustrialEdgeEvidence = platformEvidence.FirstOrDefault(summary => summary.PlatformKey == "siemens-industrial-edge"
-            && summary.EvidenceLevel != PlatformEvidenceLevel.None);
-        var hasStrongIeCorroboration = siemensIndustrialEdgeEvidence?.Evidence.Any(item => item.Key is "siemens+iotedge" or "industrial-edge+iotedge") == true;
-        var hasIotedgeEvidence = siemensIndustrialEdgeEvidence?.Evidence.Any(item =>
-            string.Equals(item.Value, "iotedge", StringComparison.OrdinalIgnoreCase)
-            || item.Key.Contains("iotedge", StringComparison.OrdinalIgnoreCase)) == true;
 
         if (explicitPlatformVendor != PlatformVendorKind.Unknown && explicitPlatformVendor != PlatformVendorKind.Siemens)
         {
@@ -205,57 +184,15 @@ internal static class VendorDetection
             return Make(explicitPlatformVendor, otScore, new ClassificationReason("DMI or device-tree identifies the underlying OT hardware vendor", explicitVendorKeys));
         }
 
-        if (trustedIed is not null)
-        {
-            var trustedScore = TrustedIedScore(trustedIed);
-            return Make(
-                PlatformVendorKind.SiemensIndustrialEdge,
-                trustedScore,
-                new ClassificationReason(
-                    "Trusted local IED runtime verification identifies Siemens Industrial Edge",
-                    trustedIed.Evidence.Select(item => item.Key).Distinct(StringComparer.Ordinal).ToArray()));
-        }
-
         if (explicitPlatformVendor == PlatformVendorKind.Siemens)
         {
             var siemensScore = explicitVendorKeys.Length >= 2 ? 8 : 5;
             var siemensReason = new ClassificationReason("DMI or device-tree identifies Siemens hardware", explicitVendorKeys);
 
-            if (siemensIndustrialEdgeEvidence is not null && (siemensIndustrialEdgeEvidence.EvidenceLevel == PlatformEvidenceLevel.StrongHeuristic || hasStrongIeCorroboration))
-            {
-                return Make(
-                    PlatformVendorKind.SiemensIndustrialEdge,
-                    Math.Max(siemensScore, siemensIndustrialEdgeEvidence.Score),
-                    new ClassificationReason(
-                        "Platform evidence strongly matches Siemens Industrial Edge",
-                        siemensIndustrialEdgeEvidence.Evidence.Select(item => item.Key).Distinct(StringComparer.Ordinal).ToArray()),
-                    siemensReason);
-            }
-
             if (!e.Any(x => x.Key.Contains("iotedge", StringComparison.OrdinalIgnoreCase)))
             {
                 return Make(PlatformVendorKind.Siemens, siemensScore, siemensReason);
             }
-        }
-
-        if (siemensIndustrialEdgeEvidence is not null && (siemensIndustrialEdgeEvidence.EvidenceLevel == PlatformEvidenceLevel.StrongHeuristic || hasStrongIeCorroboration))
-        {
-            return Make(
-                PlatformVendorKind.SiemensIndustrialEdge,
-                siemensIndustrialEdgeEvidence.Score,
-                new ClassificationReason(
-                    "Platform evidence strongly matches Siemens Industrial Edge",
-                    siemensIndustrialEdgeEvidence.Evidence.Select(item => item.Key).Distinct(StringComparer.Ordinal).ToArray()));
-        }
-
-        if (siemensIndustrialEdgeEvidence is not null && hasIotedgeEvidence)
-        {
-            return Make(
-                PlatformVendorKind.IoTEdge,
-                Math.Max(5, siemensIndustrialEdgeEvidence.Score),
-                new ClassificationReason(
-                    "Platform evidence shows generic IoT Edge runtime markers without enough Siemens corroboration",
-                    siemensIndustrialEdgeEvidence.Evidence.Select(item => item.Key).Distinct(StringComparer.Ordinal).ToArray()));
         }
 
         // ── Siemens Industrial Edge / IoTEdge ─────────────────────────────────
