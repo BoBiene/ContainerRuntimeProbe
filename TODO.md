@@ -76,7 +76,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Cloud-/Kubernetes-Rollout
 
 ### Phase 4: Validation and follow-up
 
-- [ ] **22. Renderer-, Doku- und Negativtests nachziehen**
+- [x] **22. Renderer-, Doku- und Negativtests nachziehen**
   - Jede neue Anchor-Klasse braucht Default-Redaction, Renderer-Abdeckung und explizite Ausschluss-Tests fuer schwache Ersatzsignale.
 
 ## Critical
