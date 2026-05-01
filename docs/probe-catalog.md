@@ -3,11 +3,6 @@
 ## Safe Local
 - `marker-files`: `/.dockerenv`, `/run/.containerenv`
 - `environment`: allowlisted markers for Docker/Kubernetes/ECS/Azure/Cloud Run/Nomad/OpenShift/IoTEdge; hostname is redacted by default
-- `platform-context`:
-  - bounded Siemens/Industrial Edge context signals from env keys and values, `/proc/self|1/mountinfo`, `/proc/self|1/cgroup`, `/etc/hostname`, `/proc/sys/kernel/hostname`, `HOSTNAME`, and `/etc/resolv.conf`
-  - normalizes only targeted platform hints such as `siemens`, `industrial-edge`, `industrialedge`, `iotedge`, `iem`, and `ied`; generic `edge` substrings are ignored
-  - collects documented IED trust artifacts from `/var/run/devicemodel/edgedevice/certsips.json`
-  - when `certsips.json` is structurally plausible, it also attempts a bounded local HTTPS check to the documented auth endpoint and records TLS binding evidence against documented certificate material
 - `proc-files`:
   - `/proc/self|1/cgroup`, `/proc/self|1/mountinfo`, `/proc/net/route`, `/etc/resolv.conf`
   - `/etc/hostname`, `/proc/sys/kernel/hostname`
@@ -27,11 +22,6 @@
 - `runtime-api`: probes Docker-compatible sockets and Podman Libpod endpoints (`/_ping`, `/version`, `/info`, `/libpod/*`)
 - extracts safe host fields from Docker `/info` and Podman `/libpod/info`
 - probes `/containers/{hostname}/json` for Docker Compose labels without exposing container IDs or host names by default
-
-## Trusted Platform Notes
-- `platform-context` trust evidence is the only current source for `TrustedPlatforms`.
-- General env, hostname, DNS, mount, and cgroup string hits stay heuristic and can contribute to `PlatformEvidence`, but they never become trusted claims on their own.
-- Current trusted scope is intentionally narrow: `siemens-ied-runtime` only. There is no trusted `siemens-iem` or license/entitlement claim in this step.
 
 ## Orchestrator / Cloud
 - `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`
