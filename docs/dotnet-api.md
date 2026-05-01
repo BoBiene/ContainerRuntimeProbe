@@ -29,6 +29,21 @@ The engine:
 
 You can also pass explicit `ProbeExecutionOptions` when you want to narrow the probe set or override cloud and Kubernetes endpoints for testing.
 
+When you want the most relevant findings as a structured API instead of renderer-specific text, call `report.GetRelevantFindings()`:
+
+```csharp
+using ContainerRuntimeProbe;
+
+var findings = report.GetRelevantFindings();
+
+foreach (var finding in findings)
+{
+  Console.WriteLine($"[{finding.Kind}] {finding.Summary}");
+}
+```
+
+Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human-readable `Summary`, `Confidence`, and referenced evidence keys. Trusted-platform findings also expose `VerificationLevel`, while heuristic platform findings expose `Score`.
+
 ## ContainerRuntimeReport
 
 `ContainerRuntimeReport` is the top-level DTO returned by the engine.

@@ -69,7 +69,8 @@ internal sealed class WindowsHostProbe : IProbe
         AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
         AddEvidenceIfPresent(evidence, "kernel.release", kernel.Release);
         AddEvidenceIfPresent(evidence, "kernel.version", kernel.Version);
-        AddEvidenceIfPresent(evidence, "windows.product_name", _readCurrentVersionRegistryValue("ProductName"));
+        var productName = NormalizeWindowsProductName(_readCurrentVersionRegistryValue("ProductName"), kernel.Release);
+        AddEvidenceIfPresent(evidence, "windows.product_name", productName);
         AddEvidenceIfPresent(evidence, "windows.display_version", _readCurrentVersionRegistryValue("DisplayVersion") ?? _readCurrentVersionRegistryValue("ReleaseId"));
 
         AddRegistryEvidence(evidence, "SystemManufacturer", "dmi.sys_vendor");
@@ -131,5 +132,23 @@ internal sealed class WindowsHostProbe : IProbe
         var name = match.Groups["name"].Value.Trim();
         var version = match.Groups["version"].Value.Trim();
         return (name, version, version);
+    }
+
+    internal static string? NormalizeWindowsProductName(string? productName, string? kernelRelease)
+    {
+        if (string.IsNullOrWhiteSpace(productName)
+            || string.IsNullOrWhiteSpace(kernelRelease)
+            || !productName.StartsWith("Windows 10", StringComparison.OrdinalIgnoreCase))
+        {
+            return productName;
+        }
+
+        var segments = kernelRelease.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length < 3 || !int.TryParse(segments[2], CultureInfo.InvariantCulture, out var buildNumber) || buildNumber < 22000)
+        {
+            return productName;
+        }
+
+        return "Windows 11" + productName["Windows 10".Length..];
     }
 }

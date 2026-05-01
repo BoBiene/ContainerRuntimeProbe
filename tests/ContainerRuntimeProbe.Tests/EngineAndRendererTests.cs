@@ -64,6 +64,10 @@ public sealed class EngineAndRendererTests
         var text = ReportRenderer.ToText(report);
         var json = ReportRenderer.ToJson(report);
 
+        Assert.Contains("## Key Findings", markdown);
+        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", markdown);
+        Assert.Contains("Findings", text);
+        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", text);
         Assert.Contains("## Platform Evidence", markdown);
         Assert.Contains("## Trusted Platforms", markdown);
         Assert.Contains("PlatformEvidence : siemens-industrial-edge", text);

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ContainerRuntimeProbe;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -54,17 +55,7 @@ public static class ReportRenderer
             sb.AppendLine();
         }
         
-        sb.AppendLine("## Summary");
-        sb.AppendLine($"- IsContainerized: {ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value)} ({report.Classification.IsContainerized.Confidence})");
-        sb.AppendLine($"- ContainerRuntime: {ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value)} ({report.Classification.ContainerRuntime.Confidence})");
-        sb.AppendLine($"- Virtualization: {ClassificationValueFormatter.Format(report.Classification.Virtualization.Value)} ({report.Classification.Virtualization.Confidence})");
-        sb.AppendLine($"- HostFamily: {ValueOrUnknownEnum(report.Classification.Host.Family.Value)} ({report.Classification.Host.Family.Confidence})");
-        sb.AppendLine($"- HostType: {ClassificationValueFormatter.Format(report.Classification.Host.Type.Value)} ({report.Classification.Host.Type.Confidence})");
-        sb.AppendLine($"- EnvironmentType: {ClassificationValueFormatter.Format(report.Classification.Environment.Type.Value)} ({report.Classification.Environment.Type.Confidence})");
-        sb.AppendLine($"- RuntimeApi: {ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value)} ({report.Classification.RuntimeApi.Confidence})");
-        sb.AppendLine($"- Orchestrator: {ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value)} ({report.Classification.Orchestrator.Confidence})");
-        sb.AppendLine($"- CloudProvider: {ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value)} ({report.Classification.CloudProvider.Confidence})");
-        sb.AppendLine($"- PlatformVendor: {ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value)} ({report.Classification.PlatformVendor.Confidence})");
+        AppendKeyFindingsMarkdown(sb, report);
         sb.AppendLine();
         sb.AppendLine("## Host OS / Node");
         sb.AppendLine("### Container Image OS");
@@ -255,6 +246,9 @@ public static class ReportRenderer
             sb.AppendLine(new string('-', header.Length));
         }
 
+        AppendKeyFindingsText(sb, report);
+        sb.AppendLine("Details");
+        sb.AppendLine("-------");
         foreach (var (key, value, conf) in fields)
         {
             var confSuffix = conf is not null && conf != Confidence.Unknown
@@ -267,6 +261,43 @@ public static class ReportRenderer
         AppendTrustedPlatformsText(sb, report.TrustedPlatforms);
 
         return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendKeyFindingsMarkdown(StringBuilder sb, ContainerRuntimeReport report)
+    {
+        sb.AppendLine("## Key Findings");
+        var findings = report.GetRelevantFindings();
+        if (findings.Count == 0)
+        {
+            sb.AppendLine("- No conclusive findings yet. Inspect the detailed sections below.");
+            return;
+        }
+
+        foreach (var finding in findings)
+        {
+            sb.AppendLine($"- {finding.Summary}");
+        }
+    }
+
+    private static void AppendKeyFindingsText(StringBuilder sb, ContainerRuntimeReport report)
+    {
+        sb.AppendLine("Findings");
+        sb.AppendLine("--------");
+
+        var findings = report.GetRelevantFindings();
+        if (findings.Count == 0)
+        {
+            sb.AppendLine("- No conclusive findings yet. Inspect the details below.");
+            sb.AppendLine();
+            return;
+        }
+
+        foreach (var finding in findings)
+        {
+            sb.AppendLine($"- {finding.Summary}");
+        }
+
+        sb.AppendLine();
     }
 
     private static void AppendPlatformEvidenceMarkdown(StringBuilder sb, IReadOnlyList<PlatformEvidenceSummary>? platformEvidence)

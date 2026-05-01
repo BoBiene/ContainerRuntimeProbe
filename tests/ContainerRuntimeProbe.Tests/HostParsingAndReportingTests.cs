@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
+using ContainerRuntimeProbe.Probes;
 using ContainerRuntimeProbe.Rendering;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -282,6 +283,22 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void HostReport_Windows11BuildWithLegacyProductName_UsesNormalizedProductName()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "windows.product_name", WindowsHostProbe.NormalizeWindowsProductName("Windows 10 Pro", "10.0.26200")),
+            new EvidenceItem("proc-files", "windows.display_version", "24H2"),
+            new EvidenceItem("proc-files", "kernel.release", "10.0.26200"),
+            new EvidenceItem("proc-files", "kernel.architecture", "x86_64")
+        ]);
+
+        Assert.Equal("Windows 11 Pro", report.Host.RuntimeReportedHostOs.Name);
+
+        var text = ReportRenderer.ToText(report);
+        Assert.Contains("Windows 11 Pro 24H2", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void HostReport_VmwareDmiAndModuleSignals_InfersVmwareVirtualization()
     {
         var report = BuildHostReport([
@@ -347,6 +364,8 @@ public sealed class HostParsingAndReportingTests
         var json = ReportRenderer.ToJson(report);
         var text = ReportRenderer.ToText(report);
 
+    Assert.Contains("## Key Findings", markdown);
+    Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("## Probe Tool Information", markdown);
         Assert.Contains("- Git Commit: abcdef1", markdown);
@@ -366,6 +385,7 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("Architecture", text);
         Assert.Contains("DeviceTreeModel", text);
         Assert.Contains("abcdef1", text);
+        Assert.Contains("Runtime-reported host OS: Ubuntu 24.04 (High).", text);
         Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
     }
 

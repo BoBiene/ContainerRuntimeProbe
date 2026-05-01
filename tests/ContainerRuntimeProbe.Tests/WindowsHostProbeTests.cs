@@ -53,6 +53,36 @@ public sealed class WindowsHostProbeTests
     }
 
     [Fact]
+    public async Task WindowsHostProbe_NormalizesWindows11ProductName_WhenRegistryStillReportsWindows10()
+    {
+        var probe = new WindowsHostProbe(
+            () => true,
+            _ => null,
+            valueName => valueName switch
+            {
+                "ProductName" => "Windows 10 Pro",
+                "DisplayVersion" => "24H2",
+                _ => null
+            },
+            () => Architecture.X64,
+            () => "Microsoft Windows 10.0.26200",
+            () => 16);
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "windows.product_name" && item.Value == "Windows 11 Pro");
+    }
+
+    [Fact]
+    public void WindowsHostProbe_NormalizeWindowsProductName_KeepsWindows10ForOlderBuilds()
+    {
+        var productName = WindowsHostProbe.NormalizeWindowsProductName("Windows 10 Pro", "10.0.19045");
+
+        Assert.Equal("Windows 10 Pro", productName);
+    }
+
+    [Fact]
     public async Task WindowsHostProbe_ReportsNotSupported_OutsideWindows()
     {
         var probe = new WindowsHostProbe(
