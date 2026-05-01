@@ -45,10 +45,14 @@
   - trusted host/node metadata (`Family`, `Name`, `Version`, `KernelVersion`, `Architecture`, `Source`, `Confidence`, `EvidenceReferences`)
 - `Hardware`
   - normalized host architecture, CPU summary, memory summary, structured public DMI fields, structured public device-tree fields, and safe cloud machine type
-- `Fingerprint`
-  - `Algorithm = CRP-HOST-FP-v1`
-  - `Value = sha256:<lowercase hex>`
-  - `Stability`, `IncludedSignalCount`, `ExcludedSensitiveSignalCount`, `Components[]`, `Warnings[]`
+- `DiagnosticFingerprints[]`
+  - diagnostic-only fingerprints for environment correlation and profiling
+  - current first built-in entry continues to use `Algorithm = CRP-HOST-FP-v1`
+  - each entry carries `Purpose`, `Algorithm`, `Value`, legacy `Stability`, `StabilityLevel`, `UniquenessLevel`, `CorroborationLevel`, `SourceClasses[]`, `IncludedSignalCount`, `ExcludedSensitiveSignalCount`, `Components[]`, `Warnings[]`, and `Reasons[]`
+- `IdentityAnchors[]`
+  - explicit read-only anchor candidates for stronger host or workload binding scenarios
+  - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
+  - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 
 ## Interpretation rules
 - Container image OS describes the filesystem inside the container image.
@@ -57,7 +61,8 @@
 - `UnderlyingHostOs.Version` remains null for WSL2 because the Windows version is not derivable from the WSL2 kernel.
 - Runtime-reported host OS is the highest-confidence host/node view when Docker, Podman, Kubernetes NodeInfo, or cloud metadata is available.
 - Hardware is visibility-limited; cgroup limits may differ from physical host capacity.
-- Fingerprints are diagnostic correlation helpers only and must not be treated as host identity.
+- Diagnostic fingerprints are correlation helpers only and must not be treated as host identity.
+- Identity anchors are modeled separately because some consumers may use them for correlation or license binding, but they remain read-only observed values rather than provisioned platform identities.
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.

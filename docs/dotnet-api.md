@@ -26,6 +26,7 @@ The engine:
 - normalizes the collected evidence into a single `ContainerRuntimeReport`
 - applies central redaction when `includeSensitive` is `false`
 - builds higher-level summaries such as `Classification`, `Host`, `PlatformEvidence`, and `TrustedPlatforms`
+- separates diagnostic host fingerprints from future bindable identity anchors
 
 You can also pass explicit `ProbeExecutionOptions` when you want to narrow the probe set or override cloud and Kubernetes endpoints for testing.
 
@@ -57,7 +58,7 @@ Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human
 - `Classification`
   - weighted conclusions about containerization, runtime, orchestrator, cloud, host, virtualization, and platform vendor
 - `Host`
-  - normalized host-visible operating system, kernel, hardware, and fingerprint summaries
+  - normalized host-visible operating system, kernel, hardware, diagnostic fingerprint, and identity-anchor summaries
 - `PlatformEvidence`
   - heuristic platform hypotheses that answer: what does the observed environment look like?
 - `TrustedPlatforms`
@@ -70,6 +71,19 @@ Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human
 When `includeSensitive` is `false`, the returned `Probes`, `PlatformEvidence`, and `TrustedPlatforms` reflect the redacted view. Some probes also redact values based on probe context before results reach the engine, so unredacted values may not always be available internally in that mode.
 
 That means consumers can safely serialize and forward the returned report without accidentally depending on hidden internal raw values.
+
+## DiagnosticFingerprints and IdentityAnchors
+
+`Host` now separates two different concerns:
+
+- `DiagnosticFingerprints`
+  - read-only diagnostic correlation fingerprints
+  - expected to support statistics, environment correlation, and runtime profiling
+  - may remain update-sensitive on purpose
+- `IdentityAnchors`
+  - explicit read-only anchor candidates for stronger workload or host binding scenarios
+  - intentionally kept separate from diagnostic fingerprints so diagnostics do not silently become license-binding identifiers
+  - current implementation starts with the public contract and keeps anchor generation conservative; environments without strong anchor sources can legitimately return an empty list
 
 ## TrustedPlatforms semantics
 
