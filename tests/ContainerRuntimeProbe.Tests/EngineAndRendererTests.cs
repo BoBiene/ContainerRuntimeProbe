@@ -2,6 +2,7 @@ using ContainerRuntimeProbe.Rendering;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 using System.Threading;
+using ContainerRuntimeProbe.Internal;
 
 namespace ContainerRuntimeProbe.Tests;
 
@@ -112,6 +113,39 @@ public sealed class EngineAndRendererTests
         var report = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
 
         Assert.Contains(report.SecurityWarnings, warning => warning.Code == "KUBERNETES_TLS_VALIDATION_SKIPPED");
+    }
+
+    [Fact]
+    public async Task RunAsync_RedactsSensitiveTrustedEvidence_WhenIncludeSensitiveIsFalse()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+        [
+            new FixedProbe("platform-context",
+            [
+                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.status", "401"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.not_after", "2026-05-01T00:00:00.0000000+00:00"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.chain_sha256", "presented-chain-hash", EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.binding", "matched")
+            ])
+        ]);
+
+        var report = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
+
+        Assert.Contains(report.Probes.SelectMany(probe => probe.Evidence), evidence => evidence.Key == "trust.ied.certsips.cert_chain_sha256" && evidence.Value == Redaction.RedactedValue);
+        Assert.Contains(report.Probes.SelectMany(probe => probe.Evidence), evidence => evidence.Key == "trust.ied.endpoint.tls.chain_sha256" && evidence.Value == Redaction.RedactedValue);
+
+        var trustedPlatform = Assert.Single(report.TrustedPlatforms!);
+        Assert.Equal(4, trustedPlatform.VerificationLevel);
+        Assert.Contains(trustedPlatform.Evidence, evidence => evidence.Key == "trust.ied.certsips.cert_chain_sha256" && evidence.Value == Redaction.RedactedValue);
+        Assert.Contains(trustedPlatform.Evidence, evidence => evidence.Key == "trust.ied.endpoint.tls.chain_sha256" && evidence.Value == Redaction.RedactedValue);
     }
 
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe

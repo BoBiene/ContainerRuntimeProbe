@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Probes;
@@ -76,7 +78,10 @@ public sealed class PlatformContextProbeTests
     [Fact]
     public async Task PlatformContextProbe_CollectsEndpointAndTlsTrustEvidence()
     {
-        var certificate = "-----BEGIN CERTIFICATE-----\nMIIBhTCCASugAwIBAgIUeL2stn+6nYdJNm7ch2Yf6s4M3uIwCgYIKoZIzj0EAwIw\nEjEQMA4GA1UEAwwHc2llbWVuczAeFw0yNTA1MDEwMDAwMDBaFw0yNjA1MDEwMDAw\nMDBaMBIxEDAOBgNVBAMMB3NpZW1lbnMwWTATBgcqhkjOPQIBBggqhkjOPQMBBwNC\nAAS6W02N7wN5D5Y8x63V8X+7ccl2g4m94VjF8YwYxN8WYe0J0vS0zKfn8c2CBQ2v\nB4l7m8H7t0F+pjb0d0pbDqY8o1MwUTAdBgNVHQ4EFgQUR5jz2nN0whY7gk0uBqCH\n8W8vQ0IwHwYDVR0jBBgwFoAUR5jz2nN0whY7gk0uBqCH8W8vQ0IwDwYDVR0TAQH/\nBAUwAwEB/zAKBggqhkjOPQQDAgNHADBEAiBy9A+3y+S+5eob+7WlJw7v8WhiK5zL\nG0iR1ZtM9A3j6QIgVf9SxvATrGGV2Ht4sLCuw2WmG2YJ2gLz3fF3tX0ZQ1U=\n-----END CERTIFICATE-----";
+        var certificate = CreateSelfSignedPemCertificate();
+        using var parsedCertificate = X509Certificate2.CreateFromPem(certificate);
+        var expectedChainSha256 = ComputeCertificateChainSha256(parsedCertificate);
+        var certificateNotAfter = parsedCertificate.NotAfter.ToUniversalTime();
         var files = new Dictionary<string, (ProbeOutcome outcome, string? text, string? message)>
         {
             ["/proc/self/mountinfo"] = (ProbeOutcome.Unavailable, null, null),
@@ -101,6 +106,9 @@ public sealed class PlatformContextProbeTests
                 ProbeOutcome.Success,
                 401,
                 "CN=edge-iot-core.proxy-redirect",
+                "CN=Siemens Local Root",
+                new DateTimeOffset(certificateNotAfter, TimeSpan.Zero),
+                expectedChainSha256,
                 true)));
 
         var result = await probe.ExecuteAsync(new ProbeContext(
@@ -117,7 +125,31 @@ public sealed class PlatformContextProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.auth_api.reachable" && item.Value == bool.TrueString);
         Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.auth_api.status" && item.Value == "401");
         Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.subject" && item.Value == "CN=edge-iot-core.proxy-redirect");
+        Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.issuer" && item.Value == "CN=Siemens Local Root");
+        Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.not_after" && item.Value == new DateTimeOffset(certificateNotAfter, TimeSpan.Zero).ToString("O"));
+        Assert.Contains(result.Evidence, item => item.Key == "trust.ied.certsips.cert_chain_sha256" && item.Value == expectedChainSha256);
+        Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.chain_sha256" && item.Value == expectedChainSha256);
         Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.binding" && item.Value == "matched");
+    }
+
+    private static string ComputeCertificateChainSha256(string pemCertificate)
+    {
+        using var certificate = X509Certificate2.CreateFromPem(pemCertificate);
+        return ComputeCertificateChainSha256(certificate);
+    }
+
+    private static string ComputeCertificateChainSha256(X509Certificate2 certificate)
+    {
+        var rawData = certificate.RawData;
+        return Convert.ToHexString(SHA256.HashData(rawData)).ToLowerInvariant();
+    }
+
+    private static string CreateSelfSignedPemCertificate()
+    {
+        using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var request = new CertificateRequest("CN=siemens", key, HashAlgorithmName.SHA256);
+        using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
+        return certificate.ExportCertificatePem();
     }
 
     [Fact]

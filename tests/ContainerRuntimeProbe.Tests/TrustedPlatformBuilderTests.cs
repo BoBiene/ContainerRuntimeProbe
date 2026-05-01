@@ -85,9 +85,13 @@ public sealed class TrustedPlatformBuilderTests
                 new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
                 new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
                 new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.certsips.cert_chain_sha256", "abc123"),
                 new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
                 new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.status", "401"),
                 new EvidenceItem("platform-context", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.not_after", "2026-05-01T00:00:00.0000000+00:00"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.chain_sha256", "abc123"),
                 new EvidenceItem("platform-context", "trust.ied.endpoint.tls.binding", "matched")
             ])
         ]);
@@ -96,8 +100,11 @@ public sealed class TrustedPlatformBuilderTests
         Assert.Equal(TrustedPlatformState.Verified, summary.State);
         Assert.Equal(4, summary.VerificationLevel);
         Assert.Equal("local-runtime-tls-binding", summary.VerificationMethod);
+        Assert.Equal("CN=Siemens Local Root", summary.Issuer);
+        Assert.Equal(DateTimeOffset.Parse("2026-05-01T00:00:00.0000000+00:00"), summary.ExpiresAt);
         Assert.Contains(summary.Claims, claim => claim.Value == "tls-bound");
         Assert.Contains(summary.Evidence, item => item.Key == "trust.ied.endpoint.tls.binding");
+        Assert.Contains(summary.Evidence, item => item.Key == "trust.ied.endpoint.tls.chain_sha256" && item.Value == "abc123");
     }
 
     [Fact]

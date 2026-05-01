@@ -2,6 +2,7 @@ using System.Collections;
 using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Security;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -17,6 +18,9 @@ internal sealed record IedEndpointProbeResult(
     ProbeOutcome Outcome,
     int? StatusCode,
     string? ServerSubject,
+    string? ServerIssuer,
+    DateTimeOffset? ServerExpiresAt,
+    string? PresentedChainSha256,
     bool TlsBindingMatched,
     string? Message = null);
 
@@ -213,10 +217,17 @@ internal sealed class PlatformContextProbe : IProbe
                 evidence.Add(new EvidenceItem("platform-context", "trust.ied.certsips.cert_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive));
             }
 
+            var expectedChainPem = certificatesChain ?? certChain;
+            var documentedChainSha256 = ComputePemChainSha256(expectedChainPem);
+            if (!string.IsNullOrWhiteSpace(documentedChainSha256))
+            {
+                AddIfPresent(evidence, "trust.ied.certsips.cert_chain_sha256", documentedChainSha256, EvidenceSensitivity.Sensitive);
+            }
+
             if (IsAbsoluteApiPath(authApiPath) && IsPlausibleServiceName(serviceName))
             {
                 var endpointResult = await _probeIedEndpointAsync(
-                    new IedEndpointProbeRequest(serviceName!, authApiPath!, certificatesChain ?? certChain),
+                    new IedEndpointProbeRequest(serviceName!, authApiPath!, expectedChainPem),
                     timeout,
                     cancellationToken).ConfigureAwait(false);
 
@@ -230,6 +241,21 @@ internal sealed class PlatformContextProbe : IProbe
                 if (!string.IsNullOrWhiteSpace(endpointResult.ServerSubject))
                 {
                     AddIfPresent(evidence, "trust.ied.endpoint.tls.subject", endpointResult.ServerSubject);
+                }
+
+                if (!string.IsNullOrWhiteSpace(endpointResult.ServerIssuer))
+                {
+                    AddIfPresent(evidence, "trust.ied.endpoint.tls.issuer", endpointResult.ServerIssuer);
+                }
+
+                if (endpointResult.ServerExpiresAt.HasValue)
+                {
+                    AddIfPresent(evidence, "trust.ied.endpoint.tls.not_after", endpointResult.ServerExpiresAt.Value.ToString("O"));
+                }
+
+                if (!string.IsNullOrWhiteSpace(endpointResult.PresentedChainSha256))
+                {
+                    AddIfPresent(evidence, "trust.ied.endpoint.tls.chain_sha256", endpointResult.PresentedChainSha256, EvidenceSensitivity.Sensitive);
                 }
 
                 if (endpointResult.StatusCode.HasValue || endpointResult.Outcome == ProbeOutcome.Success)
@@ -301,21 +327,48 @@ internal sealed class PlatformContextProbe : IProbe
                 ProbeOutcome.Success,
                 (int)response.StatusCode,
                 serverCertificate?.Subject,
+                serverCertificate?.Issuer,
+                serverCertificate is null ? null : new DateTimeOffset(serverCertificate.NotAfter.ToUniversalTime(), TimeSpan.Zero),
+                ComputePresentedChainSha256(serverCertificate, serverChain),
                 bindingMatched);
         }
         catch (OperationCanceledException ex)
         {
-            return new IedEndpointProbeResult(ProbeOutcome.Timeout, null, serverCertificate?.Subject, false, ex.Message);
+            return new IedEndpointProbeResult(
+                ProbeOutcome.Timeout,
+                null,
+                serverCertificate?.Subject,
+                serverCertificate?.Issuer,
+                serverCertificate is null ? null : new DateTimeOffset(serverCertificate.NotAfter.ToUniversalTime(), TimeSpan.Zero),
+                ComputePresentedChainSha256(serverCertificate, serverChain),
+                false,
+                ex.Message);
         }
         catch (HttpRequestException ex)
         {
             var bindingMatched = MatchesExpectedCertificate(request.CertificateChainPem, serverCertificate, serverChain);
-            return new IedEndpointProbeResult(ProbeOutcome.Unavailable, null, serverCertificate?.Subject, bindingMatched, ex.Message);
+            return new IedEndpointProbeResult(
+                ProbeOutcome.Unavailable,
+                null,
+                serverCertificate?.Subject,
+                serverCertificate?.Issuer,
+                serverCertificate is null ? null : new DateTimeOffset(serverCertificate.NotAfter.ToUniversalTime(), TimeSpan.Zero),
+                ComputePresentedChainSha256(serverCertificate, serverChain),
+                bindingMatched,
+                ex.Message);
         }
         catch (Exception ex)
         {
             var bindingMatched = MatchesExpectedCertificate(request.CertificateChainPem, serverCertificate, serverChain);
-            return new IedEndpointProbeResult(ProbeOutcome.Error, null, serverCertificate?.Subject, bindingMatched, ex.Message);
+            return new IedEndpointProbeResult(
+                ProbeOutcome.Error,
+                null,
+                serverCertificate?.Subject,
+                serverCertificate?.Issuer,
+                serverCertificate is null ? null : new DateTimeOffset(serverCertificate.NotAfter.ToUniversalTime(), TimeSpan.Zero),
+                ComputePresentedChainSha256(serverCertificate, serverChain),
+                bindingMatched,
+                ex.Message);
         }
     }
 
@@ -357,6 +410,38 @@ internal sealed class PlatformContextProbe : IProbe
             .Select(match => match.Value)
             .Select(pem => X509Certificate2.CreateFromPem(pem))
             .ToArray();
+
+    private static string? ComputePemChainSha256(string? pemChain)
+    {
+        if (string.IsNullOrWhiteSpace(pemChain))
+        {
+            return null;
+        }
+
+        var certificates = ExtractPemCertificates(pemChain);
+        return certificates.Count == 0 ? null : ComputeChainSha256(certificates.Select(certificate => certificate.RawData));
+    }
+
+    private static string? ComputePresentedChainSha256(X509Certificate2? serverCertificate, X509Chain? serverChain)
+    {
+        if (serverChain is not null && serverChain.ChainElements.Count > 0)
+        {
+            return ComputeChainSha256(serverChain.ChainElements.Cast<X509ChainElement>().Select(element => element.Certificate.RawData));
+        }
+
+        return serverCertificate is null ? null : ComputeChainSha256([serverCertificate.RawData]);
+    }
+
+    private static string ComputeChainSha256(IEnumerable<byte[]> certificateBytes)
+    {
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        foreach (var rawData in certificateBytes)
+        {
+            hash.AppendData(rawData);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+    }
 
     private static bool IsAbsoluteApiPath(string? path)
         => !string.IsNullOrWhiteSpace(path)

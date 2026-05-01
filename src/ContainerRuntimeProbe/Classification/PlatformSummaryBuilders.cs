@@ -333,6 +333,10 @@ internal static class TrustedPlatformBuilder
         }
 
         var tlsSubject = FirstValue(evidence, "trust.ied.endpoint.tls.subject");
+        var tlsIssuer = FirstValue(evidence, "trust.ied.endpoint.tls.issuer");
+        var documentedChainSha256 = FirstValue(evidence, "trust.ied.certsips.cert_chain_sha256");
+        var presentedChainSha256 = FirstValue(evidence, "trust.ied.endpoint.tls.chain_sha256");
+        var expiresAt = ParseDateTimeOffset(FirstValue(evidence, "trust.ied.endpoint.tls.not_after"));
         if (!string.IsNullOrWhiteSpace(tlsSubject))
         {
             trustEvidence.Add(new TrustedPlatformEvidence(
@@ -341,6 +345,36 @@ internal static class TrustedPlatformBuilder
                 tlsSubject,
                 Confidence.Medium,
                 "The local IED endpoint presented a TLS certificate subject."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(tlsIssuer))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.TlsBinding,
+                "trust.ied.endpoint.tls.issuer",
+                tlsIssuer,
+                Confidence.Medium,
+                "The local IED endpoint presented a TLS certificate issuer."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(documentedChainSha256))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalFile,
+                "trust.ied.certsips.cert_chain_sha256",
+                documentedChainSha256,
+                Confidence.Medium,
+                "The documented IED runtime artifact includes a stable SHA-256 fingerprint of the expected certificate chain."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(presentedChainSha256))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.TlsBinding,
+                "trust.ied.endpoint.tls.chain_sha256",
+                presentedChainSha256,
+                Confidence.High,
+                "The local IED endpoint presented a certificate chain with this SHA-256 fingerprint."));
         }
 
         if (level >= 4)
@@ -400,9 +434,9 @@ internal static class TrustedPlatformBuilder
             "siemens-ied-runtime",
             state,
             level >= 4 ? "local-runtime-tls-binding" : level >= 3 ? "local-runtime-endpoint" : "local-runtime-artifact",
-            null,
+            tlsIssuer,
             serviceName,
-            null,
+            expiresAt,
             claims,
             trustEvidence,
             warnings)
@@ -410,6 +444,9 @@ internal static class TrustedPlatformBuilder
             VerificationLevel = level
         };
     }
+
+    private static DateTimeOffset? ParseDateTimeOffset(string? value)
+        => DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
 
     private static string? FirstValue(IReadOnlyList<EvidenceItem> evidence, string key)
         => evidence.FirstOrDefault(item => item.ProbeId == "platform-context" && item.Key == key)?.Value;

@@ -68,21 +68,22 @@ public sealed class ContainerRuntimeProbeEngine
             cancellationToken,
             options.KubernetesTlsVerificationMode);
         var selected = options.EnabledProbes is null || options.EnabledProbes.Count == 0 ? _probes : _probes.Where(p => options.EnabledProbes.Contains(p.Id)).ToList();
-        var results = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
+        var rawResults = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
+        var results = rawResults.Select(result => Redaction.RedactProbeResult(result, includeSensitive)).ToList();
 
         var warnings = new List<SecurityWarning>();
-        if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
+        if (rawResults.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
         {
             warnings.Add(new SecurityWarning("DOCKER_SOCKET_MOUNTED", "Docker-compatible socket is accessible and can imply privileged host control."));
         }
 
-        if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "api.tls.verification" && e.Value == "compatibility-skip-validation"))
+        if (rawResults.SelectMany(r => r.Evidence).Any(e => e.Key == "api.tls.verification" && e.Value == "compatibility-skip-validation"))
         {
             warnings.Add(new SecurityWarning("KUBERNETES_TLS_VALIDATION_SKIPPED", "Kubernetes API TLS certificate validation was skipped for compatibility. Use strict Kubernetes TLS mode to enforce platform trust validation."));
         }
 
-        var classification = Classifier.Classify(results);
-        var host = HostReportBuilder.Build(results, classification, options.FingerprintMode);
+        var classification = Classifier.Classify(rawResults);
+        var host = HostReportBuilder.Build(rawResults, classification, options.FingerprintMode);
         var platformEvidence = PlatformEvidenceBuilder.Build(results);
         var trustedPlatforms = TrustedPlatformBuilder.Build(results);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
