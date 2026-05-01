@@ -36,6 +36,11 @@
   - raw `/etc/os-release` identifiers (`Id`, `IdLike`, `Name`, `PrettyName`, `Version`, `VersionId`, `VersionCodename`, `BuildId`, `Variant`, `VariantId`)
   - `Architecture`, `Confidence`, `EvidenceReferences`
 - `VisibleKernel`
+  - `IdentityAnchors`
+    - explicit digest-based identity anchors separate from diagnostic fingerprints
+    - current built-in kinds are `CloudInstanceIdentity`, `KubernetesNodeIdentity`, and `VendorRuntimeIdentity`
+    - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
+    - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
 - `Virtualization`
   - normalized `Kind`, `PlatformVendor`, `Confidence`, `EvidenceReferences`

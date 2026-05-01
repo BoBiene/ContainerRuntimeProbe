@@ -53,6 +53,32 @@ Statusbasis: Session-Plan mit 4 Phasen und 14 Punkten, abgeglichen gegen den akt
 - [x] **17. RuntimeSampleRenderer Analyzer-Debt abbauen**
   - Abschlussvalidierung zeigt noch bestehenden Maintainability- und Literal-Debt in `RuntimeSampleRenderer.cs`; das ist der letzte offene technische Nachlauf dieser Runde.
 
+## Identity Anchor Expansion (2026-05-02)
+
+Statusbasis: naechster Ausbau nach dem abgeschlossenen Cloud-/Kubernetes-Rollout. Fokus sind drei zusaetzliche Kategorien: Siemens-Runtime, Windows-Host und Linux-/Container-Identitaet.
+
+### Phase 1: Siemens
+
+- [x] **18. Siemens-IED-VendorRuntimeIdentity einfuehren**
+  - Ein `VendorRuntimeIdentity` darf nur aus bestehender lokaler IED-TLS-/Cert-Bindung entstehen, nicht aus Labels, Env-Variablen oder Vendor-Strings allein.
+
+### Phase 2: Windows
+
+- [ ] **19. Windows-Anchor-Quelle definieren und implementieren**
+  - TPM-Praesenz bleibt getrennt von Identitaet; ein Windows-Anchor braucht bestehendes Public-Material oder eine konservative Maschinen-ID-Regel.
+
+### Phase 3: Linux / Container
+
+- [ ] **20. Linux-Host-Anchor aus `machine-id` pruefen und umsetzen**
+  - Host-Bindung soll ueber explizite, read-only Host-IDs laufen, nicht ueber Hostname oder CPU-Serial.
+- [ ] **21. Container-Scoped Anchor-Regel einfuehren**
+  - Wenn ein Container-Anchor kommt, dann als eigener workload-/runtime-scoped Anchor statt als schwacher Host-Ersatz.
+
+### Phase 4: Validation and follow-up
+
+- [ ] **22. Renderer-, Doku- und Negativtests nachziehen**
+  - Jede neue Anchor-Klasse braucht Default-Redaction, Renderer-Abdeckung und explizite Ausschluss-Tests fuer schwache Ersatzsignale.
+
 ## Critical
 
 All critical issues resolved. ✅

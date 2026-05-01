@@ -83,7 +83,7 @@ That means consumers can safely serialize and forward the returned report withou
 - `IdentityAnchors`
   - explicit read-only anchor candidates for stronger workload or host binding scenarios
   - intentionally kept separate from diagnostic fingerprints so diagnostics do not silently become license-binding identifiers
-  - current implementation derives digested anchors from explicit cloud instance IDs and Kubernetes node identities when they are locally observable
+  - current implementation derives digested anchors from explicit cloud instance IDs, Kubernetes node identities, and Siemens IED certificate-chain evidence with matched local TLS binding when they are locally observable
   - anchor values remain redacted in the default safe report even though the anchor metadata stays visible
   - environments without strong anchor sources can legitimately return an empty list
 

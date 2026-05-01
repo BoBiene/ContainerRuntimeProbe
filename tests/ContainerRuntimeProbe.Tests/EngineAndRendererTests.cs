@@ -175,6 +175,32 @@ public sealed class EngineAndRendererTests
         Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task RunAsync_RedactsSiemensIdentityAnchorValues_WhenIncludeSensitiveIsFalse()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("siemens-ied-runtime",
+                [
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.outcome", "Success"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "matched")
+                ])
+            ]);
+
+        var redactedReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
+        var sensitiveReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+
+        var redactedAnchor = Assert.Single(redactedReport.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+        var sensitiveAnchor = Assert.Single(sensitiveReport.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+
+        Assert.Equal(Redaction.RedactedValue, redactedAnchor.Value);
+        Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
+    }
+
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe
     {
         public string Id => id;

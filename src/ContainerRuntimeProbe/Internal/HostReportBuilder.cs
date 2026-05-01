@@ -379,6 +379,12 @@ internal static class HostReportBuilder
             anchors.Add(kubernetesNodeAnchor);
         }
 
+        var siemensIedRuntimeAnchor = BuildSiemensIedRuntimeIdentityAnchor(evidence);
+        if (siemensIedRuntimeAnchor is not null)
+        {
+            anchors.Add(siemensIedRuntimeAnchor);
+        }
+
         return anchors;
     }
 
@@ -448,6 +454,44 @@ internal static class HostReportBuilder
         }
 
         return null;
+    }
+
+    private static IdentityAnchor? BuildSiemensIedRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var tlsBinding = GetValue(evidence, "trust.ied.endpoint.tls.binding");
+        if (!string.Equals(tlsBinding, "matched", StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        var documentedChainDigest = GetValue(evidence, "trust.ied.certsips.cert_chain_sha256");
+        if (string.IsNullOrWhiteSpace(documentedChainDigest) || string.Equals(documentedChainDigest, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var serviceName = GetValue(evidence, "trust.ied.certsips.service_name");
+        var anchorSeed = string.IsNullOrWhiteSpace(serviceName)
+            ? documentedChainDigest
+            : $"{serviceName.Trim()}\n{documentedChainDigest.Trim()}";
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.VendorRuntimeIdentity,
+            "CRP-SIEMENS-IED-v1",
+            ComputeIdentityAnchorDigest("siemens-ied-runtime:tls-binding", anchorSeed),
+            IdentityAnchorScope.Platform,
+            BindingSuitability.LicenseBinding,
+            IdentityAnchorStrength.Strong,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(
+                evidence,
+                "trust.ied.certsips.service_name",
+                "trust.ied.certsips.cert_chain_sha256",
+                "trust.ied.endpoint.tls.binding",
+                "trust.ied.endpoint.tls.issuer",
+                "trust.ied.endpoint.tls.subject"),
+            [],
+            ["Digest derived from Siemens IED runtime certificate-chain evidence with matched local TLS binding."]);
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

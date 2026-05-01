@@ -42,7 +42,7 @@
 
 ## Identity Anchor Notes
 - `IdentityAnchors` are separate from `TrustedPlatforms` and are built from explicit observed IDs rather than heuristic strings.
-- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs and `KubernetesNodeIdentity` from Kubernetes node UID or provider ID.
+- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, and `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched.
 - Weak generic signals such as hostname, DNS labels, mount paths, cgroup strings, or visible TPM device nodes do not become license-binding anchors on their own.
 - Anchor values are stored as digests and are redacted in the default host report.
 - Future TPM or machine-certificate anchors must stay read-only and digest-based; the package must not create TPM keys or provision certificates.

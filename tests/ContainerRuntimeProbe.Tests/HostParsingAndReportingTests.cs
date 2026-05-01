@@ -265,6 +265,42 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsSiemensIedDigest_FromMatchedTlsBindingAndDocumentedChain()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "matched")
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+
+        Assert.Equal("CRP-SIEMENS-IED-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.LicenseBinding, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Strong, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("expected-chain-hash", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "siemens-ied-runtime:trust.ied.certsips.cert_chain_sha256");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("matched local TLS binding", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildSiemensIedAnchor_WithoutMatchedTlsBinding()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "mismatch")
+        ]);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity);
+    }
+
+    [Fact]
     public void IdentityAnchors_DoesNotPromoteWeakGenericSignals()
     {
         var report = BuildHostReport([
@@ -449,7 +485,8 @@ public sealed class HostParsingAndReportingTests
                 new ProbeResult("runtime-api", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "runtime-api").ToArray()),
                 new ProbeResult("environment", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "environment").ToArray()),
                 new ProbeResult("cloud-metadata", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "cloud-metadata").ToArray()),
-                new ProbeResult("kubernetes", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "kubernetes").ToArray())
+                new ProbeResult("kubernetes", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "kubernetes").ToArray()),
+                new ProbeResult("siemens-ied-runtime", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "siemens-ied-runtime").ToArray())
             ],
             [],
             new ReportClassification(
