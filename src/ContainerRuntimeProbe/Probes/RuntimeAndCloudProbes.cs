@@ -72,6 +72,15 @@ internal static class ComposeLabels
 
         using (doc)
         {
+            if (doc.RootElement.TryGetProperty("Id", out var containerIdElement))
+            {
+                var containerId = containerIdElement.GetString();
+                if (!string.IsNullOrWhiteSpace(containerId))
+                {
+                    yield return new EvidenceItem(probeId, "container.id", containerId.Trim(), EvidenceSensitivity.Sensitive);
+                }
+            }
+
             if (!doc.RootElement.TryGetProperty("Config", out var config)) yield break;
             if (!config.TryGetProperty("Labels", out var labels)) yield break;
             if (labels.ValueKind != JsonValueKind.Object) yield break;

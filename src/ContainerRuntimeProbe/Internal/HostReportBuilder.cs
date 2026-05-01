@@ -391,6 +391,12 @@ internal static class HostReportBuilder
             anchors.Add(linuxMachineIdAnchor);
         }
 
+        var containerRuntimeAnchor = BuildContainerRuntimeIdentityAnchor(evidence, classification);
+        if (containerRuntimeAnchor is not null)
+        {
+            anchors.Add(containerRuntimeAnchor);
+        }
+
         var siemensIedRuntimeAnchor = BuildSiemensIedRuntimeIdentityAnchor(evidence);
         if (siemensIedRuntimeAnchor is not null)
         {
@@ -556,6 +562,32 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, "machine.id", "os.id", KernelReleaseKey),
             ["machine-id is installation-stable but may change across reinstallation, image cloning, or explicit regeneration."],
             ["Digest derived from observed Linux machine-id value."]);
+    }
+
+    private static IdentityAnchor? BuildContainerRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
+    {
+        if (classification.IsContainerized.Value != ContainerizationKind.@True)
+        {
+            return null;
+        }
+
+        var containerId = GetValue(evidence, "container.id");
+        if (string.IsNullOrWhiteSpace(containerId) || string.Equals(containerId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.ContainerRuntimeIdentity,
+            "CRP-CONTAINER-INSTANCE-v1",
+            ComputeIdentityAnchorDigest("container-runtime:id", containerId),
+            IdentityAnchorScope.Workload,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, "container.id", "container.inspect.outcome"),
+            ["Container IDs are runtime-scoped and change whenever the container instance is recreated."],
+            ["Digest derived from observed runtime inspect container ID."]);
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

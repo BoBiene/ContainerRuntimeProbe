@@ -354,6 +354,36 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("runtime-api", "container.inspect.outcome", ProbeOutcome.Success.ToString())
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+
+        Assert.Equal("CRP-CONTAINER-INSTANCE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "runtime-api:container.id");
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildContainerRuntimeIdentity_ForNonContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@False);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.ContainerRuntimeIdentity);
+    }
+
+    [Fact]
     public void IdentityAnchors_DoesNotPromoteWeakGenericSignals()
     {
         var report = BuildHostReport([

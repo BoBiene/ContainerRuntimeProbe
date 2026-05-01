@@ -166,6 +166,7 @@ public sealed class FakeEndpointIntegrationTests
     {
         const string json = """
             {
+                            "Id": "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111",
               "Config": {
                 "Labels": {
                   "com.docker.compose.project": "myproject",
@@ -180,6 +181,7 @@ public sealed class FakeEndpointIntegrationTests
 
         var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
 
+        Assert.Contains(items, e => e.Key == "container.id" && e.Value == "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111" && e.Sensitivity == EvidenceSensitivity.Sensitive);
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.project" && e.Value == "myproject");
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.service" && e.Value == "web");
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.version" && e.Value == "2.24.0");
@@ -197,11 +199,13 @@ public sealed class FakeEndpointIntegrationTests
     }
 
     [Fact]
-    public void ComposeLabels_ExtractFromInspectJson_NoConfigSection_ReturnsEmpty()
+    public void ComposeLabels_ExtractFromInspectJson_NoConfigSection_ReturnsContainerIdOnly()
     {
         const string json = """{"Id":"abc123"}""";
         var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
-        Assert.Empty(items);
+        var item = Assert.Single(items);
+        Assert.Equal("container.id", item.Key);
+        Assert.Equal("abc123", item.Value);
     }
 
     [Fact]

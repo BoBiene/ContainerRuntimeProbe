@@ -38,9 +38,10 @@
 - `VisibleKernel`
   - `IdentityAnchors`
     - explicit digest-based identity anchors separate from diagnostic fingerprints
-    - current built-in kinds are `CloudInstanceIdentity`, `KubernetesNodeIdentity`, `VendorRuntimeIdentity`, and `MachineIdDigest`
+    - current built-in kinds are `CloudInstanceIdentity`, `KubernetesNodeIdentity`, `VendorRuntimeIdentity`, `MachineIdDigest`, and `ContainerRuntimeIdentity`
     - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
     - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
+    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs and is intentionally scoped to workload correlation rather than host binding
     - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
 - `Virtualization`
