@@ -157,6 +157,10 @@ public static class ReportRenderer
         }
 
         sb.AppendLine();
+        AppendPlatformEvidenceMarkdown(sb, report.PlatformEvidence);
+        sb.AppendLine();
+        AppendTrustedPlatformsMarkdown(sb, report.TrustedPlatforms);
+        sb.AppendLine();
         sb.AppendLine("## Raw Evidence");
         foreach (var probe in report.Probes)
         {
@@ -259,7 +263,113 @@ public static class ReportRenderer
             sb.AppendLine($"{key.PadRight(maxKeyLen)} : {value}{confSuffix}");
         }
 
+        AppendPlatformEvidenceText(sb, report.PlatformEvidence);
+        AppendTrustedPlatformsText(sb, report.TrustedPlatforms);
+
         return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendPlatformEvidenceMarkdown(StringBuilder sb, IReadOnlyList<PlatformEvidenceSummary>? platformEvidence)
+    {
+        sb.AppendLine("## Platform Evidence");
+        var relevantEvidence = platformEvidence?
+            .Where(summary => summary.EvidenceLevel != PlatformEvidenceLevel.None)
+            .ToArray() ?? [];
+
+        if (relevantEvidence.Length == 0)
+        {
+            sb.AppendLine("- None.");
+            return;
+        }
+
+        foreach (var summary in relevantEvidence)
+        {
+            sb.AppendLine($"### {summary.PlatformKey}");
+            sb.AppendLine($"- Level: {summary.EvidenceLevel}");
+            sb.AppendLine($"- Score: {summary.Score}");
+            sb.AppendLine($"- Confidence: {summary.Confidence}");
+            foreach (var item in summary.Evidence)
+            {
+                sb.AppendLine($"- Evidence [{item.Type}] {item.Key}: {item.Value} ({item.Confidence})");
+            }
+
+            foreach (var warning in summary.Warnings)
+            {
+                sb.AppendLine($"- Warning: {warning}");
+            }
+        }
+    }
+
+    private static void AppendTrustedPlatformsMarkdown(StringBuilder sb, IReadOnlyList<TrustedPlatformSummary>? trustedPlatforms)
+    {
+        sb.AppendLine("## Trusted Platforms");
+        var relevantPlatforms = trustedPlatforms?
+            .Where(summary => summary.State != TrustedPlatformState.None)
+            .ToArray() ?? [];
+
+        if (relevantPlatforms.Length == 0)
+        {
+            sb.AppendLine("- None.");
+            return;
+        }
+
+        foreach (var summary in relevantPlatforms)
+        {
+            sb.AppendLine($"### {summary.PlatformKey}");
+            sb.AppendLine($"- State: {summary.State}");
+            sb.AppendLine($"- Verification Level: {summary.VerificationLevel}");
+            sb.AppendLine($"- Verification Method: {summary.VerificationMethod ?? KnownValues.Unknown}");
+            sb.AppendLine($"- Subject: {summary.Subject ?? KnownValues.Unknown}");
+            foreach (var claim in summary.Claims)
+            {
+                sb.AppendLine($"- Claim [{claim.Scope}] {claim.Type}: {claim.Value} ({claim.Confidence})");
+            }
+
+            foreach (var item in summary.Evidence)
+            {
+                sb.AppendLine($"- Evidence [{item.SourceType}] {item.Key}: {item.Value} ({item.Confidence})");
+            }
+
+            foreach (var warning in summary.Warnings)
+            {
+                sb.AppendLine($"- Warning: {warning}");
+            }
+        }
+    }
+
+    private static void AppendPlatformEvidenceText(StringBuilder sb, IReadOnlyList<PlatformEvidenceSummary>? platformEvidence)
+    {
+        var relevantEvidence = platformEvidence?
+            .Where(summary => summary.EvidenceLevel != PlatformEvidenceLevel.None)
+            .ToArray() ?? [];
+
+        if (relevantEvidence.Length == 0)
+        {
+            return;
+        }
+
+        sb.AppendLine();
+        foreach (var summary in relevantEvidence)
+        {
+            sb.AppendLine($"PlatformEvidence : {summary.PlatformKey}  [{summary.EvidenceLevel}, score={summary.Score}, {summary.Confidence}]");
+        }
+    }
+
+    private static void AppendTrustedPlatformsText(StringBuilder sb, IReadOnlyList<TrustedPlatformSummary>? trustedPlatforms)
+    {
+        var relevantPlatforms = trustedPlatforms?
+            .Where(summary => summary.State != TrustedPlatformState.None)
+            .ToArray() ?? [];
+
+        if (relevantPlatforms.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var summary in relevantPlatforms)
+        {
+            sb.AppendLine($"TrustedPlatform  : {summary.PlatformKey}  [{summary.State}, level={summary.VerificationLevel}, {summary.VerificationMethod ?? KnownValues.Unknown}]");
+        }
     }
 
     private static string FormatHostOs(string? name, string? version)

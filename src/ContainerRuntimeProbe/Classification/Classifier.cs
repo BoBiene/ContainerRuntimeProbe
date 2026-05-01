@@ -174,7 +174,7 @@ internal static class Classifier
         var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
         var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
         var procVersion = GetFirstMatchingValue(e, "/proc/version");
-        var vendor = VendorDetection.Detect(e, osId, osName, prettyName);
+        var vendor = VendorDetection.Detect(probes, e, osId, osName, prettyName);
 
         var hostFamily = BuildHostFamily(virtualization.Value, kernelName, osId, osName, prettyName, e);
 
