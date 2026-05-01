@@ -19,7 +19,7 @@ internal static class HostReportBuilder
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var diagnosticFingerprints = BuildDiagnosticFingerprints(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
-        var identityAnchors = BuildIdentityAnchors();
+        var identityAnchors = BuildIdentityAnchors(evidence);
 
         return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, diagnosticFingerprints, identityAnchors);
     }
@@ -366,8 +366,87 @@ internal static class HostReportBuilder
         ];
     }
 
-    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors()
-        => [];
+    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var anchors = new List<IdentityAnchor>();
+        anchors.AddRange(BuildCloudInstanceIdentityAnchors(evidence));
+
+        var kubernetesNodeAnchor = BuildKubernetesNodeIdentityAnchor(evidence);
+        if (kubernetesNodeAnchor is not null)
+        {
+            anchors.Add(kubernetesNodeAnchor);
+        }
+
+        return anchors;
+    }
+
+    private static IReadOnlyList<IdentityAnchor> BuildCloudInstanceIdentityAnchors(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var anchors = new List<IdentityAnchor>();
+        AddCloudInstanceIdentityAnchor(anchors, evidence, "aws.instance_id", "aws");
+        AddCloudInstanceIdentityAnchor(anchors, evidence, "azure.vm_id", "azure");
+        AddCloudInstanceIdentityAnchor(anchors, evidence, "gcp.instance_id", "gcp");
+        AddCloudInstanceIdentityAnchor(anchors, evidence, "oci.instance_id", "oci");
+        return anchors;
+    }
+
+    private static void AddCloudInstanceIdentityAnchor(List<IdentityAnchor> anchors, IReadOnlyList<EvidenceItem> evidence, string key, string provider)
+    {
+        var instanceId = GetValue(evidence, key);
+        if (string.IsNullOrWhiteSpace(instanceId) || string.Equals(instanceId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        anchors.Add(new IdentityAnchor(
+            IdentityAnchorKind.CloudInstanceIdentity,
+            "CRP-CLOUD-INSTANCE-v1",
+            ComputeIdentityAnchorDigest($"cloud-instance:{provider}", instanceId),
+            IdentityAnchorScope.Host,
+            BindingSuitability.LicenseBinding,
+            IdentityAnchorStrength.Strong,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, key, "cloud.source"),
+            [],
+            [$"Digest derived from observed {provider} instance identity metadata."]));
+    }
+
+    private static IdentityAnchor? BuildKubernetesNodeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var nodeUid = GetValue(evidence, "kubernetes.node.uid");
+        if (!string.IsNullOrWhiteSpace(nodeUid) && !string.Equals(nodeUid, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return new IdentityAnchor(
+                IdentityAnchorKind.KubernetesNodeIdentity,
+                "CRP-KUBERNETES-NODE-v1",
+                ComputeIdentityAnchorDigest("kubernetes-node:uid", nodeUid),
+                IdentityAnchorScope.Host,
+                BindingSuitability.LicenseBinding,
+                IdentityAnchorStrength.Strong,
+                IdentityAnchorSensitivity.Sensitive,
+                GetEvidenceReferencesForKeys(evidence, "kubernetes.node.uid", "kubernetes.node.name", "kubernetes.node.provider_id"),
+                [],
+                ["Digest derived from Kubernetes node metadata UID."]);
+        }
+
+        var providerId = GetValue(evidence, "kubernetes.node.provider_id");
+        if (!string.IsNullOrWhiteSpace(providerId) && !string.Equals(providerId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return new IdentityAnchor(
+                IdentityAnchorKind.KubernetesNodeIdentity,
+                "CRP-KUBERNETES-NODE-v1",
+                ComputeIdentityAnchorDigest("kubernetes-node:provider-id", providerId),
+                IdentityAnchorScope.Host,
+                BindingSuitability.LicenseBinding,
+                IdentityAnchorStrength.Medium,
+                IdentityAnchorSensitivity.Sensitive,
+                GetEvidenceReferencesForKeys(evidence, "kubernetes.node.provider_id", "kubernetes.node.name"),
+                [],
+                ["Digest derived from Kubernetes node provider ID because no node UID was visible."]);
+        }
+
+        return null;
+    }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(
         IReadOnlyList<EvidenceItem> evidence,
@@ -569,6 +648,16 @@ internal static class HostReportBuilder
             .Distinct(StringComparer.Ordinal)
             .OrderBy(value => value, StringComparer.Ordinal)
             .ToArray();
+
+    private static IReadOnlyList<string> GetEvidenceReferencesForKeys(IReadOnlyList<EvidenceItem> evidence, params string[] keys)
+        => evidence.Where(item => keys.Contains(item.Key, StringComparer.Ordinal))
+            .Select(item => $"{item.ProbeId}:{item.Key}")
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+
+    private static string ComputeIdentityAnchorDigest(string scopeKey, string rawValue)
+        => $"sha256:{HostParsing.ComputeSha256Hex($"{scopeKey}\n{rawValue.Trim()}")}";
 
     private static int? GetNullableInt(IReadOnlyList<EvidenceItem> evidence, string key)
         => int.TryParse(GetValue(evidence, key), out var parsed) ? parsed : null;

@@ -408,13 +408,13 @@ internal sealed class KubernetesProbe : IProbe
         using var nodeDoc = JsonDocument.Parse(nodeResult.body);
         if (nodeDoc.RootElement.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object)
         {
-            AddEvidenceIfPresent(evidence, "kubernetes.node.name", nodeName);
-            AddEvidenceIfPresent(evidence, "kubernetes.node.uid", JsonHelper.GetString(metadata, "uid"));
+            AddEvidenceIfPresent(evidence, "kubernetes.node.name", nodeName, EvidenceSensitivity.Sensitive);
+            AddEvidenceIfPresent(evidence, "kubernetes.node.uid", JsonHelper.GetString(metadata, "uid"), EvidenceSensitivity.Sensitive);
         }
 
         if (nodeDoc.RootElement.TryGetProperty("spec", out var nodeSpec) && nodeSpec.ValueKind == JsonValueKind.Object)
         {
-            AddEvidenceIfPresent(evidence, "kubernetes.node.provider_id", JsonHelper.GetString(nodeSpec, "providerID"));
+            AddEvidenceIfPresent(evidence, "kubernetes.node.provider_id", JsonHelper.GetString(nodeSpec, "providerID"), EvidenceSensitivity.Sensitive);
         }
 
         if (!nodeDoc.RootElement.TryGetProperty("status", out var status) ||
@@ -433,11 +433,11 @@ internal sealed class KubernetesProbe : IProbe
         AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kubeletVersion", JsonHelper.GetString(nodeInfo, "kubeletVersion"));
     }
 
-    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+            evidence.Add(new EvidenceItem(Id, key, value.Trim(), sensitivity));
         }
     }
 }
@@ -614,7 +614,7 @@ internal sealed class CloudMetadataProbe : IProbe
         evidence.Add(new EvidenceItem(Id, "gcp.metadata.instance_id.outcome", instanceId.outcome.ToString()));
         if (instanceId.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(instanceId.body))
         {
-            AddEvidenceIfPresent(evidence, "gcp.instance_id", instanceId.body!.Trim());
+            AddEvidenceIfPresent(evidence, "gcp.instance_id", instanceId.body!.Trim(), EvidenceSensitivity.Sensitive);
             evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
         }
 
@@ -656,7 +656,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
-        AddEvidenceIfPresent(evidence, "aws.instance_id", parsed.InstanceId);
+        AddEvidenceIfPresent(evidence, "aws.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.architecture", parsed.RawArchitecture);
@@ -672,7 +672,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
-        AddEvidenceIfPresent(evidence, "azure.vm_id", parsed.InstanceId);
+        AddEvidenceIfPresent(evidence, "azure.vm_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.os_type", parsed.OsType);
@@ -688,17 +688,17 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
-        AddEvidenceIfPresent(evidence, "oci.instance_id", parsed.InstanceId);
+        AddEvidenceIfPresent(evidence, "oci.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
     }
 
-    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+            evidence.Add(new EvidenceItem(Id, key, value.Trim(), sensitivity));
         }
     }
 }

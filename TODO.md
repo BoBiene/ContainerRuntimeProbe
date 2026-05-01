@@ -17,23 +17,23 @@ Statusbasis: Session-Plan mit 4 Phasen und 14 Punkten, abgeglichen gegen den akt
 
 - [x] **4. Diagnostic-Fingerprint-Pfad isolieren**
   - `CRP-HOST-FP-v1` lebt als erster `DiagnosticFingerprint` weiter.
-- [ ] **5. Identity-Anchor-Pfad real implementieren**
-  - Der Contract und Builder-Pfad existieren, aber es werden noch keine echten Anchor-Quellen ausgewertet.
+- [x] **5. Identity-Anchor-Pfad real implementieren**
+  - `BuildIdentityAnchors(...)` wertet jetzt explizite Cloud-Instance- und Kubernetes-Node-IDs aus.
 - [ ] **6. Zulaessige Anchor-Quellen festlegen und priorisieren**
-  - Prioritaet fuer den ersten Ausbau: `CloudInstanceIdentity`, `KubernetesNodeIdentity`, konservative TPM-/Zertifikat-Digests nur read-only.
+  - Erster Ausbau laeuft jetzt ueber `CloudInstanceIdentity` und `KubernetesNodeIdentity`; TPM-/Zertifikat-Digests und Vendor-Runtime-IDs bleiben offen.
 - [ ] **7. Read-only-TPM-Regel explizit machen**
   - Keine Key-Erzeugung, keine Provisionierung, nur Digests ueber bestehendes oeffentliches Material.
-- [ ] **8. Trust sauber von Identity trennen**
-  - `TrustedPlatforms` darf `IdentityAnchors` korroborieren, aber weder erzeugen noch ersetzen.
-- [ ] **9. Anchor-Staerken und Binding-Regeln kodieren**
-  - `LicenseBinding` nur fuer `Medium`/`Strong`, schwache Quellen bleiben Diagnose/Korrelation.
+- [x] **8. Trust sauber von Identity trennen**
+  - `IdentityAnchors` werden im Host-Builder separat aus Evidenz erzeugt und haengen nicht an `TrustedPlatforms`.
+- [x] **9. Anchor-Staerken und Binding-Regeln kodieren**
+  - Cloud-Instance-IDs werden als `Strong`, Kubernetes-Provider-ID-Fallbacks als `Medium`, und schwache generische Signale gar nicht als Anchor modelliert.
 - [ ] **10. Scope- und Privacy-Defaults festziehen**
-  - Anchor-Werte im Standardpfad redigieren oder reduzieren; kompakte Samples bleiben anchor-frei.
+  - Host-Report redigiert Anchor-Werte jetzt standardmaessig; Renderer-, Doku- und Sample-Abgleich bleibt offen.
 
 ### Phase 3: Probe- und Builder-Verantwortung
 
 - [ ] **11. Anchor-faehige Evidenzpfade aufraeumen**
-  - Builder und Probes so schneiden, dass explizite Anchor-Quellen gesammelt werden koennen, ohne Diagnose-Heuristiken zu ueberladen.
+  - Cloud-/Kubernetes-Evidenz fuer stabile IDs ist drin; weitere Quellen und ein dedizierter Anchor-Builder bleiben offen.
 - [ ] **12. Rendering und Doku vollstaendig angleichen**
   - `security.md`, `probe-catalog.md`, Renderer und API-Erzaehlung muessen Diagnose/Anchor/Privacy konsistent beschreiben.
 

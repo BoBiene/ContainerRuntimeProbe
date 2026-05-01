@@ -81,6 +81,23 @@ internal static class Redaction
             .ToArray();
     }
 
+    public static HostReport RedactHostReport(HostReport host, bool includeSensitive)
+    {
+        if (includeSensitive)
+        {
+            return host;
+        }
+
+        return host with
+        {
+            IdentityAnchors = host.IdentityAnchors
+                .Select(anchor => anchor.Sensitivity == IdentityAnchorSensitivity.Sensitive
+                    ? anchor with { Value = RedactedValue }
+                    : anchor)
+                .ToArray()
+        };
+    }
+
     private static HashSet<string> GetSensitiveSummaryKeys(IReadOnlyList<ProbeResult> rawResults)
         => rawResults
             .SelectMany(result => result.Evidence)

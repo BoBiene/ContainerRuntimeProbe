@@ -237,6 +237,46 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsCloudAndKubernetesDigests_FromExplicitStableSources()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+            new EvidenceItem("kubernetes", "kubernetes.node.name", "worker-a", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.uid", "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.provider_id", "azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Equal(2, report.Host.IdentityAnchors.Count);
+
+        var cloudAnchor = Assert.Single(report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.CloudInstanceIdentity));
+        Assert.Equal("CRP-CLOUD-INSTANCE-v1", cloudAnchor.Algorithm);
+        Assert.Equal(IdentityAnchorStrength.Strong, cloudAnchor.Strength);
+        Assert.Equal(BindingSuitability.LicenseBinding, cloudAnchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, cloudAnchor.Sensitivity);
+        Assert.StartsWith("sha256:", cloudAnchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("i-0abc123def4567890", cloudAnchor.Value, StringComparison.Ordinal);
+
+        var kubernetesAnchor = Assert.Single(report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity));
+        Assert.Equal(IdentityAnchorStrength.Strong, kubernetesAnchor.Strength);
+        Assert.Equal(BindingSuitability.LicenseBinding, kubernetesAnchor.BindingSuitability);
+        Assert.StartsWith("sha256:", kubernetesAnchor.Value, StringComparison.Ordinal);
+        Assert.Contains(kubernetesAnchor.EvidenceReferences, reference => reference == "kubernetes:kubernetes.node.uid");
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotPromoteWeakGenericSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "device.tpm.path", "/dev/tpm0"),
+            new EvidenceItem("environment", "HOSTNAME", "edge-host", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "kernel.hostname", "edge-host", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Empty(report.Host.IdentityAnchors);
+    }
+
+    [Fact]
     public void HostReport_Wsl2Kernel_InfersVirtualizationAndUnderlyingWindowsHost()
     {
         var report = BuildHostReport([
@@ -404,7 +444,8 @@ public sealed class HostParsingAndReportingTests
                 new ProbeResult("proc-files", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "proc-files").ToArray()),
                 new ProbeResult("runtime-api", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "runtime-api").ToArray()),
                 new ProbeResult("environment", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "environment").ToArray()),
-                new ProbeResult("cloud-metadata", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "cloud-metadata").ToArray())
+                new ProbeResult("cloud-metadata", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "cloud-metadata").ToArray()),
+                new ProbeResult("kubernetes", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "kubernetes").ToArray())
             ],
             [],
             new ReportClassification(

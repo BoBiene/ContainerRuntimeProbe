@@ -153,6 +153,28 @@ public sealed class EngineAndRendererTests
         Assert.Contains(trustedPlatform.Evidence, evidence => evidence.Key == "trust.ied.endpoint.tls.chain_sha256" && evidence.Value == Redaction.RedactedValue);
     }
 
+    [Fact]
+    public async Task RunAsync_RedactsIdentityAnchorValues_WhenIncludeSensitiveIsFalse()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("cloud-metadata",
+                [
+                    new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+                    new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive)
+                ])
+            ]);
+
+        var redactedReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
+        var sensitiveReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+
+        var redactedAnchor = Assert.Single(redactedReport.Host.IdentityAnchors);
+        var sensitiveAnchor = Assert.Single(sensitiveReport.Host.IdentityAnchors);
+
+        Assert.Equal(Redaction.RedactedValue, redactedAnchor.Value);
+        Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
+    }
+
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe
     {
         public string Id => id;
