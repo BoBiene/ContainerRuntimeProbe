@@ -24,7 +24,9 @@ internal static class Redaction
             return evidence;
         }
 
-        return evidence with { Value = RedactedValue };
+        return bool.TryParse(evidence.Value, out _)
+            ? evidence
+            : evidence with { Value = RedactedValue };
     }
 
     public static ProbeResult RedactProbeResult(ProbeResult result, bool includeSensitive)

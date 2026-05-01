@@ -89,15 +89,15 @@ internal sealed class SiemensIedRuntimeProbe : IProbe
             var secureStorageApiPath = JsonHelper.GetString(root, "secure-storage-api-path");
             var edgeIps = JsonHelper.GetString(root, "edge-ips");
             var certChain = JsonHelper.GetString(root, "cert-chain");
-            var certificatesChain = default(string);
-            var serviceName = default(string);
+            string? certificatesChain = null;
+            string? serviceName = null;
 
             AddIfPresent(evidence, "trust.ied.certsips.auth_api_path", authApiPath);
             AddIfPresent(evidence, "trust.ied.certsips.secure_storage_api_path", secureStorageApiPath);
-                if (!string.IsNullOrWhiteSpace(edgeIps))
-                {
-                    AddIfPresent(evidence, "trust.ied.certsips.edge_ips", includeSensitive ? edgeIps : Redaction.RedactedValue, EvidenceSensitivity.Sensitive);
-                }
+            if (!string.IsNullOrWhiteSpace(edgeIps))
+            {
+                AddIfPresent(evidence, "trust.ied.certsips.edge_ips", includeSensitive ? edgeIps : Redaction.RedactedValue, EvidenceSensitivity.Sensitive);
+            }
 
             if (root.TryGetProperty("edge-certificates", out var edgeCertificates) && edgeCertificates.ValueKind == JsonValueKind.Object)
             {

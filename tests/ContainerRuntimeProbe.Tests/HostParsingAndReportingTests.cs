@@ -364,8 +364,8 @@ public sealed class HostParsingAndReportingTests
         var json = ReportRenderer.ToJson(report);
         var text = ReportRenderer.ToText(report);
 
-    Assert.Contains("## Key Findings", markdown);
-    Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
+        Assert.Contains("## Key Findings", markdown);
+        Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("## Probe Tool Information", markdown);
         Assert.Contains("- Git Commit: abcdef1", markdown);
