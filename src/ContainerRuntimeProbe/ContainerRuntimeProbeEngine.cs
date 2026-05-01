@@ -17,17 +17,29 @@ public sealed class ContainerRuntimeProbeEngine
     /// <summary>Initializes an engine with the default probe set or a custom probe collection.</summary>
     public ContainerRuntimeProbeEngine(IEnumerable<IProbe>? probes = null)
     {
-        _probes = (probes ?? new IProbe[]
+        _probes = (probes ?? CreateDefaultProbes()).ToList();
+    }
+
+    private static IEnumerable<IProbe> CreateDefaultProbes()
+    {
+        yield return new MarkerFileProbe();
+        yield return new EnvironmentProbe();
+        yield return new PlatformContextProbe();
+
+        if (OperatingSystem.IsWindows())
         {
-            new MarkerFileProbe(),
-            new EnvironmentProbe(),
-            new PlatformContextProbe(),
-            OperatingSystem.IsWindows() ? new WindowsHostProbe() : new UnixHostProbe(),
-            new SecuritySandboxProbe(),
-            new RuntimeApiProbe(),
-            new KubernetesProbe(),
-            new CloudMetadataProbe()
-        }).ToList();
+            yield return new WindowsHostProbe();
+            yield return new WindowsTpmProbe();
+        }
+        else
+        {
+            yield return new UnixHostProbe();
+        }
+
+        yield return new SecuritySandboxProbe();
+        yield return new RuntimeApiProbe();
+        yield return new KubernetesProbe();
+        yield return new CloudMetadataProbe();
     }
 
     /// <summary>Returns the available probe identifiers.</summary>

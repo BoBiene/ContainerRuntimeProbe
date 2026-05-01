@@ -70,4 +70,37 @@ public sealed class WindowsHostProbeTests
         Assert.Equal(ProbeOutcome.NotSupported, result.Outcome);
         Assert.Empty(result.Evidence);
     }
+
+    [Fact]
+    public async Task WindowsTpmProbe_ReportsDeviceInfo_WhenAvailable()
+    {
+        var probe = new WindowsTpmProbe(
+            () => true,
+            () => new WindowsTpmDeviceInfo(ProbeOutcome.Success, "2.0", "3", "0x00010002"));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Equal("windows-trust", result.ProbeId);
+        Assert.Equal(ProbeOutcome.Success, result.Outcome);
+        Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.outcome" && item.Value == "Success");
+        Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.version" && item.Value == "2.0");
+        Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.interface_type" && item.Value == "3");
+        Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.implementation_revision" && item.Value == "0x00010002");
+    }
+
+    [Fact]
+    public async Task WindowsTpmProbe_ReportsNotSupported_OutsideWindows()
+    {
+        var probe = new WindowsTpmProbe(
+            () => false,
+            () => throw new InvalidOperationException("TPM access should not occur when probe is unsupported."));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Equal("windows-trust", result.ProbeId);
+        Assert.Equal(ProbeOutcome.NotSupported, result.Outcome);
+        Assert.Empty(result.Evidence);
+    }
 }

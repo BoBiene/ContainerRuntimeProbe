@@ -27,6 +27,7 @@
   - each entry carries `State`, `VerificationLevel`, optional `VerificationMethod`, optional `Issuer`, optional `Subject`, `Claims[]`, `Evidence[]`, and `Warnings[]`
   - `Claims[]` uses `TrustedPlatformClaim(Scope, Type, Value, Confidence, Description)`
   - `Evidence[]` uses `TrustedPlatformEvidence(SourceType, Key, Value, Confidence, Description)`
+  - current built-in keys are `siemens-ied-runtime`, `windows-host-tpm`, and `container-tpm-visible`
 
 ## Host object
 `Host` contains:
@@ -60,6 +61,8 @@
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.
+- For the current Windows TPM flow, `TrustedPlatforms[].VerificationLevel` is intentionally capped at `2`: `1` TPM device present via the local Windows TPM API, `2` TPM device info is plausible. Stronger quote, certificate, or attestation binding is not implemented in this step.
+- For the current container TPM visibility flow, `TrustedPlatforms[].VerificationLevel` is intentionally capped at `1`: a TPM-related device node is visible in the current process environment. This is an explicit local artifact, but not a host-identity or ownership proof.
 - JSON uses the enum names emitted by `System.Text.Json`. Examples: `Containerd`, `AwsEcs`, `CloudRun`, `AzureContainerApps`, and `SiemensIndustrialEdge`.
 - Markdown and text renderers keep user-facing labels such as `containerd`, `AWS ECS`, `Cloud Run`, and `Siemens Industrial Edge`.
 

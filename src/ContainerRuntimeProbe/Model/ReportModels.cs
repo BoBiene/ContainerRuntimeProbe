@@ -84,8 +84,14 @@ public enum TrustedPlatformSourceType
     /// <summary>The claim originates from a local mounted file.</summary>
     LocalFile,
 
+    /// <summary>The claim originates from a local device node visible to the current process.</summary>
+    LocalDeviceNode,
+
     /// <summary>The claim originates from local runtime metadata.</summary>
     RuntimeMetadata,
+
+    /// <summary>The claim originates from a local hardware-backed platform API.</summary>
+    LocalHardwareApi,
 
     /// <summary>The claim originates from a local endpoint validation flow.</summary>
     LocalEndpoint,

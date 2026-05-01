@@ -17,6 +17,65 @@ public sealed class TrustedPlatformBuilderTests
     }
 
     [Fact]
+    public void Build_WindowsTpmPresentOnly_ReturnsClaimedLevel1()
+    {
+        var summaries = TrustedPlatformBuilder.Build([
+            new ProbeResult("windows-trust", ProbeOutcome.Success, [
+                new EvidenceItem("windows-trust", "trust.windows.tpm.outcome", "Success")
+            ])
+        ]);
+
+        var summary = Assert.Single(summaries);
+        Assert.Equal("windows-host-tpm", summary.PlatformKey);
+        Assert.Equal(TrustedPlatformState.Claimed, summary.State);
+        Assert.Equal(1, summary.VerificationLevel);
+        Assert.Contains(summary.Claims, claim => claim.Type == "windows-host-tpm" && claim.Value == "device-present");
+        Assert.Contains(summary.Warnings, warning => warning.Contains("does not attest", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Build_ContainerTpmVisibility_ReturnsClaimedLevel1()
+    {
+        var summaries = TrustedPlatformBuilder.Build([
+            new ProbeResult("proc-files", ProbeOutcome.Success, [
+                new EvidenceItem("proc-files", "device.tpm.path", "/dev/tpm0"),
+                new EvidenceItem("proc-files", "device.tpm.path", "/dev/vtpmx")
+            ])
+        ]);
+
+        var summary = Assert.Single(summaries);
+        Assert.Equal("container-tpm-visible", summary.PlatformKey);
+        Assert.Equal(TrustedPlatformState.Claimed, summary.State);
+        Assert.Equal(1, summary.VerificationLevel);
+        Assert.Equal("local-device-node", summary.VerificationMethod);
+        Assert.Contains(summary.Claims, claim => claim.Type == "container-tpm-visible" && claim.Value == "device-node-visible");
+        Assert.Contains(summary.Claims, claim => claim.Type == "container-vtpm-visible" && claim.Value == "virtual-device-node-visible");
+        Assert.Contains(summary.Evidence, item => item.SourceType == TrustedPlatformSourceType.LocalDeviceNode && item.Value == "/dev/tpm0");
+        Assert.Contains(summary.Warnings, warning => warning.Contains("do not prove host identity", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void Build_WindowsTpmWithPlausibleDeviceInfo_ReturnsClaimedLevel2()
+    {
+        var summaries = TrustedPlatformBuilder.Build([
+            new ProbeResult("windows-trust", ProbeOutcome.Success, [
+                new EvidenceItem("windows-trust", "trust.windows.tpm.outcome", "Success"),
+                new EvidenceItem("windows-trust", "trust.windows.tpm.version", "2.0"),
+                new EvidenceItem("windows-trust", "trust.windows.tpm.interface_type", "3"),
+                new EvidenceItem("windows-trust", "trust.windows.tpm.implementation_revision", "0x00010002")
+            ])
+        ]);
+
+        var summary = Assert.Single(summaries);
+        Assert.Equal("windows-host-tpm", summary.PlatformKey);
+        Assert.Equal(TrustedPlatformState.Claimed, summary.State);
+        Assert.Equal(2, summary.VerificationLevel);
+        Assert.Equal("local-tbs-device-info", summary.VerificationMethod);
+        Assert.Contains(summary.Claims, claim => claim.Type == "windows-host-tpm" && claim.Value == "device-info-validated");
+        Assert.Contains(summary.Evidence, item => item.SourceType == TrustedPlatformSourceType.LocalHardwareApi && item.Key == "trust.windows.tpm.version");
+    }
+
+    [Fact]
     public void Build_CertsIpsPresentOnly_ReturnsClaimedLevel1()
     {
         var summaries = TrustedPlatformBuilder.Build([

@@ -209,8 +209,167 @@ internal static class TrustedPlatformBuilder
     internal static IReadOnlyList<TrustedPlatformSummary> Build(IReadOnlyList<ProbeResult> probes)
     {
         var flattened = probes.SelectMany(probe => probe.Evidence).ToArray();
+        var containerTpmVisible = BuildContainerTpmVisible(flattened);
+        var windowsHostTpm = BuildWindowsHostTpm(flattened);
         var siemensIedRuntime = BuildSiemensIedRuntime(flattened);
-        return siemensIedRuntime is null ? [] : [siemensIedRuntime];
+        return [.. new[] { containerTpmVisible, windowsHostTpm, siemensIedRuntime }.OfType<TrustedPlatformSummary>()];
+    }
+
+    private static TrustedPlatformSummary? BuildContainerTpmVisible(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var devicePaths = evidence
+            .Where(item => item.ProbeId == "proc-files" && item.Key == "device.tpm.path" && !string.IsNullOrWhiteSpace(item.Value))
+            .Select(item => item.Value!)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (devicePaths.Length == 0)
+        {
+            return null;
+        }
+
+        var trustEvidence = devicePaths
+            .Select(path => new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalDeviceNode,
+                "device.tpm.path",
+                path,
+                Confidence.Low,
+                "A TPM-related device node is visible to the current process inside the observed environment."))
+            .ToArray();
+
+        var claims = new List<TrustedPlatformClaim>
+        {
+            new(
+                TrustedPlatformClaimScope.RuntimePresence,
+                "container-tpm-visible",
+                "device-node-visible",
+                Confidence.Low,
+                "At least one TPM-related device node is visible inside the current container or process environment.")
+        };
+
+        if (devicePaths.Any(path => path.Contains("vtpm", StringComparison.OrdinalIgnoreCase)))
+        {
+            claims.Add(new TrustedPlatformClaim(
+                TrustedPlatformClaimScope.RuntimePresence,
+                "container-vtpm-visible",
+                "virtual-device-node-visible",
+                Confidence.Low,
+                "A virtual TPM device node is visible inside the current container or process environment."));
+        }
+
+        return new TrustedPlatformSummary(
+            "container-tpm-visible",
+            TrustedPlatformState.Claimed,
+            "local-device-node",
+            null,
+            null,
+            null,
+            claims,
+            trustEvidence,
+            ["Visible TPM device nodes are an explicit local artifact, but they do not prove host identity, dedicated ownership, or any caller-specific binding on their own."])
+        {
+            VerificationLevel = 1
+        };
+    }
+
+    private static TrustedPlatformSummary? BuildWindowsHostTpm(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var tpmOutcome = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+            && item.Key == "trust.windows.tpm.outcome");
+        var tpmOutcomeValue = tpmOutcome?.Value;
+        if (!string.Equals(tpmOutcomeValue, ProbeOutcome.Success.ToString(), StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var version = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+            && item.Key == "trust.windows.tpm.version")?.Value;
+        var interfaceType = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+            && item.Key == "trust.windows.tpm.interface_type")?.Value;
+        var implementationRevision = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+            && item.Key == "trust.windows.tpm.implementation_revision")?.Value;
+
+        var trustEvidence = new List<TrustedPlatformEvidence>
+        {
+            new(
+                TrustedPlatformSourceType.LocalHardwareApi,
+                "trust.windows.tpm.outcome",
+                tpmOutcomeValue,
+                Confidence.Low,
+                "Windows Trusted Base Services reported a local TPM device.")
+        };
+
+        if (!string.IsNullOrWhiteSpace(version))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalHardwareApi,
+                "trust.windows.tpm.version",
+                version,
+                Confidence.Medium,
+                "The local Windows TPM API reported a TPM specification version."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(interfaceType))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalHardwareApi,
+                "trust.windows.tpm.interface_type",
+                interfaceType,
+                Confidence.Low,
+                "The local Windows TPM API reported a TPM interface type."));
+        }
+
+        if (!string.IsNullOrWhiteSpace(implementationRevision))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalHardwareApi,
+                "trust.windows.tpm.implementation_revision",
+                implementationRevision,
+                Confidence.Low,
+                "The local Windows TPM API reported an implementation revision."));
+        }
+
+        var plausible = string.Equals(version, "1.2", StringComparison.Ordinal)
+            || string.Equals(version, "2.0", StringComparison.Ordinal);
+        var level = plausible ? 2 : 1;
+        var warnings = new List<string>
+        {
+            "Local TPM presence alone does not attest the Windows host identity and does not bind a container without a stronger quote or caller-provided validation flow."
+        };
+
+        if (!plausible)
+        {
+            warnings.Add("The TPM device was visible, but the reported TPM version was not recognized as a standard 1.2 or 2.0 device.");
+        }
+
+        return new TrustedPlatformSummary(
+            "windows-host-tpm",
+            TrustedPlatformState.Claimed,
+            level >= 2 ? "local-tbs-device-info" : null,
+            null,
+            null,
+            null,
+            [
+                new TrustedPlatformClaim(
+                    TrustedPlatformClaimScope.PlatformPresence,
+                    "windows-host-tpm",
+                    level >= 2 ? "device-info-validated" : "device-present",
+                    level >= 2 ? Confidence.Medium : Confidence.Low,
+                    level >= 2
+                        ? "The local Windows TPM API returned a plausible TPM device description."
+                        : "A local TPM device was reported by Windows, but the device description remains incomplete."),
+                new TrustedPlatformClaim(
+                    TrustedPlatformClaimScope.PlatformPresence,
+                    "windows-platform",
+                    "hardware-backed-tpm-visible",
+                    Confidence.Low,
+                    "A hardware-backed TPM was visible through the local Windows TPM API.")
+            ],
+            trustEvidence,
+            warnings)
+        {
+            VerificationLevel = level
+        };
     }
 
     private static TrustedPlatformSummary? BuildSiemensIedRuntime(IReadOnlyList<EvidenceItem> evidence)

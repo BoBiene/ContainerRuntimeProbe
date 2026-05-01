@@ -21,6 +21,10 @@
   - `/sys/bus/platform/devices/*/{modalias,uevent}` for non-addressed platform devices; extracts `MODALIAS` and `OF_COMPATIBLE_*` lines
   - `/proc/meminfo`, `/sys/fs/cgroup/memory*`, `/sys/fs/cgroup/cpu*`
   - `/proc/self/ns/*`
+- `windows-trust`:
+  - bounded Windows TPM presence via the local Trusted Base Services API (`tbs.dll`)
+  - records only normalized TPM device facts such as outcome, TPM version, interface type, and implementation revision
+  - does not perform remote attestation, quote validation, or container binding on its own
 - `security-sandbox`: `/proc/self/status` (Seccomp, NoNewPrivs, CapEff, CapBnd, CapPrm), `/proc/self/attr/current` (AppArmor/SELinux context), `/sys/fs/selinux` (SELinux mount presence)
 
 ## Runtime APIs
@@ -29,9 +33,11 @@
 - probes `/containers/{hostname}/json` for Docker Compose labels without exposing container IDs or host names by default
 
 ## Trusted Platform Notes
-- `platform-context` trust evidence is the only current source for `TrustedPlatforms`.
+- `platform-context` trust evidence is a current source for `TrustedPlatforms`.
+- `windows-trust` is a second trust source for `TrustedPlatforms`, currently limited to local Windows TPM device presence and plausibility.
+- explicit TPM device-node visibility from `proc-files` is a third trust source for `TrustedPlatforms`, currently limited to observed container-visible device nodes such as `/dev/tpm0`, `/dev/tpmrm0`, and `/dev/vtpmx`.
 - General env, hostname, DNS, mount, and cgroup string hits stay heuristic and can contribute to `PlatformEvidence`, but they never become trusted claims on their own.
-- Current trusted scope is intentionally narrow: `siemens-ied-runtime` only. There is no trusted `siemens-iem` or license/entitlement claim in this step.
+- Current trusted scope remains intentionally narrow: `siemens-ied-runtime`, conservative `windows-host-tpm`, and observational `container-tpm-visible`. There is still no trusted `siemens-iem`, no license/entitlement claim, and no TPM quote or hardware attestation flow in this step.
 
 ## Orchestrator / Cloud
 - `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`

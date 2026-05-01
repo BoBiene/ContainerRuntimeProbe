@@ -228,6 +228,22 @@ public sealed class UnixHostProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "bus.vmbus.present" && item.Value == bool.TrueString);
     }
 
+    [Fact]
+    public async Task UnixHostProbe_ReportsVisibleTpmDeviceNodes()
+    {
+        var probe = new UnixHostProbe(
+            ["/proc/version"],
+            (_, _, _) => Task.FromResult((ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            pathExists: path => path is "/dev/tpm0" or "/dev/vtpmx");
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpm0");
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/vtpmx");
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpmrm0");
+    }
+
     private static string NormalizeArchitectureRaw(Architecture architecture)
         => architecture switch
         {
