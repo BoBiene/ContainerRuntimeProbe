@@ -145,6 +145,13 @@ internal sealed class UnixHostProbe : IProbe
         "/sys/bus/platform/devices"
     ];
 
+    private static readonly string[] TpmDevicePaths =
+    [
+        "/dev/tpm0",
+        "/dev/tpmrm0",
+        "/dev/vtpmx"
+    ];
+
     private static readonly string[] InterestingVirtualizationModules =
     [
         "hv_vmbus",
@@ -187,21 +194,24 @@ internal sealed class UnixHostProbe : IProbe
     ];
 
     private readonly Func<string, bool> _directoryExists;
+    private readonly Func<string, bool> _pathExists;
 
-    public UnixHostProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists) { }
+    public UnixHostProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists, File.Exists) { }
 
     internal UnixHostProbe(
         IReadOnlyList<string> files,
         Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, string? text, string? message)>> readFileAsync,
         Func<string, IEnumerable<string>>? enumerateFiles = null,
         Func<string, IEnumerable<string>>? enumerateEntries = null,
-        Func<string, bool>? directoryExists = null)
+        Func<string, bool>? directoryExists = null,
+        Func<string, bool>? pathExists = null)
     {
         _files = files;
         _readFileAsync = readFileAsync;
         _enumerateFiles = enumerateFiles ?? Directory.EnumerateFiles;
         _enumerateEntries = enumerateEntries ?? Directory.EnumerateFileSystemEntries;
         _directoryExists = directoryExists ?? Directory.Exists;
+        _pathExists = pathExists ?? File.Exists;
     }
 
     public async Task<ProbeResult> ExecuteAsync(ProbeContext context)
@@ -453,6 +463,14 @@ internal sealed class UnixHostProbe : IProbe
         if (_directoryExists(VmbusDevicesDirectory))
         {
             evidence.Add(new EvidenceItem(Id, "bus.vmbus.present", bool.TrueString));
+        }
+
+        foreach (var devicePath in TpmDevicePaths)
+        {
+            if (_pathExists(devicePath))
+            {
+                evidence.Add(new EvidenceItem(Id, "device.tpm.path", devicePath));
+            }
         }
 
         var kernel = HostParsing.ParseKernel(procVersion, kernelOsRelease, kernelOsType, kernelVersion);

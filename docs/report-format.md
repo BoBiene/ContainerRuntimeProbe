@@ -18,6 +18,16 @@
   - `CloudProvider` uses `CloudProviderKind`
   - `PlatformVendor` uses `PlatformVendorKind`
 - `Host`
+- `PlatformEvidence[]`
+  - generic heuristic platform hypotheses keyed by `PlatformKey`
+  - each entry carries `Score`, `EvidenceLevel`, `Confidence`, `Evidence[]`, and `Warnings[]`
+  - `Evidence[]` uses `PlatformEvidenceItem(Type, Key, Value, Confidence, Description)`
+- `TrustedPlatforms[]`
+  - generic locally verifiable platform claims keyed by `PlatformKey`
+  - each entry carries `State`, `VerificationLevel`, optional `VerificationMethod`, optional `Issuer`, optional `Subject`, `Claims[]`, `Evidence[]`, and `Warnings[]`
+  - `Claims[]` uses `TrustedPlatformClaim(Scope, Type, Value, Confidence, Description)`
+  - `Evidence[]` uses `TrustedPlatformEvidence(SourceType, Key, Value, Confidence, Description)`
+  - current built-in keys are `siemens-ied-runtime`, `windows-host-tpm`, and `container-tpm-visible`
 
 ## Host object
 `Host` contains:
@@ -48,6 +58,11 @@
 - Runtime-reported host OS is the highest-confidence host/node view when Docker, Podman, Kubernetes NodeInfo, or cloud metadata is available.
 - Hardware is visibility-limited; cgroup limits may differ from physical host capacity.
 - Fingerprints are diagnostic correlation helpers only and must not be treated as host identity.
+- `PlatformEvidence` answers: "What does the observed platform look like?"
+- `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
+- For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.
+- For the current Windows TPM flow, `TrustedPlatforms[].VerificationLevel` is intentionally capped at `2`: `1` TPM device present via the local Windows TPM API, `2` TPM device info is plausible. Stronger quote, certificate, or attestation binding is not implemented in this step.
+- For the current container TPM visibility flow, `TrustedPlatforms[].VerificationLevel` is intentionally capped at `1`: a TPM-related device node is visible in the current process environment. This is an explicit local artifact, but not a host-identity or ownership proof.
 - JSON uses the enum names emitted by `System.Text.Json`. Examples: `Containerd`, `AwsEcs`, `CloudRun`, `AzureContainerApps`, and `SiemensIndustrialEdge`.
 - Markdown and text renderers keep user-facing labels such as `containerd`, `AWS ECS`, `Cloud Run`, and `Siemens Industrial Edge`.
 
@@ -63,6 +78,52 @@
   "Classification": {
     "IsContainerized": { "Value": "True", "Confidence": "High", "Reasons": [] }
   },
+  "PlatformEvidence": [
+    {
+      "PlatformKey": "siemens-industrial-edge",
+      "Score": 9,
+      "EvidenceLevel": "StrongHeuristic",
+      "Confidence": "High",
+      "Evidence": [
+        {
+          "Type": "ExecutionContext",
+          "Key": "mountinfo.signal",
+          "Value": "industrial-edge",
+          "Confidence": "High",
+          "Description": "Industrial Edge naming was found in local platform context."
+        }
+      ],
+      "Warnings": []
+    }
+  ],
+  "TrustedPlatforms": [
+    {
+      "PlatformKey": "siemens-ied-runtime",
+      "State": "Verified",
+      "VerificationMethod": "local-runtime-tls-binding",
+      "Subject": "edge-iot-core.proxy-redirect",
+      "Claims": [
+        {
+          "Scope": "RuntimePresence",
+          "Type": "siemens-ied-runtime",
+          "Value": "tls-bound",
+          "Confidence": "High",
+          "Description": "A documented local IED runtime artifact is present, reachable, and TLS-bound to documented certificate material."
+        }
+      ],
+      "Evidence": [
+        {
+          "SourceType": "TlsBinding",
+          "Key": "trust.ied.endpoint.tls.binding",
+          "Value": "matched",
+          "Confidence": "High",
+          "Description": "The local IED endpoint TLS certificate matches documented certificate material."
+        }
+      ],
+      "Warnings": [],
+      "VerificationLevel": 4
+    }
+  ],
   "Host": {
     "ContainerImageOs": {
       "Family": "Debian",

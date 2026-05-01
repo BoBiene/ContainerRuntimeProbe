@@ -17,16 +17,30 @@ public sealed class ContainerRuntimeProbeEngine
     /// <summary>Initializes an engine with the default probe set or a custom probe collection.</summary>
     public ContainerRuntimeProbeEngine(IEnumerable<IProbe>? probes = null)
     {
-        _probes = (probes ?? new IProbe[]
+        _probes = (probes ?? CreateDefaultProbes()).ToList();
+    }
+
+    private static IEnumerable<IProbe> CreateDefaultProbes()
+    {
+        yield return new MarkerFileProbe();
+        yield return new EnvironmentProbe();
+        yield return new PlatformContextProbe();
+        yield return new SiemensIedRuntimeProbe();
+
+        if (OperatingSystem.IsWindows())
         {
-            new MarkerFileProbe(),
-            new EnvironmentProbe(),
-            OperatingSystem.IsWindows() ? new WindowsHostProbe() : new UnixHostProbe(),
-            new SecuritySandboxProbe(),
-            new RuntimeApiProbe(),
-            new KubernetesProbe(),
-            new CloudMetadataProbe()
-        }).ToList();
+            yield return new WindowsHostProbe();
+            yield return new WindowsTpmProbe();
+        }
+        else
+        {
+            yield return new UnixHostProbe();
+        }
+
+        yield return new SecuritySandboxProbe();
+        yield return new RuntimeApiProbe();
+        yield return new KubernetesProbe();
+        yield return new CloudMetadataProbe();
     }
 
     /// <summary>Returns the available probe identifiers.</summary>
@@ -67,23 +81,28 @@ public sealed class ContainerRuntimeProbeEngine
             cancellationToken,
             options.KubernetesTlsVerificationMode);
         var selected = options.EnabledProbes is null || options.EnabledProbes.Count == 0 ? _probes : _probes.Where(p => options.EnabledProbes.Contains(p.Id)).ToList();
-        var results = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
+        var rawResults = (await Task.WhenAll(selected.Select(probe => probe.ExecuteAsync(context))).ConfigureAwait(false)).ToList();
+        var results = rawResults.Select(result => Redaction.RedactProbeResult(result, includeSensitive)).ToList();
 
         var warnings = new List<SecurityWarning>();
-        if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
+        if (rawResults.SelectMany(r => r.Evidence).Any(e => e.Key == "socket.present" && e.Value?.Contains("docker.sock", StringComparison.OrdinalIgnoreCase) == true))
         {
             warnings.Add(new SecurityWarning("DOCKER_SOCKET_MOUNTED", "Docker-compatible socket is accessible and can imply privileged host control."));
         }
 
-        if (results.SelectMany(r => r.Evidence).Any(e => e.Key == "api.tls.verification" && e.Value == "compatibility-skip-validation"))
+        if (rawResults.SelectMany(r => r.Evidence).Any(e => e.Key == "api.tls.verification" && e.Value == "compatibility-skip-validation"))
         {
             warnings.Add(new SecurityWarning("KUBERNETES_TLS_VALIDATION_SKIPPED", "Kubernetes API TLS certificate validation was skipped for compatibility. Use strict Kubernetes TLS mode to enforce platform trust validation."));
         }
 
-        var classification = Classifier.Classify(results);
-        var host = HostReportBuilder.Build(results, classification, options.FingerprintMode);
+        var rawPlatformEvidence = PlatformEvidenceBuilder.Build(rawResults);
+        var rawTrustedPlatforms = TrustedPlatformBuilder.Build(rawResults);
+        var classification = Classifier.Classify(rawResults, rawPlatformEvidence, rawTrustedPlatforms);
+        var host = HostReportBuilder.Build(rawResults, classification, options.FingerprintMode);
+        var platformEvidence = Redaction.RedactPlatformEvidence(rawPlatformEvidence, rawResults, includeSensitive);
+        var trustedPlatforms = Redaction.RedactTrustedPlatforms(rawTrustedPlatforms, rawResults, includeSensitive);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host);
+        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
     }
 }

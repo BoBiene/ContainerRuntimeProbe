@@ -27,6 +27,7 @@ Broad real-world samples help improve classification rules, reduce false assumpt
 Documentation:
 [docs/probe-catalog.md](docs/probe-catalog.md)
 [docs/report-format.md](docs/report-format.md)
+[docs/dotnet-api.md](docs/dotnet-api.md)
 [docs/hardware-vendors.md](docs/hardware-vendors.md)
 
 ## What is collected
