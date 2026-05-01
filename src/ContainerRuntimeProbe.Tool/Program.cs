@@ -245,7 +245,9 @@ static bool IsCommandToken(string arg)
 static ContainerRuntimeReport NormalizeImportedReport(ContainerRuntimeReport report)
 {
     var classification = Classifier.Classify(report.Probes);
-    var importedFingerprintMode = report.Host?.Fingerprint is null ? FingerprintMode.None : FingerprintMode.Safe;
+    var importedFingerprintMode = report.Host is { DiagnosticFingerprints.Count: > 0 }
+        ? FingerprintMode.Safe
+        : FingerprintMode.None;
     var host = HostReportBuilder.Build(report.Probes, classification, importedFingerprintMode);
     var platformEvidence = PlatformEvidenceBuilder.Build(report.Probes);
     var trustedPlatforms = TrustedPlatformBuilder.Build(report.Probes);
