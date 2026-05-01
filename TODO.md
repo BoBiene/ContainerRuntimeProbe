@@ -1,5 +1,56 @@
 # TODO
 
+## Fingerprint / Identity Anchor Rollout (2026-05-01)
+
+Statusbasis: Session-Plan mit 4 Phasen und 14 Punkten, abgeglichen gegen den aktuellen Worktree auf `feature/fingerprints`.
+
+### Phase 1: Contract split
+
+- [x] **1. Public Model splitten**
+  - `Host.Fingerprint` wird in `DiagnosticFingerprints[]` und `IdentityAnchors[]` getrennt.
+- [x] **2. Ziele und Enums explizit modellieren**
+  - Diagnose- und Anchor-Zwecke, Stabilitaet, Staerke, Scope und Sensitivity sind als neue Typen modelliert.
+- [x] **3. Breaking-Change-Migration festziehen**
+  - Primare API- und Report-Format-Doku ist auf den neuen Contract umgestellt.
+
+### Phase 2: Diagnostic fingerprints vs. identity anchors
+
+- [x] **4. Diagnostic-Fingerprint-Pfad isolieren**
+  - `CRP-HOST-FP-v1` lebt als erster `DiagnosticFingerprint` weiter.
+- [ ] **5. Identity-Anchor-Pfad real implementieren**
+  - Der Contract und Builder-Pfad existieren, aber es werden noch keine echten Anchor-Quellen ausgewertet.
+- [ ] **6. Zulaessige Anchor-Quellen festlegen und priorisieren**
+  - Prioritaet fuer den ersten Ausbau: `CloudInstanceIdentity`, `KubernetesNodeIdentity`, konservative TPM-/Zertifikat-Digests nur read-only.
+- [ ] **7. Read-only-TPM-Regel explizit machen**
+  - Keine Key-Erzeugung, keine Provisionierung, nur Digests ueber bestehendes oeffentliches Material.
+- [ ] **8. Trust sauber von Identity trennen**
+  - `TrustedPlatforms` darf `IdentityAnchors` korroborieren, aber weder erzeugen noch ersetzen.
+- [ ] **9. Anchor-Staerken und Binding-Regeln kodieren**
+  - `LicenseBinding` nur fuer `Medium`/`Strong`, schwache Quellen bleiben Diagnose/Korrelation.
+- [ ] **10. Scope- und Privacy-Defaults festziehen**
+  - Anchor-Werte im Standardpfad redigieren oder reduzieren; kompakte Samples bleiben anchor-frei.
+
+### Phase 3: Probe- und Builder-Verantwortung
+
+- [ ] **11. Anchor-faehige Evidenzpfade aufraeumen**
+  - Builder und Probes so schneiden, dass explizite Anchor-Quellen gesammelt werden koennen, ohne Diagnose-Heuristiken zu ueberladen.
+- [ ] **12. Rendering und Doku vollstaendig angleichen**
+  - `security.md`, `probe-catalog.md`, Renderer und API-Erzaehlung muessen Diagnose/Anchor/Privacy konsistent beschreiben.
+
+### Phase 4: Validation and limits
+
+- [ ] **13. Testmatrix aufspalten**
+  - Getrennte Tests fuer Diagnose-Fingerprints, Anchor-Selektion, Redaction und Nicht-Hochstufung schwacher Signale.
+- [ ] **14. Plattformgrenzen explizit machen**
+  - Leere oder nur schwache `IdentityAnchors` sind fachlich korrekte Ergebnisse und muessen so dokumentiert und getestet werden.
+
+### Additional Open Points Found During Validation
+
+- [ ] **15. Legacy-Ausgabelabels bereinigen**
+  - Text-/Sample-Ausgaben verwenden teils noch `HostFingerprint` oder `Fingerprint`, obwohl der Contract bereits getrennt ist.
+- [ ] **16. Beispiel- und Release-Doku nachziehen**
+  - `CHANGELOG`, Beispielreports und Sample-Doku muessen nach dem finalen Anchor-/Redaction-Shape abgeglichen werden.
+
 ## Critical
 
 All critical issues resolved. ✅
