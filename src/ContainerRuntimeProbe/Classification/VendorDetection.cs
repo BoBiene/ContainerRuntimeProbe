@@ -77,8 +77,9 @@ internal static class VendorDetection
         };
 
     internal static ClassificationResult<PlatformVendorKind> Detect(
-        IReadOnlyList<ProbeResult> probes,
         IReadOnlyList<EvidenceItem> e,
+        IReadOnlyList<PlatformEvidenceSummary> platformEvidence,
+        IReadOnlyList<TrustedPlatformSummary> trustedPlatforms,
         string? osId,
         string? osName,
         string? prettyName)
@@ -188,8 +189,6 @@ internal static class VendorDetection
 
         var (catalogMatch, explicitVendorKeys) = DetectCatalogPlatformVendor(e, VendorCatalog.RuntimeActiveHardwareVendors);
         var explicitPlatformVendor = catalogMatch?.Vendor ?? PlatformVendorKind.Unknown;
-        var platformEvidence = PlatformEvidenceBuilder.Build(probes);
-        var trustedPlatforms = TrustedPlatformBuilder.Build(probes);
         var trustedIed = trustedPlatforms.FirstOrDefault(summary => summary.PlatformKey == "siemens-ied-runtime"
             && summary.State != TrustedPlatformState.None);
         var siemensIndustrialEdgeEvidence = platformEvidence.FirstOrDefault(summary => summary.PlatformKey == "siemens-industrial-edge"

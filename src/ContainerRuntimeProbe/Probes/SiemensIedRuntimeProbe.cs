@@ -94,7 +94,10 @@ internal sealed class SiemensIedRuntimeProbe : IProbe
 
             AddIfPresent(evidence, "trust.ied.certsips.auth_api_path", authApiPath);
             AddIfPresent(evidence, "trust.ied.certsips.secure_storage_api_path", secureStorageApiPath);
-            AddIfPresent(evidence, "trust.ied.certsips.edge_ips", includeSensitive ? edgeIps : Redaction.RedactedValue, EvidenceSensitivity.Sensitive);
+                if (!string.IsNullOrWhiteSpace(edgeIps))
+                {
+                    AddIfPresent(evidence, "trust.ied.certsips.edge_ips", includeSensitive ? edgeIps : Redaction.RedactedValue, EvidenceSensitivity.Sensitive);
+                }
 
             if (root.TryGetProperty("edge-certificates", out var edgeCertificates) && edgeCertificates.ValueKind == JsonValueKind.Object)
             {
@@ -303,7 +306,7 @@ internal sealed class SiemensIedRuntimeProbe : IProbe
             .ToArray();
     }
 
-    private static bool MatchesExpectedCertificate(string? pemChain, IReadOnlyList<byte[]> presentedCertificates)
+    internal static bool MatchesExpectedCertificate(string? pemChain, IReadOnlyList<byte[]> presentedCertificates)
     {
         if (string.IsNullOrWhiteSpace(pemChain) || presentedCertificates.Count == 0)
         {
@@ -315,10 +318,12 @@ internal sealed class SiemensIedRuntimeProbe : IProbe
             return false;
         }
 
-        var expectedSet = expectedCertificates
-            .Select(rawData => Convert.ToBase64String(rawData))
-            .ToHashSet(StringComparer.Ordinal);
-        return presentedCertificates.Any(rawData => expectedSet.Contains(Convert.ToBase64String(rawData)));
+        if (expectedCertificates.Count == 0)
+        {
+            return false;
+        }
+
+        return expectedCertificates[0].AsSpan().SequenceEqual(presentedCertificates[0]);
     }
 
     private static bool TryComputePemChainSha256(string? pemChain, out string? sha256)

@@ -8,10 +8,12 @@ namespace ContainerRuntimeProbe.Probes;
 
 internal sealed class WindowsTpmProbe : IProbe
 {
+    internal const string ProbeId = "windows-trust";
+
     private readonly Func<bool> _isWindows;
     private readonly Func<WindowsTpmDeviceInfo> _getDeviceInfo;
 
-    public string Id => "windows-trust";
+    public string Id => ProbeId;
 
     public WindowsTpmProbe()
         : this(
@@ -46,19 +48,19 @@ internal sealed class WindowsTpmProbe : IProbe
             new(Id, "trust.windows.tpm.outcome", deviceInfo.Outcome.ToString())
         };
 
-        AddEvidenceIfPresent(evidence, "trust.windows.tpm.version", deviceInfo.Version);
-        AddEvidenceIfPresent(evidence, "trust.windows.tpm.interface_type", deviceInfo.InterfaceType);
-        AddEvidenceIfPresent(evidence, "trust.windows.tpm.implementation_revision", deviceInfo.ImplementationRevision);
+        AddEvidenceIfPresent(evidence, Id, "trust.windows.tpm.version", deviceInfo.Version);
+        AddEvidenceIfPresent(evidence, Id, "trust.windows.tpm.interface_type", deviceInfo.InterfaceType);
+        AddEvidenceIfPresent(evidence, Id, "trust.windows.tpm.implementation_revision", deviceInfo.ImplementationRevision);
 
         sw.Stop();
         return Task.FromResult(new ProbeResult(Id, deviceInfo.Outcome, evidence, deviceInfo.Message, sw.Elapsed));
     }
 
-    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string probeId, string key, string? value)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem("windows-trust", key, value.Trim()));
+            evidence.Add(new EvidenceItem(probeId, key, value.Trim()));
         }
     }
 

@@ -95,10 +95,12 @@ public sealed class ContainerRuntimeProbeEngine
             warnings.Add(new SecurityWarning("KUBERNETES_TLS_VALIDATION_SKIPPED", "Kubernetes API TLS certificate validation was skipped for compatibility. Use strict Kubernetes TLS mode to enforce platform trust validation."));
         }
 
-        var classification = Classifier.Classify(rawResults);
+        var rawPlatformEvidence = PlatformEvidenceBuilder.Build(rawResults);
+        var rawTrustedPlatforms = TrustedPlatformBuilder.Build(rawResults);
+        var classification = Classifier.Classify(rawResults, rawPlatformEvidence, rawTrustedPlatforms);
         var host = HostReportBuilder.Build(rawResults, classification, options.FingerprintMode);
-        var platformEvidence = PlatformEvidenceBuilder.Build(results);
-        var trustedPlatforms = TrustedPlatformBuilder.Build(results);
+        var platformEvidence = Redaction.RedactPlatformEvidence(rawPlatformEvidence, rawResults, includeSensitive);
+        var trustedPlatforms = Redaction.RedactTrustedPlatforms(rawTrustedPlatforms, rawResults, includeSensitive);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
         return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);

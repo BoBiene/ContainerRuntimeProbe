@@ -36,4 +36,63 @@ internal static class Redaction
 
         return result with { Evidence = result.Evidence.Select(evidence => RedactEvidenceItem(evidence, includeSensitive)).ToArray() };
     }
+
+    public static IReadOnlyList<PlatformEvidenceSummary> RedactPlatformEvidence(
+        IReadOnlyList<PlatformEvidenceSummary> summaries,
+        IReadOnlyList<ProbeResult> rawResults,
+        bool includeSensitive)
+    {
+        if (includeSensitive)
+        {
+            return summaries;
+        }
+
+        var sensitiveKeys = GetSensitiveSummaryKeys(rawResults);
+        return summaries
+            .Select(summary => summary with
+            {
+                Evidence = summary.Evidence
+                    .Select(item => item with { Value = RedactSummaryValue(item.Key, item.Value, sensitiveKeys, includeSensitive) })
+                    .ToArray()
+            })
+            .ToArray();
+    }
+
+    public static IReadOnlyList<TrustedPlatformSummary> RedactTrustedPlatforms(
+        IReadOnlyList<TrustedPlatformSummary> summaries,
+        IReadOnlyList<ProbeResult> rawResults,
+        bool includeSensitive)
+    {
+        if (includeSensitive)
+        {
+            return summaries;
+        }
+
+        var sensitiveKeys = GetSensitiveSummaryKeys(rawResults);
+        return summaries
+            .Select(summary => summary with
+            {
+                Evidence = summary.Evidence
+                    .Select(item => item with { Value = RedactSummaryValue(item.Key, item.Value, sensitiveKeys, includeSensitive) })
+                    .ToArray()
+            })
+            .ToArray();
+    }
+
+    private static HashSet<string> GetSensitiveSummaryKeys(IReadOnlyList<ProbeResult> rawResults)
+        => rawResults
+            .SelectMany(result => result.Evidence)
+            .Where(evidence => evidence.Sensitivity == EvidenceSensitivity.Sensitive)
+            .Select(evidence => evidence.Key)
+            .ToHashSet(StringComparer.Ordinal);
+
+    private static string? RedactSummaryValue(string key, string? value, IReadOnlySet<string> sensitiveKeys, bool includeSensitive)
+    {
+        if (includeSensitive || value is null || !sensitiveKeys.Contains(key))
+        {
+            return value;
+        }
+
+        return bool.TryParse(value, out _) ? value : RedactedValue;
+    }
 }

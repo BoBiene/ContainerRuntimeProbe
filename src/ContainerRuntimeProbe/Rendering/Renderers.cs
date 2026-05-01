@@ -366,6 +366,7 @@ public static class ReportRenderer
             return;
         }
 
+        sb.AppendLine();
         foreach (var summary in relevantPlatforms)
         {
             sb.AppendLine($"TrustedPlatform  : {summary.PlatformKey}  [{summary.State}, level={summary.VerificationLevel}, {summary.VerificationMethod ?? KnownValues.Unknown}]");

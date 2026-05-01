@@ -6,9 +6,14 @@ namespace ContainerRuntimeProbe.Classification;
 
 internal static class Classifier
 {
-    public static ReportClassification Classify(IReadOnlyList<ProbeResult> probes)
+    public static ReportClassification Classify(
+        IReadOnlyList<ProbeResult> probes,
+        IReadOnlyList<PlatformEvidenceSummary>? platformEvidence = null,
+        IReadOnlyList<TrustedPlatformSummary>? trustedPlatforms = null)
     {
         var e = probes.SelectMany(x => x.Evidence).ToList();
+        platformEvidence ??= PlatformEvidenceBuilder.Build(probes);
+        trustedPlatforms ??= TrustedPlatformBuilder.Build(probes);
 
         static Confidence ScoreToConfidence(int score) => score switch { >= 8 => Confidence.High, >= 4 => Confidence.Medium, >= 1 => Confidence.Low, _ => Confidence.Unknown };
         ClassificationResult<TValue> Make<TValue>(TValue value, int score, params ClassificationReason[] reasons) where TValue : struct, Enum => new(value, ScoreToConfidence(score), reasons);
@@ -174,7 +179,7 @@ internal static class Classifier
         var osVersion = GetFirstMatchingValue(e, "os.version_id", "os.version");
         var kernelCompiler = GetFirstMatchingValue(e, "kernel.compiler");
         var procVersion = GetFirstMatchingValue(e, "/proc/version");
-        var vendor = VendorDetection.Detect(probes, e, osId, osName, prettyName);
+        var vendor = VendorDetection.Detect(e, platformEvidence, trustedPlatforms, osId, osName, prettyName);
 
         var hostFamily = BuildHostFamily(virtualization.Value, kernelName, osId, osName, prettyName, e);
 

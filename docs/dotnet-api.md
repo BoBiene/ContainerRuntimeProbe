@@ -52,7 +52,7 @@ You can also pass explicit `ProbeExecutionOptions` when you want to narrow the p
 
 `includeSensitive: false` is the safe default.
 
-When redaction is disabled, the engine still uses the unredacted probe results internally for classification and host analysis where needed, but the returned `Probes`, `PlatformEvidence`, and `TrustedPlatforms` reflect the redacted view.
+When `includeSensitive` is `false`, the returned `Probes`, `PlatformEvidence`, and `TrustedPlatforms` reflect the redacted view. Some probes also redact values based on probe context before results reach the engine, so unredacted values may not always be available internally in that mode.
 
 That means consumers can safely serialize and forward the returned report without accidentally depending on hidden internal raw values.
 

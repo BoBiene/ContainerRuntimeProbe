@@ -45,6 +45,35 @@ public sealed class SiemensIedRuntimeProbeTests
     }
 
     [Fact]
+    public async Task SiemensIedRuntimeProbe_MissingEdgeIps_DoesNotEmitRedactedPlaceholder()
+    {
+        var files = new Dictionary<string, (ProbeOutcome outcome, string? text, string? message)>
+        {
+            ["/var/run/devicemodel/edgedevice/certsips.json"] = (ProbeOutcome.Success, "{" +
+                "\"auth-api-path\":\"/api/v1/auth\"," +
+                "\"edge-certificates\":{\"service-name\":\"edge-iot-core.proxy-redirect\",\"certificates-chain\":\"pem\"}}", null)
+        };
+
+        var probe = new SiemensIedRuntimeProbe(
+            (path, _, _) => Task.FromResult(files.TryGetValue(path, out var result)
+                ? result
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var result = await probe.ExecuteAsync(new ProbeContext(
+            TimeSpan.FromMilliseconds(50),
+            IncludeSensitive: false,
+            EnabledProbes: null,
+            KubernetesApiBase: null,
+            AwsImdsBase: null,
+            AzureImdsBase: null,
+            GcpMetadataBase: null,
+            OciMetadataBase: null,
+            CancellationToken.None));
+
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "trust.ied.certsips.edge_ips");
+    }
+
+    [Fact]
     public async Task SiemensIedRuntimeProbe_MalformedCertificateChain_RecordsParseErrorWithoutFailingProbe()
     {
         var files = new Dictionary<string, (ProbeOutcome outcome, string? text, string? message)>
@@ -99,6 +128,20 @@ public sealed class SiemensIedRuntimeProbeTests
     }
 
     [Fact]
+    public void SiemensIedRuntimeProbe_MatchesExpectedCertificate_RequiresLeafMatch()
+    {
+        var expectedLeafPem = CreateSelfSignedPemCertificate("CN=expected-leaf");
+        var sharedRootPem = CreateSelfSignedPemCertificate("CN=shared-root");
+        using var sharedRootCertificate = X509Certificate2.CreateFromPem(sharedRootPem);
+
+        var matched = SiemensIedRuntimeProbe.MatchesExpectedCertificate(
+            expectedLeafPem + Environment.NewLine + sharedRootPem,
+            [sharedRootCertificate.RawData.ToArray()]);
+
+        Assert.False(matched);
+    }
+
+    [Fact]
     public async Task SiemensIedRuntimeProbe_CollectsEndpointAndTlsTrustEvidence()
     {
         var certificate = CreateSelfSignedPemCertificate();
@@ -147,22 +190,16 @@ public sealed class SiemensIedRuntimeProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "trust.ied.endpoint.tls.binding" && item.Value == "matched");
     }
 
-    private static string ComputeCertificateChainSha256(string pemCertificate)
-    {
-        using var certificate = X509Certificate2.CreateFromPem(pemCertificate);
-        return ComputeCertificateChainSha256(certificate);
-    }
-
     private static string ComputeCertificateChainSha256(X509Certificate2 certificate)
     {
         var rawData = certificate.RawData;
         return Convert.ToHexString(SHA256.HashData(rawData)).ToLowerInvariant();
     }
 
-    private static string CreateSelfSignedPemCertificate()
+    private static string CreateSelfSignedPemCertificate(string subjectName = "CN=siemens")
     {
         using var key = ECDsa.Create(ECCurve.NamedCurves.nistP256);
-        var request = new CertificateRequest("CN=siemens", key, HashAlgorithmName.SHA256);
+        var request = new CertificateRequest(subjectName, key, HashAlgorithmName.SHA256);
         using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddDays(-1), DateTimeOffset.UtcNow.AddYears(1));
         return certificate.ExportCertificatePem();
     }
