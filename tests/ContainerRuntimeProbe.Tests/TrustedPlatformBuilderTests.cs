@@ -56,6 +56,51 @@ public sealed class TrustedPlatformBuilderTests
     }
 
     [Fact]
+    public void Build_ReachableEndpoint_RaisesTrustedLevelTo3()
+    {
+        var summaries = TrustedPlatformBuilder.Build([
+            new ProbeResult("platform-context", ProbeOutcome.Success, [
+                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.status", "401")
+            ])
+        ]);
+
+        var summary = Assert.Single(summaries);
+        Assert.Equal(TrustedPlatformState.Verified, summary.State);
+        Assert.Equal(3, summary.VerificationLevel);
+        Assert.Equal("local-runtime-endpoint", summary.VerificationMethod);
+        Assert.Contains(summary.Claims, claim => claim.Value == "endpoint-verified");
+    }
+
+    [Fact]
+    public void Build_TlsBinding_RaisesTrustedLevelTo4()
+    {
+        var summaries = TrustedPlatformBuilder.Build([
+            new ProbeResult("platform-context", ProbeOutcome.Success, [
+                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.status", "401"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.binding", "matched")
+            ])
+        ]);
+
+        var summary = Assert.Single(summaries);
+        Assert.Equal(TrustedPlatformState.Verified, summary.State);
+        Assert.Equal(4, summary.VerificationLevel);
+        Assert.Equal("local-runtime-tls-binding", summary.VerificationMethod);
+        Assert.Contains(summary.Claims, claim => claim.Value == "tls-bound");
+        Assert.Contains(summary.Evidence, item => item.Key == "trust.ied.endpoint.tls.binding");
+    }
+
+    [Fact]
     public void Build_GenericSignals_DoNotBecomeTrusted()
     {
         var summaries = TrustedPlatformBuilder.Build([

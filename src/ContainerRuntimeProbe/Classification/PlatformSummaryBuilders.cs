@@ -244,9 +244,30 @@ internal static class TrustedPlatformBuilder
             && IsAbsoluteApiPath(authApiPath)
             && IsPlausibleServiceName(serviceName)
             && hasCertificateChain;
+        var endpointReachable = HasTrustKey(evidence, "trust.ied.endpoint.auth_api.reachable");
+        var tlsBindingMatched = string.Equals(
+            FirstValue(evidence, "trust.ied.endpoint.tls.binding"),
+            "matched",
+            StringComparison.Ordinal);
 
         var level = plausible ? 2 : 1;
-        var claimConfidence = plausible ? Confidence.Medium : Confidence.Low;
+        if (plausible && endpointReachable)
+        {
+            level = 3;
+        }
+
+        if (level >= 3 && tlsBindingMatched)
+        {
+            level = 4;
+        }
+
+        var state = level >= 3 ? TrustedPlatformState.Verified : TrustedPlatformState.Claimed;
+        var claimConfidence = level switch
+        {
+            >= 4 => Confidence.High,
+            >= 2 => Confidence.Medium,
+            _ => Confidence.Low
+        };
 
         if (!string.IsNullOrWhiteSpace(authApiPath))
         {
@@ -288,6 +309,48 @@ internal static class TrustedPlatformBuilder
                 "The artifact includes certificate material for later endpoint binding checks."));
         }
 
+        if (endpointReachable)
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalEndpoint,
+                "trust.ied.endpoint.auth_api.reachable",
+                bool.TrueString,
+                Confidence.High,
+                "The documented local IED auth endpoint was reachable over HTTPS."));
+        }
+
+        var endpointStatus = FirstValue(evidence, "trust.ied.endpoint.auth_api.status");
+        if (!string.IsNullOrWhiteSpace(endpointStatus))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.LocalEndpoint,
+                "trust.ied.endpoint.auth_api.status",
+                endpointStatus,
+                Confidence.Medium,
+                "The local IED auth endpoint returned an HTTP status code."));
+        }
+
+        var tlsSubject = FirstValue(evidence, "trust.ied.endpoint.tls.subject");
+        if (!string.IsNullOrWhiteSpace(tlsSubject))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.TlsBinding,
+                "trust.ied.endpoint.tls.subject",
+                tlsSubject,
+                Confidence.Medium,
+                "The local IED endpoint presented a TLS certificate subject."));
+        }
+
+        if (level >= 4)
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+                TrustedPlatformSourceType.TlsBinding,
+                "trust.ied.endpoint.tls.binding",
+                "matched",
+                Confidence.High,
+                "The local IED endpoint TLS certificate matches documented certificate material."));
+        }
+
         if (parseError)
         {
             warnings.Add("certsips.json is present but could not be parsed; trust remains at artifact-presence only.");
@@ -296,17 +359,29 @@ internal static class TrustedPlatformBuilder
         {
             warnings.Add("certsips.json is present but misses one or more plausibility checks for auth path, service name, or certificate material.");
         }
+        else if (!endpointReachable)
+        {
+            warnings.Add("certsips.json is plausible, but the documented local IED endpoint was not reachable yet.");
+        }
+        else if (!tlsBindingMatched)
+        {
+            warnings.Add("The local IED endpoint is reachable, but TLS binding to the documented certificate material is not verified yet.");
+        }
 
         var claims = new List<TrustedPlatformClaim>
         {
             new(
                 TrustedPlatformClaimScope.RuntimePresence,
                 "siemens-ied-runtime",
-                plausible ? "documented-and-plausible" : "artifact-present",
+                level >= 4 ? "tls-bound" : level >= 3 ? "endpoint-verified" : plausible ? "documented-and-plausible" : "artifact-present",
                 claimConfidence,
-                plausible
-                    ? "A documented local IED runtime artifact is present and structurally plausible."
-                    : "A documented local IED runtime artifact is present, but local verification is still limited.")
+                level >= 4
+                    ? "A documented local IED runtime artifact is present, reachable, and TLS-bound to documented certificate material."
+                    : level >= 3
+                        ? "A documented local IED runtime artifact is present, plausible, and locally reachable over HTTPS."
+                        : plausible
+                            ? "A documented local IED runtime artifact is present and structurally plausible."
+                            : "A documented local IED runtime artifact is present, but local verification is still limited.")
         };
 
         if (!string.IsNullOrWhiteSpace(serviceName))
@@ -321,8 +396,8 @@ internal static class TrustedPlatformBuilder
 
         return new TrustedPlatformSummary(
             "siemens-ied-runtime",
-            TrustedPlatformState.Claimed,
-            "local-runtime-artifact",
+            state,
+            level >= 4 ? "local-runtime-tls-binding" : level >= 3 ? "local-runtime-endpoint" : "local-runtime-artifact",
             null,
             serviceName,
             null,
