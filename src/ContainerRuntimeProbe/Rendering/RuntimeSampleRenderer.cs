@@ -233,14 +233,14 @@ public static class RuntimeSampleRenderer
         IReadOnlyList<RuntimeSampleSignal> importantSignals)
     {
         var host = report.Host;
-        var fingerprint = host.Fingerprint;
+        var fingerprint = host.DiagnosticFingerprints.FirstOrDefault();
         var sampleFingerprint = fingerprint is null
             ? null
             : new RuntimeSampleFingerprint(
                 fingerprint.Algorithm,
                 fingerprint.Value,
                 ShortHash(fingerprint.Value, 8),
-                fingerprint.Stability.ToString(),
+                fingerprint.StabilityLevel.ToString(),
                 fingerprint.IncludedSignalCount,
                 fingerprint.ExcludedSensitiveSignalCount);
 
@@ -335,6 +335,7 @@ public static class RuntimeSampleRenderer
         IReadOnlyList<RuntimeSampleSignal> importantSignals)
     {
         var host = payload.Host;
+        var diagnosticFingerprint = report.Host.DiagnosticFingerprints.FirstOrDefault();
         return new CompactSampleData(
             [
                 MapContainerized(payload.ActualClassification.IsContainerized),
@@ -367,10 +368,10 @@ public static class RuntimeSampleRenderer
                 NormalizeMemoryLimit(host.Hardware.CgroupMemoryLimitRaw, host.Hardware.MemoryTotalBytes),
                 host.Hardware.CpuFlagsHash),
             new CompactFingerprintSection(
-                host.Fingerprint?.ShortValue ?? "sha256:0",
-                host.Fingerprint?.Stability ?? KnownValues.Unknown,
-                host.Fingerprint?.IncludedSignalCount ?? 0,
-                host.Fingerprint?.ExcludedSensitiveSignalCount ?? 0),
+                diagnosticFingerprint is null ? "sha256:0" : ShortHash(diagnosticFingerprint.Value, 8),
+                diagnosticFingerprint?.StabilityLevel.ToString() ?? KnownValues.Unknown,
+                diagnosticFingerprint?.IncludedSignalCount ?? 0,
+                diagnosticFingerprint?.ExcludedSensitiveSignalCount ?? 0),
             [
                 $"mk:{payload.ProbeOutcomes.MarkerFiles}",
                 $"env:{payload.ProbeOutcomes.Environment}",

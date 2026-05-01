@@ -189,7 +189,7 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "kernel.release", "6.17.0-1011-azure")
         ]);
 
-        Assert.Equal(first.Host.Fingerprint?.Value, second.Host.Fingerprint?.Value);
+        Assert.Equal(first.Host.DiagnosticFingerprints.FirstOrDefault()?.Value, second.Host.DiagnosticFingerprints.FirstOrDefault()?.Value);
     }
 
     [Fact]
@@ -211,9 +211,12 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("environment", "HOSTNAME", "sensitive-hostname")
         ]);
 
-        Assert.NotEqual(baseline.Host.Fingerprint?.Value, changed.Host.Fingerprint?.Value);
-        Assert.Contains(baseline.Host.Fingerprint!.Components, component => component.Name == "hostname" && !component.Included);
-        Assert.DoesNotContain("sensitive-hostname", string.Join('|', baseline.Host.Fingerprint.Components.Select(component => component.RawValueRedacted)));
+        var baselineFingerprint = Assert.Single(baseline.Host.DiagnosticFingerprints);
+        var changedFingerprint = Assert.Single(changed.Host.DiagnosticFingerprints);
+
+        Assert.NotEqual(baselineFingerprint.Value, changedFingerprint.Value);
+        Assert.Contains(baselineFingerprint.Components, component => component.Name == "hostname" && !component.Included);
+        Assert.DoesNotContain("sensitive-hostname", string.Join('|', baselineFingerprint.Components.Select(component => component.RawValueRedacted)));
     }
 
     [Fact]
@@ -227,8 +230,10 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "kernel.hostname", "redacted", EvidenceSensitivity.Sensitive)
         ]);
 
-        Assert.Equal(1, report.Host.Fingerprint!.ExcludedSensitiveSignalCount);
-        Assert.Contains(report.Host.Fingerprint.Components, component => component.Name == "hostname" && !component.Included);
+        var fingerprint = Assert.Single(report.Host.DiagnosticFingerprints);
+
+        Assert.Equal(1, fingerprint.ExcludedSensitiveSignalCount);
+        Assert.Contains(fingerprint.Components, component => component.Name == "hostname" && !component.Included);
     }
 
     [Fact]

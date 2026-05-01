@@ -18,9 +18,10 @@ internal static class HostReportBuilder
         var virtualization = BuildVirtualization(evidence);
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
-        var fingerprint = BuildFingerprint(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
+        var diagnosticFingerprints = BuildDiagnosticFingerprints(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
+        var identityAnchors = BuildIdentityAnchors();
 
-        return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, fingerprint);
+        return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, diagnosticFingerprints, identityAnchors);
     }
 
     private static ContainerImageOsInfo BuildContainerImageOs(IReadOnlyList<EvidenceItem> evidence, string defaultArchitectureRaw)
@@ -272,7 +273,7 @@ internal static class HostReportBuilder
             GetValue(evidence, "cloud.machine_type"));
     }
 
-    private static HostFingerprint? BuildFingerprint(
+    private static IReadOnlyList<DiagnosticFingerprint> BuildDiagnosticFingerprints(
         IReadOnlyList<EvidenceItem> evidence,
         ReportClassification classification,
         RuntimeReportedHostOsInfo runtimeHostOs,
@@ -282,7 +283,7 @@ internal static class HostReportBuilder
     {
         if (fingerprintMode == FingerprintMode.None)
         {
-            return null;
+            return [];
         }
 
         var included = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -318,7 +319,7 @@ internal static class HostReportBuilder
             AddIncluded("memory.cgroup.limit.bucket", HostParsing.NormalizeMemoryBucket(hardware.Memory.CgroupMemoryLimitBytes));
         }
 
-        var excluded = new List<HostFingerprintComponent>();
+        var excluded = new List<DiagnosticFingerprintComponent>();
         AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "kernel.hostname", "HOSTNAME");
         AddExcludedIfPresent(evidence, excluded, "cpu.serial", "cpu.serial");
         AddExcludedIfPresent(evidence, excluded, "container.inspect", "container.inspect.status", "container.inspect.outcome");
@@ -327,7 +328,7 @@ internal static class HostReportBuilder
 
         var components = included
             .OrderBy(kvp => kvp.Key, StringComparer.Ordinal)
-            .Select(kvp => new HostFingerprintComponent(kvp.Key, true, kvp.Value))
+            .Select(kvp => new DiagnosticFingerprintComponent(kvp.Key, true, kvp.Value))
             .Concat(excluded)
             .ToArray();
 
@@ -340,15 +341,33 @@ internal static class HostReportBuilder
             _ => FingerprintStability.Unknown
         };
 
-        return new HostFingerprint(
-            "CRP-HOST-FP-v1",
-            HostParsing.ComputeFingerprint(included),
-            stability,
-            included.Count,
-            excluded.Count,
-            components,
-            ["Fingerprint is diagnostic only and not a security identity."]);
+        var sourceClasses = ClassifyDiagnosticSourceClasses(included.Keys).ToArray();
+        var stabilityLevel = ClassifyDiagnosticStabilityLevel(included, stability);
+        var uniquenessLevel = ClassifyDiagnosticUniquenessLevel(included);
+        var corroborationLevel = ClassifyDiagnosticCorroborationLevel(sourceClasses);
+        var reasons = BuildDiagnosticFingerprintReasons(stabilityLevel, sourceClasses, excluded.Count).ToArray();
+
+        return
+        [
+            new DiagnosticFingerprint(
+                DiagnosticFingerprintPurpose.EnvironmentCorrelation,
+                "CRP-HOST-FP-v1",
+                HostParsing.ComputeFingerprint(included),
+                stability,
+                stabilityLevel,
+                uniquenessLevel,
+                corroborationLevel,
+                included.Count,
+                excluded.Count,
+                sourceClasses,
+                components,
+                ["Fingerprint is diagnostic only and not a security identity."],
+                reasons)
+        ];
     }
+
+    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors()
+        => [];
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(
         IReadOnlyList<EvidenceItem> evidence,
@@ -429,11 +448,107 @@ internal static class HostReportBuilder
             references);
     }
 
-    private static void AddExcludedIfPresent(IReadOnlyList<EvidenceItem> evidence, ICollection<HostFingerprintComponent> excluded, string name, params string[] keys)
+    private static IReadOnlyList<DiagnosticFingerprintSourceClass> ClassifyDiagnosticSourceClasses(IEnumerable<string> keys)
+        => keys
+            .Select(ClassifyDiagnosticSourceClass)
+            .Where(sourceClass => sourceClass != DiagnosticFingerprintSourceClass.Unknown)
+            .Distinct()
+            .OrderBy(sourceClass => sourceClass)
+            .ToArray();
+
+    private static DiagnosticFingerprintSourceClass ClassifyDiagnosticSourceClass(string key)
+        => key switch
+        {
+            var value when value.StartsWith("kernel.", StringComparison.Ordinal) => DiagnosticFingerprintSourceClass.KernelSignal,
+            var value when value.StartsWith("runtime.", StringComparison.Ordinal) => DiagnosticFingerprintSourceClass.RuntimeApi,
+            var value when value.StartsWith("cloud.", StringComparison.Ordinal) => DiagnosticFingerprintSourceClass.CloudMetadata,
+            var value when value.StartsWith("kubernetes.", StringComparison.Ordinal) => DiagnosticFingerprintSourceClass.KubernetesMetadata,
+            var value when value.StartsWith("architecture.", StringComparison.Ordinal)
+                || value.StartsWith("cpu.", StringComparison.Ordinal)
+                || value.StartsWith("memory.", StringComparison.Ordinal) => DiagnosticFingerprintSourceClass.HardwareProfile,
+            _ => DiagnosticFingerprintSourceClass.Unknown
+        };
+
+    private static DiagnosticFingerprintStabilityLevel ClassifyDiagnosticStabilityLevel(
+        IReadOnlyDictionary<string, string> included,
+        FingerprintStability stability)
+    {
+        if (included.Keys.Any(key => key is "kernel.release" or "runtime.engine.version.majorMinor" or "kubernetes.node.containerRuntimeVersion.majorMinor" or "runtime.host.kernel"))
+        {
+            return DiagnosticFingerprintStabilityLevel.UpdateSensitive;
+        }
+
+        if (included.Keys.Any(key => key is "architecture.normalized" or "cpu.vendor" or "cpu.family" or "cpu.modelName.normalized" or "memory.total.bucket"))
+        {
+            return DiagnosticFingerprintStabilityLevel.ProfileStable;
+        }
+
+        return stability == FingerprintStability.ContainerOnly
+            ? DiagnosticFingerprintStabilityLevel.Ephemeral
+            : DiagnosticFingerprintStabilityLevel.Ephemeral;
+    }
+
+    private static DiagnosticFingerprintUniquenessLevel ClassifyDiagnosticUniquenessLevel(IReadOnlyDictionary<string, string> included)
+    {
+        var hasCpuFlagsHash = included.ContainsKey("cpu.flags.hash");
+        var hasCloudMachineType = included.ContainsKey("cloud.machine.type");
+        if (hasCpuFlagsHash && hasCloudMachineType)
+        {
+            return DiagnosticFingerprintUniquenessLevel.Medium;
+        }
+
+        if (hasCpuFlagsHash || hasCloudMachineType)
+        {
+            return DiagnosticFingerprintUniquenessLevel.Low;
+        }
+
+        return DiagnosticFingerprintUniquenessLevel.Unknown;
+    }
+
+    private static DiagnosticFingerprintCorroborationLevel ClassifyDiagnosticCorroborationLevel(IReadOnlyCollection<DiagnosticFingerprintSourceClass> sourceClasses)
+    {
+        if (sourceClasses.Count >= 2)
+        {
+            return DiagnosticFingerprintCorroborationLevel.CrossSource;
+        }
+
+        if (sourceClasses.Count == 1)
+        {
+            return DiagnosticFingerprintCorroborationLevel.SingleSource;
+        }
+
+        return DiagnosticFingerprintCorroborationLevel.Unknown;
+    }
+
+    private static IReadOnlyList<string> BuildDiagnosticFingerprintReasons(
+        DiagnosticFingerprintStabilityLevel stabilityLevel,
+        IReadOnlyCollection<DiagnosticFingerprintSourceClass> sourceClasses,
+        int excludedSensitiveSignalCount)
+    {
+        var reasons = new List<string>();
+        if (stabilityLevel == DiagnosticFingerprintStabilityLevel.UpdateSensitive)
+        {
+            reasons.Add("Includes kernel or runtime version signals and is expected to change across updates.");
+        }
+
+        if (sourceClasses.Count >= 2)
+        {
+            reasons.Add("Combines multiple source classes for broader environment correlation.");
+        }
+
+        if (excludedSensitiveSignalCount > 0)
+        {
+            reasons.Add("Sensitive identifiers remain excluded from the diagnostic fingerprint payload.");
+        }
+
+        return reasons;
+    }
+
+    private static void AddExcludedIfPresent(IReadOnlyList<EvidenceItem> evidence, ICollection<DiagnosticFingerprintComponent> excluded, string name, params string[] keys)
     {
         if (keys.Any(key => evidence.Any(item => item.Key == key)))
         {
-            excluded.Add(new HostFingerprintComponent(name, false, "redacted"));
+            excluded.Add(new DiagnosticFingerprintComponent(name, false, "redacted"));
         }
     }
 

@@ -119,19 +119,22 @@ public static class ReportRenderer
         sb.AppendLine($"- Compatible: {ValueOrUnknownString(report.Host.Hardware.DeviceTree.Compatible)}");
         sb.AppendLine($"- Confidence: {report.Host.Hardware.DeviceTree.Confidence}");
         sb.AppendLine();
-        sb.AppendLine("### Host Fingerprint");
-        if (report.Host.Fingerprint is null)
+        sb.AppendLine("### Diagnostic Fingerprints");
+        var diagnosticFingerprint = report.Host.DiagnosticFingerprints.FirstOrDefault();
+        if (diagnosticFingerprint is null)
         {
-            sb.AppendLine("- Fingerprint generation disabled.");
+            sb.AppendLine("- Diagnostic fingerprint generation disabled.");
         }
         else
         {
-            sb.AppendLine($"- Algorithm: {report.Host.Fingerprint.Algorithm}");
-            sb.AppendLine($"- Value: {report.Host.Fingerprint.Value}");
-            sb.AppendLine($"- Stability: {report.Host.Fingerprint.Stability}");
-            sb.AppendLine($"- Included Signals: {report.Host.Fingerprint.IncludedSignalCount}");
-            sb.AppendLine($"- Excluded Sensitive Signals: {report.Host.Fingerprint.ExcludedSensitiveSignalCount}");
-            foreach (var warning in report.Host.Fingerprint.Warnings)
+            sb.AppendLine($"- Purpose: {diagnosticFingerprint.Purpose}");
+            sb.AppendLine($"- Algorithm: {diagnosticFingerprint.Algorithm}");
+            sb.AppendLine($"- Value: {diagnosticFingerprint.Value}");
+            sb.AppendLine($"- Stability: {diagnosticFingerprint.Stability}");
+            sb.AppendLine($"- Stability Level: {diagnosticFingerprint.StabilityLevel}");
+            sb.AppendLine($"- Included Signals: {diagnosticFingerprint.IncludedSignalCount}");
+            sb.AppendLine($"- Excluded Sensitive Signals: {diagnosticFingerprint.ExcludedSensitiveSignalCount}");
+            foreach (var warning in diagnosticFingerprint.Warnings)
             {
                 sb.AppendLine($"- Warning: {warning}");
             }
@@ -230,7 +233,7 @@ public static class ReportRenderer
             ("KernelBuild",     kernelBuild,                                    kernel.Compiler is null ? null : Confidence.Low),
             ("ContainerOS",     containerOs,                                    null),
             ("Kernel",          kernelVersion,                                  kernel.Confidence),
-            ("HostFingerprint", report.Host.Fingerprint?.Value ?? "disabled",   null),
+            ("HostFingerprint", report.Host.DiagnosticFingerprints.FirstOrDefault()?.Value ?? "disabled", null),
         ];
 
         var maxKeyLen = fields.Max(f => f.Key.Length);
