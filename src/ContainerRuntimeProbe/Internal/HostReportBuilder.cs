@@ -379,6 +379,12 @@ internal static class HostReportBuilder
             anchors.Add(kubernetesNodeAnchor);
         }
 
+        var windowsMachineIdAnchor = BuildWindowsMachineIdAnchor(evidence);
+        if (windowsMachineIdAnchor is not null)
+        {
+            anchors.Add(windowsMachineIdAnchor);
+        }
+
         var siemensIedRuntimeAnchor = BuildSiemensIedRuntimeIdentityAnchor(evidence);
         if (siemensIedRuntimeAnchor is not null)
         {
@@ -492,6 +498,27 @@ internal static class HostReportBuilder
                 "trust.ied.endpoint.tls.subject"),
             [],
             ["Digest derived from Siemens IED runtime certificate-chain evidence with matched local TLS binding."]);
+    }
+
+    private static IdentityAnchor? BuildWindowsMachineIdAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var machineGuid = GetValue(evidence, "windows.machine_guid");
+        if (string.IsNullOrWhiteSpace(machineGuid) || string.Equals(machineGuid, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.MachineIdDigest,
+            "CRP-WINDOWS-MACHINE-ID-v1",
+            ComputeIdentityAnchorDigest("windows-machine-guid", machineGuid),
+            IdentityAnchorScope.Host,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, "windows.machine_guid", "windows.product_name", "kernel.release"),
+            ["MachineGuid is installation-stable but may change across OS reinstallation, templating, or image cloning."],
+            ["Digest derived from observed Windows MachineGuid registry value."]);
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

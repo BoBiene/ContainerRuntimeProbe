@@ -64,7 +64,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Cloud-/Kubernetes-Rollout
 
 ### Phase 2: Windows
 
-- [ ] **19. Windows-Anchor-Quelle definieren und implementieren**
+- [x] **19. Windows-Anchor-Quelle definieren und implementieren**
   - TPM-Praesenz bleibt getrennt von Identitaet; ein Windows-Anchor braucht bestehendes Public-Material oder eine konservative Maschinen-ID-Regel.
 
 ### Phase 3: Linux / Container

@@ -301,6 +301,28 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsWindowsMachineIdDigest_AsConservativeHostCorrelationAnchor()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "windows.machine_guid", "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "windows.product_name", "Windows 11 Pro"),
+            new EvidenceItem("proc-files", "kernel.release", "10.0.26200")
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.MachineIdDigest));
+
+        Assert.Equal("CRP-WINDOWS-MACHINE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:windows.machine_guid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("installation-stable", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_DoesNotPromoteWeakGenericSignals()
     {
         var report = BuildHostReport([

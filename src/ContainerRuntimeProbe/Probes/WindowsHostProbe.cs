@@ -72,6 +72,7 @@ internal sealed class WindowsHostProbe : IProbe
         var productName = NormalizeWindowsProductName(_readCurrentVersionRegistryValue("ProductName"), kernel.Release);
         AddEvidenceIfPresent(evidence, "windows.product_name", productName);
         AddEvidenceIfPresent(evidence, "windows.display_version", _readCurrentVersionRegistryValue("DisplayVersion") ?? _readCurrentVersionRegistryValue("ReleaseId"));
+        AddEvidenceIfPresent(evidence, "windows.machine_guid", _readCurrentVersionRegistryValue("MachineGuid"), EvidenceSensitivity.Sensitive);
 
         AddRegistryEvidence(evidence, "SystemManufacturer", "dmi.sys_vendor");
         AddRegistryEvidence(evidence, "SystemProductName", "dmi.product_name");
@@ -88,11 +89,11 @@ internal sealed class WindowsHostProbe : IProbe
     private void AddRegistryEvidence(List<EvidenceItem> evidence, string registryValueName, string evidenceKey)
         => AddEvidenceIfPresent(evidence, evidenceKey, _readBiosRegistryValue(registryValueName));
 
-    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private static void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem("proc-files", key, value.Trim()));
+            evidence.Add(new EvidenceItem("proc-files", key, value.Trim(), sensitivity));
         }
     }
 

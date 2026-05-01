@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Model;
 using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -20,36 +21,22 @@ public sealed class WindowsHostProbeTests
             ["BIOSVendor"] = "Microsoft Corporation"
         };
 
-        var probe = new WindowsHostProbe(
-            () => true,
-            valueName => registryValues.TryGetValue(valueName, out var value) ? value : null,
+        var probe = CreateWindowsProbe(
+            registryValues,
             valueName => valueName switch
             {
                 "ProductName" => "Windows 11 Pro",
                 "DisplayVersion" => "24H2",
+                "MachineGuid" => "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111",
                 _ => null
-            },
-            () => Architecture.X64,
-            () => "Microsoft Windows 10.0.26200",
-            () => 16);
+            });
 
         var context = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
         var result = await probe.ExecuteAsync(context);
 
         Assert.Equal("proc-files", result.ProbeId);
         Assert.Equal(ProbeOutcome.Success, result.Outcome);
-        Assert.Contains(result.Evidence, item => item.Key == "kernel.name" && item.Value == "Microsoft Windows");
-        Assert.Contains(result.Evidence, item => item.Key == "kernel.release" && item.Value == "10.0.26200");
-        Assert.Contains(result.Evidence, item => item.Key == "kernel.architecture" && item.Value == "x86_64");
-        Assert.Contains(result.Evidence, item => item.Key == "windows.product_name" && item.Value == "Windows 11 Pro");
-        Assert.Contains(result.Evidence, item => item.Key == "windows.display_version" && item.Value == "24H2");
-        Assert.Contains(result.Evidence, item => item.Key == "cpu.logical_processors" && item.Value == "16");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.sys_vendor" && item.Value == "Microsoft Corporation");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.product_name" && item.Value == "Virtual Machine");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.product_family" && item.Value == "Hyper-V");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.board_vendor" && item.Value == "Microsoft Corporation");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.board_name" && item.Value == "Virtual Machine");
-        Assert.Contains(result.Evidence, item => item.Key == "dmi.bios_vendor" && item.Value == "Microsoft Corporation");
+        AssertWindowsEvidence(result.Evidence);
     }
 
     [Fact]
@@ -117,6 +104,34 @@ public sealed class WindowsHostProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.version" && item.Value == "2.0");
         Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.interface_type" && item.Value == "3");
         Assert.Contains(result.Evidence, item => item.Key == "trust.windows.tpm.implementation_revision" && item.Value == "0x00010002");
+    }
+
+    private static WindowsHostProbe CreateWindowsProbe(
+        IReadOnlyDictionary<string, string> biosValues,
+        Func<string, string?> currentVersionValueFactory)
+        => new(
+            () => true,
+            valueName => biosValues.TryGetValue(valueName, out var value) ? value : null,
+            currentVersionValueFactory,
+            () => Architecture.X64,
+            () => "Microsoft Windows 10.0.26200",
+            () => 16);
+
+    private static void AssertWindowsEvidence(IReadOnlyList<EvidenceItem> evidence)
+    {
+        Assert.Contains(evidence, item => item.Key == "kernel.name" && item.Value == "Microsoft Windows");
+        Assert.Contains(evidence, item => item.Key == "kernel.release" && item.Value == "10.0.26200");
+        Assert.Contains(evidence, item => item.Key == "kernel.architecture" && item.Value == "x86_64");
+        Assert.Contains(evidence, item => item.Key == "windows.product_name" && item.Value == "Windows 11 Pro");
+        Assert.Contains(evidence, item => item.Key == "windows.display_version" && item.Value == "24H2");
+        Assert.Contains(evidence, item => item.Key == "windows.machine_guid" && item.Value == "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(evidence, item => item.Key == "cpu.logical_processors" && item.Value == "16");
+        Assert.Contains(evidence, item => item.Key == "dmi.sys_vendor" && item.Value == "Microsoft Corporation");
+        Assert.Contains(evidence, item => item.Key == "dmi.product_name" && item.Value == "Virtual Machine");
+        Assert.Contains(evidence, item => item.Key == "dmi.product_family" && item.Value == "Hyper-V");
+        Assert.Contains(evidence, item => item.Key == "dmi.board_vendor" && item.Value == "Microsoft Corporation");
+        Assert.Contains(evidence, item => item.Key == "dmi.board_name" && item.Value == "Virtual Machine");
+        Assert.Contains(evidence, item => item.Key == "dmi.bios_vendor" && item.Value == "Microsoft Corporation");
     }
 
     [Fact]
