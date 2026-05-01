@@ -406,6 +406,17 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         using var nodeDoc = JsonDocument.Parse(nodeResult.body);
+        if (nodeDoc.RootElement.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.node.name", nodeName);
+            AddEvidenceIfPresent(evidence, "kubernetes.node.uid", JsonHelper.GetString(metadata, "uid"));
+        }
+
+        if (nodeDoc.RootElement.TryGetProperty("spec", out var nodeSpec) && nodeSpec.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.node.provider_id", JsonHelper.GetString(nodeSpec, "providerID"));
+        }
+
         if (!nodeDoc.RootElement.TryGetProperty("status", out var status) ||
             status.ValueKind != JsonValueKind.Object ||
             !status.TryGetProperty("nodeInfo", out var nodeInfo) ||
@@ -588,6 +599,7 @@ internal sealed class CloudMetadataProbe : IProbe
         var evidence = new List<EvidenceItem>();
         var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
         var machineTypeTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/machine-type", headers, cancellationToken);
+        var instanceIdTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/id", headers, cancellationToken);
         var zoneTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/zone", headers, cancellationToken);
 
         var machineType = await machineTypeTask.ConfigureAwait(false);
@@ -595,6 +607,14 @@ internal sealed class CloudMetadataProbe : IProbe
         if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
         {
             AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var instanceId = await instanceIdTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.instance_id.outcome", instanceId.outcome.ToString()));
+        if (instanceId.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(instanceId.body))
+        {
+            AddEvidenceIfPresent(evidence, "gcp.instance_id", instanceId.body!.Trim());
             evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
         }
 
@@ -636,6 +656,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "aws.instance_id", parsed.InstanceId);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.architecture", parsed.RawArchitecture);
@@ -651,6 +672,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "azure.vm_id", parsed.InstanceId);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.os_type", parsed.OsType);
@@ -666,6 +688,7 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "oci.instance_id", parsed.InstanceId);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
