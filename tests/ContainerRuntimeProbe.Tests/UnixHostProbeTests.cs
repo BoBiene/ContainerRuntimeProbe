@@ -124,6 +124,29 @@ public sealed class UnixHostProbeTests
     }
 
     [Fact]
+    public async Task UnixHostProbe_MachineId_RemainsSensitive()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/etc/machine-id"] = "87c4bc1848a84471997203ee530d2fda\n"
+        };
+
+        var probe = new UnixHostProbe(
+            values.Keys.ToArray(),
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "machine.id" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "machine.id" && item.Value == "87c4bc1848a84471997203ee530d2fda" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
     public async Task UnixHostProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
     {
         var values = new Dictionary<string, string>

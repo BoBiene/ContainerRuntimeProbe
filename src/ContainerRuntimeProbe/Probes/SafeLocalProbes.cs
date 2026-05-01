@@ -181,6 +181,7 @@ internal sealed class UnixHostProbe : IProbe
         "/proc/self/mountinfo", "/proc/1/mountinfo",
         "/proc/net/route", "/etc/resolv.conf",
         "/etc/hostname",
+        "/etc/machine-id", "/var/lib/dbus/machine-id",
         "/etc/os-release", "/usr/lib/os-release",
         "/proc/version",
         .. BaseKernelSysctlFiles,
@@ -221,6 +222,7 @@ internal sealed class UnixHostProbe : IProbe
         var final = ProbeOutcome.Success;
         string? message = null;
         var osReleaseRead = false;
+        var machineIdRead = false;
         string? procVersion = null;
         string? kernelOsRelease = null;
         string? kernelOsType = null;
@@ -232,6 +234,7 @@ internal sealed class UnixHostProbe : IProbe
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
+            if (file == "/var/lib/dbus/machine-id" && machineIdRead) continue;
 
             var (outcome, text, msg) = await readTasks[file].ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
@@ -280,6 +283,15 @@ internal sealed class UnixHostProbe : IProbe
                 AddEvidenceIfPresent(evidence, "os.support_url", os.SupportUrl);
                 AddEvidenceIfPresent(evidence, "os.bug_report_url", os.BugReportUrl);
                 osReleaseRead = true;
+            }
+            else if (file is "/etc/machine-id" or "/var/lib/dbus/machine-id")
+            {
+                var value = text?.Trim();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    evidence.Add(new EvidenceItem(Id, "machine.id", context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                    machineIdRead = true;
+                }
             }
             else if (file == "/proc/version")
             {

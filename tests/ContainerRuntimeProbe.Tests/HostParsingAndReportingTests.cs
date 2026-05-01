@@ -307,7 +307,7 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "windows.machine_guid", "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", EvidenceSensitivity.Sensitive),
             new EvidenceItem("proc-files", "windows.product_name", "Windows 11 Pro"),
             new EvidenceItem("proc-files", "kernel.release", "10.0.26200")
-        ]);
+        ], ContainerizationKind.@False);
 
         var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.MachineIdDigest));
 
@@ -320,6 +320,37 @@ public sealed class HostParsingAndReportingTests
         Assert.DoesNotContain("9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", anchor.Value, StringComparison.Ordinal);
         Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:windows.machine_guid");
         Assert.Contains(anchor.Warnings, warning => warning.Contains("installation-stable", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsLinuxMachineIdDigest_AsConservativeHostCorrelationAnchor()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "machine.id", "87c4bc1848a84471997203ee530d2fda", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "os.id", "debian"),
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic")
+        ], ContainerizationKind.@False);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.MachineIdDigest && item.Algorithm == "CRP-LINUX-MACHINE-ID-v1"));
+
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("87c4bc1848a84471997203ee530d2fda", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:machine.id");
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildMachineIdDigest_ForContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "machine.id", "87c4bc1848a84471997203ee530d2fda", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "windows.machine_guid", "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.MachineIdDigest);
     }
 
     [Fact]
@@ -496,7 +527,7 @@ public sealed class HostParsingAndReportingTests
         Assert.Matches(@"DiagnosticFingerprint\s+:\s+sha256:", text);
     }
 
-    private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence)
+    private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence, ContainerizationKind containerizationKind = ContainerizationKind.@True)
     {
         var report = new ContainerRuntimeReport(
             DateTimeOffset.UtcNow,
@@ -512,7 +543,7 @@ public sealed class HostParsingAndReportingTests
             ],
             [],
             new ReportClassification(
-                new(ContainerizationKind.@True, Confidence.High, []),
+                new(containerizationKind, Confidence.High, []),
                 new(ContainerRuntimeKind.Docker, Confidence.High, []),
                 new(VirtualizationClassificationKind.None, Confidence.Medium, []),
                 new(new(OperatingSystemFamily.Linux, Confidence.High, []), new(HostTypeKind.StandardLinux, Confidence.High, [])),

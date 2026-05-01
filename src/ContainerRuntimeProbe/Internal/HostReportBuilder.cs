@@ -21,7 +21,7 @@ internal static class HostReportBuilder
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var diagnosticFingerprints = BuildDiagnosticFingerprints(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
-        var identityAnchors = BuildIdentityAnchors(evidence);
+        var identityAnchors = BuildIdentityAnchors(evidence, classification);
 
         return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, diagnosticFingerprints, identityAnchors);
     }
@@ -368,7 +368,7 @@ internal static class HostReportBuilder
         ];
     }
 
-    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors(IReadOnlyList<EvidenceItem> evidence)
+    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
     {
         var anchors = new List<IdentityAnchor>();
         anchors.AddRange(BuildCloudInstanceIdentityAnchors(evidence));
@@ -379,10 +379,16 @@ internal static class HostReportBuilder
             anchors.Add(kubernetesNodeAnchor);
         }
 
-        var windowsMachineIdAnchor = BuildWindowsMachineIdAnchor(evidence);
+        var windowsMachineIdAnchor = BuildWindowsMachineIdAnchor(evidence, classification);
         if (windowsMachineIdAnchor is not null)
         {
             anchors.Add(windowsMachineIdAnchor);
+        }
+
+        var linuxMachineIdAnchor = BuildLinuxMachineIdAnchor(evidence, classification);
+        if (linuxMachineIdAnchor is not null)
+        {
+            anchors.Add(linuxMachineIdAnchor);
         }
 
         var siemensIedRuntimeAnchor = BuildSiemensIedRuntimeIdentityAnchor(evidence);
@@ -500,8 +506,13 @@ internal static class HostReportBuilder
             ["Digest derived from Siemens IED runtime certificate-chain evidence with matched local TLS binding."]);
     }
 
-    private static IdentityAnchor? BuildWindowsMachineIdAnchor(IReadOnlyList<EvidenceItem> evidence)
+    private static IdentityAnchor? BuildWindowsMachineIdAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
     {
+        if (classification.IsContainerized.Value == ContainerizationKind.@True)
+        {
+            return null;
+        }
+
         var machineGuid = GetValue(evidence, "windows.machine_guid");
         if (string.IsNullOrWhiteSpace(machineGuid) || string.Equals(machineGuid, Redaction.RedactedValue, StringComparison.Ordinal))
         {
@@ -519,6 +530,32 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, "windows.machine_guid", "windows.product_name", "kernel.release"),
             ["MachineGuid is installation-stable but may change across OS reinstallation, templating, or image cloning."],
             ["Digest derived from observed Windows MachineGuid registry value."]);
+    }
+
+    private static IdentityAnchor? BuildLinuxMachineIdAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
+    {
+        if (classification.IsContainerized.Value == ContainerizationKind.@True)
+        {
+            return null;
+        }
+
+        var machineId = GetValue(evidence, "machine.id");
+        if (string.IsNullOrWhiteSpace(machineId) || string.Equals(machineId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.MachineIdDigest,
+            "CRP-LINUX-MACHINE-ID-v1",
+            ComputeIdentityAnchorDigest("linux-machine-id", machineId),
+            IdentityAnchorScope.Host,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, "machine.id", "os.id", KernelReleaseKey),
+            ["machine-id is installation-stable but may change across reinstallation, image cloning, or explicit regeneration."],
+            ["Digest derived from observed Linux machine-id value."]);
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

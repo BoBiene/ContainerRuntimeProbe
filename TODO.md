@@ -69,7 +69,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Cloud-/Kubernetes-Rollout
 
 ### Phase 3: Linux / Container
 
-- [ ] **20. Linux-Host-Anchor aus `machine-id` pruefen und umsetzen**
+- [x] **20. Linux-Host-Anchor aus `machine-id` pruefen und umsetzen**
   - Host-Bindung soll ueber explizite, read-only Host-IDs laufen, nicht ueber Hostname oder CPU-Serial.
 - [ ] **21. Container-Scoped Anchor-Regel einfuehren**
   - Wenn ein Container-Anchor kommt, dann als eigener workload-/runtime-scoped Anchor statt als schwacher Host-Ersatz.
