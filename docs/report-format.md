@@ -52,6 +52,8 @@
 - `IdentityAnchors[]`
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
+  - current built-in sources are cloud instance identity metadata and Kubernetes node identity metadata
+  - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 
 ## Interpretation rules
@@ -63,6 +65,7 @@
 - Hardware is visibility-limited; cgroup limits may differ from physical host capacity.
 - Diagnostic fingerprints are correlation helpers only and must not be treated as host identity.
 - Identity anchors are modeled separately because some consumers may use them for correlation or license binding, but they remain read-only observed values rather than provisioned platform identities.
+- Default safe reports redact sensitive identity-anchor values even though the anchor metadata remains visible.
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.

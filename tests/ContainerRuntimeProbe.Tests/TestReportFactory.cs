@@ -119,5 +119,17 @@ internal static class TestReportFactory
                         ["Fingerprint is diagnostic only and not a security identity."],
                         ["Includes kernel and runtime signals for environment correlation."])
                 ],
-                []));
+                    [
+                        new IdentityAnchor(
+                        IdentityAnchorKind.CloudInstanceIdentity,
+                        "CRP-CLOUD-INSTANCE-v1",
+                        "<redacted>",
+                        IdentityAnchorScope.Host,
+                        BindingSuitability.LicenseBinding,
+                        IdentityAnchorStrength.Strong,
+                        IdentityAnchorSensitivity.Sensitive,
+                        ["cloud-metadata:aws.instance_id"],
+                        [],
+                        ["Digest derived from observed aws instance identity metadata."])
+                    ]));
 }

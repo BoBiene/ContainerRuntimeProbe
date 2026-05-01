@@ -40,6 +40,13 @@
 - General env, hostname, DNS, mount, and cgroup string hits stay heuristic and can contribute to `PlatformEvidence`, but they never become trusted claims on their own.
 - Current trusted scope remains intentionally narrow: `siemens-ied-runtime`, conservative `windows-host-tpm`, and observational `container-tpm-visible`. There is still no trusted `siemens-iem`, no license/entitlement claim, and no TPM quote or hardware attestation flow in this step.
 
+## Identity Anchor Notes
+- `IdentityAnchors` are separate from `TrustedPlatforms` and are built from explicit observed IDs rather than heuristic strings.
+- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs and `KubernetesNodeIdentity` from Kubernetes node UID or provider ID.
+- Weak generic signals such as hostname, DNS labels, mount paths, cgroup strings, or visible TPM device nodes do not become license-binding anchors on their own.
+- Anchor values are stored as digests and are redacted in the default host report.
+- Future TPM or machine-certificate anchors must stay read-only and digest-based; the package must not create TPM keys or provision certificates.
+
 ## Orchestrator / Cloud
-- `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`
-- `cloud-metadata`: ECS metadata, AWS IMDSv2 safe identity document, Azure IMDS safe compute metadata, GCP machine-type/zone, OCI instance metadata, cloud env markers
+- `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`, `metadata.uid`, and `spec.providerID`
+- `cloud-metadata`: ECS metadata, AWS IMDSv2 safe identity document, Azure IMDS safe compute metadata, GCP machine-type/zone/instance-id, OCI instance metadata, cloud env markers

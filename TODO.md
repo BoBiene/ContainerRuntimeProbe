@@ -19,37 +19,39 @@ Statusbasis: Session-Plan mit 4 Phasen und 14 Punkten, abgeglichen gegen den akt
   - `CRP-HOST-FP-v1` lebt als erster `DiagnosticFingerprint` weiter.
 - [x] **5. Identity-Anchor-Pfad real implementieren**
   - `BuildIdentityAnchors(...)` wertet jetzt explizite Cloud-Instance- und Kubernetes-Node-IDs aus.
-- [ ] **6. Zulaessige Anchor-Quellen festlegen und priorisieren**
-  - Erster Ausbau laeuft jetzt ueber `CloudInstanceIdentity` und `KubernetesNodeIdentity`; TPM-/Zertifikat-Digests und Vendor-Runtime-IDs bleiben offen.
-- [ ] **7. Read-only-TPM-Regel explizit machen**
+- [x] **6. Zulaessige Anchor-Quellen festlegen und priorisieren**
+  - Erster Ausbau laeuft jetzt ueber `CloudInstanceIdentity` und `KubernetesNodeIdentity`; TPM-/Zertifikat-Digests und Vendor-Runtime-IDs bleiben explizit als spaetere Erweiterung markiert.
+- [x] **7. Read-only-TPM-Regel explizit machen**
   - Keine Key-Erzeugung, keine Provisionierung, nur Digests ueber bestehendes oeffentliches Material.
 - [x] **8. Trust sauber von Identity trennen**
   - `IdentityAnchors` werden im Host-Builder separat aus Evidenz erzeugt und haengen nicht an `TrustedPlatforms`.
 - [x] **9. Anchor-Staerken und Binding-Regeln kodieren**
   - Cloud-Instance-IDs werden als `Strong`, Kubernetes-Provider-ID-Fallbacks als `Medium`, und schwache generische Signale gar nicht als Anchor modelliert.
-- [ ] **10. Scope- und Privacy-Defaults festziehen**
-  - Host-Report redigiert Anchor-Werte jetzt standardmaessig; Renderer-, Doku- und Sample-Abgleich bleibt offen.
+- [x] **10. Scope- und Privacy-Defaults festziehen**
+  - Host-Report redigiert Anchor-Werte standardmaessig; Renderer, Sample-Export und Doku beschreiben den sicheren Default jetzt konsistent.
 
 ### Phase 3: Probe- und Builder-Verantwortung
 
-- [ ] **11. Anchor-faehige Evidenzpfade aufraeumen**
-  - Cloud-/Kubernetes-Evidenz fuer stabile IDs ist drin; weitere Quellen und ein dedizierter Anchor-Builder bleiben offen.
-- [ ] **12. Rendering und Doku vollstaendig angleichen**
+- [x] **11. Anchor-faehige Evidenzpfade aufraeumen**
+  - Cloud-/Kubernetes-Evidenz fuer stabile IDs wird jetzt explizit gesammelt und separat im Host-Builder ausgewertet.
+- [x] **12. Rendering und Doku vollstaendig angleichen**
   - `security.md`, `probe-catalog.md`, Renderer und API-Erzaehlung muessen Diagnose/Anchor/Privacy konsistent beschreiben.
 
 ### Phase 4: Validation and limits
 
-- [ ] **13. Testmatrix aufspalten**
-  - Getrennte Tests fuer Diagnose-Fingerprints, Anchor-Selektion, Redaction und Nicht-Hochstufung schwacher Signale.
-- [ ] **14. Plattformgrenzen explizit machen**
-  - Leere oder nur schwache `IdentityAnchors` sind fachlich korrekte Ergebnisse und muessen so dokumentiert und getestet werden.
+- [x] **13. Testmatrix aufspalten**
+  - Getrennte Tests fuer Diagnose-Fingerprints, Anchor-Selektion, Redaction, Renderer und Sample-Export sind nachgezogen.
+- [x] **14. Plattformgrenzen explizit machen**
+  - Schwache generische Signale bleiben ohne Anchor; Doku und Tests halten leere oder fehlende Anchors explizit fuer korrekt.
 
 ### Additional Open Points Found During Validation
 
-- [ ] **15. Legacy-Ausgabelabels bereinigen**
-  - Text-/Sample-Ausgaben verwenden teils noch `HostFingerprint` oder `Fingerprint`, obwohl der Contract bereits getrennt ist.
-- [ ] **16. Beispiel- und Release-Doku nachziehen**
-  - `CHANGELOG`, Beispielreports und Sample-Doku muessen nach dem finalen Anchor-/Redaction-Shape abgeglichen werden.
+- [x] **15. Legacy-Ausgabelabels bereinigen**
+  - Renderer-, Sample- und Beispieltexte sprechen jetzt konsistent von `DiagnosticFingerprint` bzw. `IdentityAnchors`.
+- [x] **16. Beispiel- und Release-Doku nachziehen**
+  - `CHANGELOG`, Beispielreports und die relevante API-/Security-Doku sind auf den aktuellen Anchor-/Redaction-Stand gebracht.
+- [x] **17. RuntimeSampleRenderer Analyzer-Debt abbauen**
+  - Abschlussvalidierung zeigt noch bestehenden Maintainability- und Literal-Debt in `RuntimeSampleRenderer.cs`; das ist der letzte offene technische Nachlauf dieser Runde.
 
 ## Critical
 

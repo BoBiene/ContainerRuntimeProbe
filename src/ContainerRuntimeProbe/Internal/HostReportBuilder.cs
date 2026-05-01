@@ -7,6 +7,8 @@ namespace ContainerRuntimeProbe.Internal;
 
 internal static class HostReportBuilder
 {
+    private const string KernelReleaseKey = "kernel.release";
+
     public static HostReport Build(IReadOnlyList<ProbeResult> probes, ReportClassification classification, FingerprintMode fingerprintMode)
     {
         var evidence = probes.SelectMany(probe => probe.Evidence).ToList();
@@ -56,7 +58,7 @@ internal static class HostReportBuilder
 
     private static VisibleKernelInfo BuildVisibleKernel(IReadOnlyList<EvidenceItem> evidence, string defaultArchitectureRaw)
     {
-        var release = GetValue(evidence, "kernel.release");
+        var release = GetValue(evidence, KernelReleaseKey);
         var architectureRaw = GetValue(evidence, "kernel.architecture") ?? GetValue(evidence, "runtime.architecture") ?? defaultArchitectureRaw;
         var flavor = Enum.TryParse<KernelFlavor>(GetValue(evidence, "kernel.flavor"), ignoreCase: true, out var parsedFlavor) ? parsedFlavor : KernelFlavor.Unknown;
         var compilerRaw = GetValue(evidence, "kernel.compiler.raw") ?? GetValue(evidence, "kernel.compiler");
@@ -297,7 +299,7 @@ internal static class HostReportBuilder
 
         AddIncluded("runtime.host.os.normalized", runtimeHostOs.Family != OperatingSystemFamily.Unknown ? runtimeHostOs.Family.ToString() : null);
         AddIncluded("runtime.host.os.version", HostParsing.NormalizeVersionMajorMinor(runtimeHostOs.Version));
-        AddIncluded("kernel.release", visibleKernel.Release);
+        AddIncluded(KernelReleaseKey, visibleKernel.Release);
         AddIncluded("kernel.flavor", visibleKernel.Flavor != KernelFlavor.Unknown ? visibleKernel.Flavor.ToString() : null);
         AddIncluded("architecture.normalized", hardware.Architecture != ArchitectureKind.Unknown ? hardware.Architecture.ToString() : null);
         AddIncluded("cpu.vendor", hardware.Cpu.Vendor);
@@ -342,7 +344,7 @@ internal static class HostReportBuilder
         };
 
         var sourceClasses = ClassifyDiagnosticSourceClasses(included.Keys).ToArray();
-        var stabilityLevel = ClassifyDiagnosticStabilityLevel(included, stability);
+        var stabilityLevel = ClassifyDiagnosticStabilityLevel(included);
         var uniquenessLevel = ClassifyDiagnosticUniquenessLevel(included);
         var corroborationLevel = ClassifyDiagnosticCorroborationLevel(sourceClasses);
         var reasons = BuildDiagnosticFingerprintReasons(stabilityLevel, sourceClasses, excluded.Count).ToArray();
@@ -548,11 +550,9 @@ internal static class HostReportBuilder
             _ => DiagnosticFingerprintSourceClass.Unknown
         };
 
-    private static DiagnosticFingerprintStabilityLevel ClassifyDiagnosticStabilityLevel(
-        IReadOnlyDictionary<string, string> included,
-        FingerprintStability stability)
+    private static DiagnosticFingerprintStabilityLevel ClassifyDiagnosticStabilityLevel(IReadOnlyDictionary<string, string> included)
     {
-        if (included.Keys.Any(key => key is "kernel.release" or "runtime.engine.version.majorMinor" or "kubernetes.node.containerRuntimeVersion.majorMinor" or "runtime.host.kernel"))
+        if (included.Keys.Any(key => key is KernelReleaseKey or "runtime.engine.version.majorMinor" or "kubernetes.node.containerRuntimeVersion.majorMinor" or "runtime.host.kernel"))
         {
             return DiagnosticFingerprintStabilityLevel.UpdateSensitive;
         }
@@ -562,9 +562,7 @@ internal static class HostReportBuilder
             return DiagnosticFingerprintStabilityLevel.ProfileStable;
         }
 
-        return stability == FingerprintStability.ContainerOnly
-            ? DiagnosticFingerprintStabilityLevel.Ephemeral
-            : DiagnosticFingerprintStabilityLevel.Ephemeral;
+        return DiagnosticFingerprintStabilityLevel.Ephemeral;
     }
 
     private static DiagnosticFingerprintUniquenessLevel ClassifyDiagnosticUniquenessLevel(IReadOnlyDictionary<string, string> included)

@@ -10,39 +10,42 @@ namespace ContainerRuntimeProbe.Rendering;
 /// <summary>Renders <see cref="ContainerRuntimeReport"/> into JSON, Markdown, or compact text formats.</summary>
 public static class ReportRenderer
 {
+    private static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
+
+    private static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum
+        => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
+
+    private static string FormatBytes(long? bytes)
+    {
+        if (bytes is null)
+        {
+            return KnownValues.Unknown;
+        }
+
+        if (bytes < 1024)
+        {
+            return $"{bytes} B";
+        }
+
+        var units = new[] { "KB", "MB", "GB", "TB" };
+        double value = bytes.Value;
+        var index = -1;
+        do
+        {
+            value /= 1024d;
+            index++;
+        }
+        while (value >= 1024d && index < units.Length - 1);
+
+        return $"{value:0.##} {units[index]}";
+    }
+
     /// <summary>Renders report to JSON using source-generated metadata.</summary>
     public static string ToJson(ContainerRuntimeReport report) => JsonSerializer.Serialize(report, ReportJsonContext.Default.ContainerRuntimeReport);
 
     /// <summary>Renders report as Markdown for support and diagnostics workflows.</summary>
     public static string ToMarkdown(ContainerRuntimeReport report)
     {
-        static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
-        static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
-        static string FormatBytes(long? bytes)
-        {
-            if (bytes is null)
-            {
-                return KnownValues.Unknown;
-            }
-
-            if (bytes < 1024)
-            {
-                return $"{bytes} B";
-            }
-
-            var units = new[] { "KB", "MB", "GB", "TB" };
-            double value = bytes.Value;
-            var index = -1;
-            do
-            {
-                value /= 1024d;
-                index++;
-            }
-            while (value >= 1024d && index < units.Length - 1);
-
-            return $"{value:0.##} {units[index]}";
-        }
-
         var sb = new StringBuilder();
         sb.AppendLine("# Container Runtime Report");
         
@@ -57,6 +60,120 @@ public static class ReportRenderer
         
         AppendKeyFindingsMarkdown(sb, report);
         sb.AppendLine();
+        AppendHostMarkdown(sb, report);
+        sb.AppendLine("## Security and Limitations");
+        if (report.SecurityWarnings.Count == 0)
+        {
+            sb.AppendLine("- None detected by current probes.");
+        }
+        else
+        {
+            foreach (var w in report.SecurityWarnings) sb.AppendLine($"- [{w.Code}] {w.Message}");
+        }
+
+        sb.AppendLine();
+        AppendPlatformEvidenceMarkdown(sb, report.PlatformEvidence);
+        sb.AppendLine();
+        AppendTrustedPlatformsMarkdown(sb, report.TrustedPlatforms);
+        sb.AppendLine();
+        sb.AppendLine("## Raw Evidence");
+        foreach (var probe in report.Probes)
+        {
+            sb.AppendLine($"### {probe.ProbeId} ({probe.Outcome})");
+            if (!string.IsNullOrWhiteSpace(probe.Message)) sb.AppendLine($"- message: {probe.Message}");
+            foreach (var item in probe.Evidence.Take(80)) sb.AppendLine($"- {item.Key}: {item.Value}");
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
+    public static string ToText(ContainerRuntimeReport report)
+    {
+        // ContainerOS: what /etc/os-release inside the container says.
+        var containerOs = report.Host.ContainerImageOs.PrettyName
+                       ?? report.Host.ContainerImageOs.Id
+                       ?? KnownValues.Unknown;
+
+        // HostOS: what the container runtime (Docker, etc.) reports as the host — no fallback to container OS.
+        var runtimeHost = report.Host.RuntimeReportedHostOs;
+        string hostOs;
+        if (string.IsNullOrWhiteSpace(runtimeHost.Name))
+        {
+            hostOs = KnownValues.Unknown;
+        }
+        else if (!string.IsNullOrWhiteSpace(runtimeHost.Version)
+                 && !runtimeHost.Name.Contains(runtimeHost.Version, StringComparison.OrdinalIgnoreCase))
+        {
+            hostOs = $"{runtimeHost.Name} {runtimeHost.Version}";
+        }
+        else
+        {
+            hostOs = runtimeHost.Name;
+        }
+
+        var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
+            ? KnownValues.Unknown
+            : report.Host.UnderlyingHostOs.Name
+                ?? report.Host.UnderlyingHostOs.Family.ToString();
+
+        var kernel = report.Host.VisibleKernel;
+        var kernelVersion = FormatKernelSummary(kernel);
+        var kernelBuild = FormatKernelBuild(kernel.Compiler);
+        var kernelHostOs = report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel
+            ? underlyingHost
+            : KnownValues.Unknown;
+
+        var fields = BuildTextFields(report, containerOs, underlyingHost, hostOs, kernelHostOs, kernelBuild, kernelVersion);
+
+        var maxKeyLen = fields.Max(f => f.Key.Length);
+        var sb = new StringBuilder();
+
+        if (report.ProbeToolInfo is not null)
+        {
+            var versionWithCommit = string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommit)
+                ? report.ProbeToolInfo.Version
+                : $"{report.ProbeToolInfo.Version} ({report.ProbeToolInfo.GitCommit})";
+            var header = $"Container Runtime Report  v{versionWithCommit}";
+            sb.AppendLine(header);
+            sb.AppendLine(new string('-', header.Length));
+        }
+
+        AppendKeyFindingsText(sb, report);
+        sb.AppendLine("Details");
+        sb.AppendLine("-------");
+        foreach (var (key, value, conf) in fields)
+        {
+            var confSuffix = conf is not null && conf != Confidence.Unknown
+                ? $"  [{conf}]"
+                : string.Empty;
+            sb.AppendLine($"{key.PadRight(maxKeyLen)} : {value}{confSuffix}");
+        }
+
+        AppendPlatformEvidenceText(sb, report.PlatformEvidence);
+        AppendTrustedPlatformsText(sb, report.TrustedPlatforms);
+
+        return sb.ToString().TrimEnd();
+    }
+
+    private static void AppendKeyFindingsMarkdown(StringBuilder sb, ContainerRuntimeReport report)
+    {
+        sb.AppendLine("## Key Findings");
+        var findings = report.GetRelevantFindings();
+        if (findings.Count == 0)
+        {
+            sb.AppendLine("- No conclusive findings yet. Inspect the detailed sections below.");
+            return;
+        }
+
+        foreach (var finding in findings)
+        {
+            sb.AppendLine($"- {finding.Summary}");
+        }
+    }
+
+    private static void AppendHostMarkdown(StringBuilder sb, ContainerRuntimeReport report)
+    {
         sb.AppendLine("## Host OS / Node");
         sb.AppendLine("### Container Image OS");
         sb.AppendLine($"- Family: {ValueOrUnknownEnum(report.Host.ContainerImageOs.Family)}");
@@ -119,167 +236,116 @@ public static class ReportRenderer
         sb.AppendLine($"- Compatible: {ValueOrUnknownString(report.Host.Hardware.DeviceTree.Compatible)}");
         sb.AppendLine($"- Confidence: {report.Host.Hardware.DeviceTree.Confidence}");
         sb.AppendLine();
+        AppendDiagnosticFingerprintsMarkdown(sb, report.Host.DiagnosticFingerprints);
+        sb.AppendLine();
+        AppendIdentityAnchorsMarkdown(sb, report.Host.IdentityAnchors);
+        sb.AppendLine();
+    }
+
+    private static void AppendDiagnosticFingerprintsMarkdown(StringBuilder sb, IReadOnlyList<DiagnosticFingerprint> fingerprints)
+    {
         sb.AppendLine("### Diagnostic Fingerprints");
-        var diagnosticFingerprint = report.Host.DiagnosticFingerprints.FirstOrDefault();
+        var diagnosticFingerprint = fingerprints.FirstOrDefault();
         if (diagnosticFingerprint is null)
         {
             sb.AppendLine("- Diagnostic fingerprint generation disabled.");
+            return;
         }
-        else
+
+        sb.AppendLine($"- Purpose: {diagnosticFingerprint.Purpose}");
+        sb.AppendLine($"- Algorithm: {diagnosticFingerprint.Algorithm}");
+        sb.AppendLine($"- Value: {diagnosticFingerprint.Value}");
+        sb.AppendLine($"- Stability: {diagnosticFingerprint.Stability}");
+        sb.AppendLine($"- Stability Level: {diagnosticFingerprint.StabilityLevel}");
+        sb.AppendLine($"- Included Signals: {diagnosticFingerprint.IncludedSignalCount}");
+        sb.AppendLine($"- Excluded Sensitive Signals: {diagnosticFingerprint.ExcludedSensitiveSignalCount}");
+        foreach (var warning in diagnosticFingerprint.Warnings)
         {
-            sb.AppendLine($"- Purpose: {diagnosticFingerprint.Purpose}");
-            sb.AppendLine($"- Algorithm: {diagnosticFingerprint.Algorithm}");
-            sb.AppendLine($"- Value: {diagnosticFingerprint.Value}");
-            sb.AppendLine($"- Stability: {diagnosticFingerprint.Stability}");
-            sb.AppendLine($"- Stability Level: {diagnosticFingerprint.StabilityLevel}");
-            sb.AppendLine($"- Included Signals: {diagnosticFingerprint.IncludedSignalCount}");
-            sb.AppendLine($"- Excluded Sensitive Signals: {diagnosticFingerprint.ExcludedSensitiveSignalCount}");
-            foreach (var warning in diagnosticFingerprint.Warnings)
+            sb.AppendLine($"- Warning: {warning}");
+        }
+    }
+
+    private static void AppendIdentityAnchorsMarkdown(StringBuilder sb, IReadOnlyList<IdentityAnchor> anchors)
+    {
+        sb.AppendLine("### Identity Anchors");
+        if (anchors.Count == 0)
+        {
+            sb.AppendLine("- No explicit identity anchors were derived from the visible environment.");
+            return;
+        }
+
+        foreach (var anchor in anchors)
+        {
+            sb.AppendLine($"- Kind: {anchor.Kind}");
+            sb.AppendLine($"- Value: {anchor.Value}");
+            sb.AppendLine($"- Scope: {anchor.Scope}");
+            sb.AppendLine($"- Binding Suitability: {anchor.BindingSuitability}");
+            sb.AppendLine($"- Strength: {anchor.Strength}");
+            sb.AppendLine($"- Sensitivity: {anchor.Sensitivity}");
+            foreach (var reason in anchor.Reasons)
+            {
+                sb.AppendLine($"- Reason: {reason}");
+            }
+
+            foreach (var warning in anchor.Warnings)
             {
                 sb.AppendLine($"- Warning: {warning}");
             }
         }
-        sb.AppendLine();
-        sb.AppendLine("## Security and Limitations");
-        if (report.SecurityWarnings.Count == 0)
-        {
-            sb.AppendLine("- None detected by current probes.");
-        }
-        else
-        {
-            foreach (var w in report.SecurityWarnings) sb.AppendLine($"- [{w.Code}] {w.Message}");
-        }
-
-        sb.AppendLine();
-        AppendPlatformEvidenceMarkdown(sb, report.PlatformEvidence);
-        sb.AppendLine();
-        AppendTrustedPlatformsMarkdown(sb, report.TrustedPlatforms);
-        sb.AppendLine();
-        sb.AppendLine("## Raw Evidence");
-        foreach (var probe in report.Probes)
-        {
-            sb.AppendLine($"### {probe.ProbeId} ({probe.Outcome})");
-            if (!string.IsNullOrWhiteSpace(probe.Message)) sb.AppendLine($"- message: {probe.Message}");
-            foreach (var item in probe.Evidence.Take(80)) sb.AppendLine($"- {item.Key}: {item.Value}");
-        }
-
-        return sb.ToString();
     }
 
-    /// <summary>Renders a multi-line aligned text summary with one field per line and confidence indicators.</summary>
-    public static string ToText(ContainerRuntimeReport report)
-    {
-        static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum => EqualityComparer<T>.Default.Equals(value, default) ? KnownValues.Unknown : value.ToString();
-        static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
+    private static string FormatIdentityAnchorSummary(IReadOnlyList<IdentityAnchor> anchors)
+        => anchors.Count == 0
+            ? "none"
+            : string.Join("; ", anchors.Select(anchor => $"{anchor.Kind}:{anchor.Strength}/{anchor.BindingSuitability}={anchor.Value}"));
 
-        // ContainerOS: what /etc/os-release inside the container says.
-        var containerOs = report.Host.ContainerImageOs.PrettyName
-                       ?? report.Host.ContainerImageOs.Id
-                       ?? KnownValues.Unknown;
-
-        // HostOS: what the container runtime (Docker, etc.) reports as the host — no fallback to container OS.
-        var runtimeHost = report.Host.RuntimeReportedHostOs;
-        string hostOs;
-        if (string.IsNullOrWhiteSpace(runtimeHost.Name))
-        {
-            hostOs = KnownValues.Unknown;
-        }
-        else if (!string.IsNullOrWhiteSpace(runtimeHost.Version)
-                 && !runtimeHost.Name.Contains(runtimeHost.Version, StringComparison.OrdinalIgnoreCase))
-        {
-            hostOs = $"{runtimeHost.Name} {runtimeHost.Version}";
-        }
-        else
-        {
-            hostOs = runtimeHost.Name;
-        }
-
-        var underlyingHost = report.Host.UnderlyingHostOs.Family == OperatingSystemFamily.Unknown
-            ? KnownValues.Unknown
-            : report.Host.UnderlyingHostOs.Name
-                ?? report.Host.UnderlyingHostOs.Family.ToString();
-
-        var kernel = report.Host.VisibleKernel;
-        var kernelVersion = string.IsNullOrWhiteSpace(kernel.Release)
-            ? (string.IsNullOrWhiteSpace(kernel.Name) ? KnownValues.Unknown : kernel.Name)
-            : string.IsNullOrWhiteSpace(kernel.Name)
-                ? kernel.Release
-                : $"{kernel.Name} {kernel.Release}";
-        var kernelBuild = FormatKernelBuild(kernel.Compiler);
-        var kernelHostOs = report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel
-            ? underlyingHost
-            : KnownValues.Unknown;
-
-        // (key, value, optional confidence)
-        (string Key, string Value, Confidence? Conf)[] fields =
+    private static IReadOnlyList<(string Key, string Value, Confidence? Conf)> BuildTextFields(
+        ContainerRuntimeReport report,
+        string containerOs,
+        string underlyingHost,
+        string hostOs,
+        string kernelHostOs,
+        string kernelBuild,
+        string kernelVersion)
+        =>
         [
-            ("IsContainerized", ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value),   report.Classification.IsContainerized.Confidence),
-            ("Runtime",         ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value),   report.Classification.ContainerRuntime.Confidence),
-            ("Virtualization",  ClassificationValueFormatter.Format(report.Classification.Virtualization.Value),     report.Classification.Virtualization.Confidence),
-            ("HostFamily",      ValueOrUnknownEnum(report.Classification.Host.Family.Value),                        report.Classification.Host.Family.Confidence),
-            ("HostType",        ClassificationValueFormatter.Format(report.Classification.Host.Type.Value),          report.Classification.Host.Type.Confidence),
-            ("Environment",     ClassificationValueFormatter.Format(report.Classification.Environment.Type.Value),   report.Classification.Environment.Type.Confidence),
-            ("RuntimeApi",      ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value),         report.Classification.RuntimeApi.Confidence),
-            ("Orchestrator",    ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value),       report.Classification.Orchestrator.Confidence),
-            ("Cloud",           ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value),      report.Classification.CloudProvider.Confidence),
-            ("Vendor",          ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value),     report.Classification.PlatformVendor.Confidence),
-            ("Architecture",    report.Host.Hardware.RawArchitecture ?? ValueOrUnknownEnum(report.Host.Hardware.Architecture), null),
-            ("HardwareVendor",  ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor),                        report.Host.Hardware.Dmi.Confidence),
-            ("ProductName",     ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName),                         report.Host.Hardware.Dmi.Confidence),
-            ("DeviceTreeModel", ValueOrUnknownString(report.Host.Hardware.DeviceTree.Model),                        report.Host.Hardware.DeviceTree.Confidence),
-            ("UnderlyingHost",  underlyingHost,                                 null),
-            ("HostOS",          hostOs,                                         runtimeHost.Confidence),
-            ("HostKernelOS",    kernelHostOs,                                   report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),
-            ("KernelBuild",     kernelBuild,                                    kernel.Compiler is null ? null : Confidence.Low),
-            ("ContainerOS",     containerOs,                                    null),
-            ("Kernel",          kernelVersion,                                  kernel.Confidence),
-            ("HostFingerprint", report.Host.DiagnosticFingerprints.FirstOrDefault()?.Value ?? "disabled", null),
+            ("IsContainerized", ClassificationValueFormatter.Format(report.Classification.IsContainerized.Value), report.Classification.IsContainerized.Confidence),
+            ("Runtime", ClassificationValueFormatter.Format(report.Classification.ContainerRuntime.Value), report.Classification.ContainerRuntime.Confidence),
+            ("Virtualization", ClassificationValueFormatter.Format(report.Classification.Virtualization.Value), report.Classification.Virtualization.Confidence),
+            ("HostFamily", ValueOrUnknownEnum(report.Classification.Host.Family.Value), report.Classification.Host.Family.Confidence),
+            ("HostType", ClassificationValueFormatter.Format(report.Classification.Host.Type.Value), report.Classification.Host.Type.Confidence),
+            ("Environment", ClassificationValueFormatter.Format(report.Classification.Environment.Type.Value), report.Classification.Environment.Type.Confidence),
+            ("RuntimeApi", ClassificationValueFormatter.Format(report.Classification.RuntimeApi.Value), report.Classification.RuntimeApi.Confidence),
+            ("Orchestrator", ClassificationValueFormatter.Format(report.Classification.Orchestrator.Value), report.Classification.Orchestrator.Confidence),
+            ("Cloud", ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value), report.Classification.CloudProvider.Confidence),
+            ("Vendor", ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value), report.Classification.PlatformVendor.Confidence),
+            ("Architecture", report.Host.Hardware.RawArchitecture ?? ValueOrUnknownEnum(report.Host.Hardware.Architecture), null),
+            ("HardwareVendor", ValueOrUnknownString(report.Host.Hardware.Dmi.SystemVendor), report.Host.Hardware.Dmi.Confidence),
+            ("ProductName", ValueOrUnknownString(report.Host.Hardware.Dmi.ProductName), report.Host.Hardware.Dmi.Confidence),
+            ("DeviceTreeModel", ValueOrUnknownString(report.Host.Hardware.DeviceTree.Model), report.Host.Hardware.DeviceTree.Confidence),
+            ("UnderlyingHost", underlyingHost, null),
+            ("HostOS", hostOs, report.Host.RuntimeReportedHostOs.Confidence),
+            ("HostKernelOS", kernelHostOs, report.Host.UnderlyingHostOs.Source == UnderlyingHostOsSource.VisibleKernel ? report.Host.UnderlyingHostOs.Confidence : null),
+            ("KernelBuild", kernelBuild, report.Host.VisibleKernel.Compiler is null ? null : Confidence.Low),
+            ("ContainerOS", containerOs, null),
+            ("Kernel", kernelVersion, report.Host.VisibleKernel.Confidence),
+            ("DiagnosticFingerprint", report.Host.DiagnosticFingerprints.FirstOrDefault()?.Value ?? "disabled", null),
+            ("IdentityAnchors", FormatIdentityAnchorSummary(report.Host.IdentityAnchors), null)
         ];
 
-        var maxKeyLen = fields.Max(f => f.Key.Length);
-        var sb = new StringBuilder();
-
-        if (report.ProbeToolInfo is not null)
-        {
-            var versionWithCommit = string.IsNullOrWhiteSpace(report.ProbeToolInfo.GitCommit)
-                ? report.ProbeToolInfo.Version
-                : $"{report.ProbeToolInfo.Version} ({report.ProbeToolInfo.GitCommit})";
-            var header = $"Container Runtime Report  v{versionWithCommit}";
-            sb.AppendLine(header);
-            sb.AppendLine(new string('-', header.Length));
-        }
-
-        AppendKeyFindingsText(sb, report);
-        sb.AppendLine("Details");
-        sb.AppendLine("-------");
-        foreach (var (key, value, conf) in fields)
-        {
-            var confSuffix = conf is not null && conf != Confidence.Unknown
-                ? $"  [{conf}]"
-                : string.Empty;
-            sb.AppendLine($"{key.PadRight(maxKeyLen)} : {value}{confSuffix}");
-        }
-
-        AppendPlatformEvidenceText(sb, report.PlatformEvidence);
-        AppendTrustedPlatformsText(sb, report.TrustedPlatforms);
-
-        return sb.ToString().TrimEnd();
-    }
-
-    private static void AppendKeyFindingsMarkdown(StringBuilder sb, ContainerRuntimeReport report)
+    private static string FormatKernelSummary(VisibleKernelInfo kernel)
     {
-        sb.AppendLine("## Key Findings");
-        var findings = report.GetRelevantFindings();
-        if (findings.Count == 0)
+        if (string.IsNullOrWhiteSpace(kernel.Release))
         {
-            sb.AppendLine("- No conclusive findings yet. Inspect the detailed sections below.");
-            return;
+            return string.IsNullOrWhiteSpace(kernel.Name) ? KnownValues.Unknown : kernel.Name;
         }
 
-        foreach (var finding in findings)
+        if (string.IsNullOrWhiteSpace(kernel.Name))
         {
-            sb.AppendLine($"- {finding.Summary}");
+            return kernel.Release;
         }
+
+        return $"{kernel.Name} {kernel.Release}";
     }
 
     private static void AppendKeyFindingsText(StringBuilder sb, ContainerRuntimeReport report)

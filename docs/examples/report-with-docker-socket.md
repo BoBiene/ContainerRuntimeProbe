@@ -56,13 +56,16 @@
 - Memory: 7,75 GB visible, cgroup limit: Unknown
 - Machine Type: Unknown
 
-### Host Fingerprint
+### Diagnostic Fingerprints
 - Algorithm: CRP-HOST-FP-v1
 - Value: sha256:4ea14e1e2e254175246ddd5f0a803b70f57914c0ec4c4e3d2e92c25b64b560fb
 - Stability: RuntimeApiBacked
 - Included Signals: 12
 - Excluded Sensitive Signals: 2
 - Warning: Fingerprint is diagnostic only and not a security identity.
+
+### Identity Anchors
+- No explicit identity anchors were derived from the visible environment.
 
 ## Security and Limitations
 - [DOCKER_SOCKET_MOUNTED] Docker-compatible socket is accessible and can imply privileged host control.

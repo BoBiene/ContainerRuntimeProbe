@@ -10,6 +10,10 @@
 - Host fingerprint mode defaults to `safe` and excludes hostname, container ID, pod name, instance IDs, subscription/project/tenant IDs, MAC/IP data, CPU serials, and raw overlay paths.
 - CPU flags are summarized as count + hash; raw flag lists are not emitted into the fingerprint by default.
 - The host fingerprint is diagnostic only and must not be used as a security identity or attestation claim.
+- Identity anchors are modeled separately from diagnostic fingerprints and are derived only from explicit read-only sources.
+- Current anchor values are digests over observed cloud instance IDs or Kubernetes node identities, not raw IDs.
+- Identity anchor values are redacted in the default host report unless `--include-sensitive true` is used.
+- The package does not create TPM keys, provision certificates, or mutate the platform; future TPM support must stay read-only and digest-based.
 
 
 ## Sharing Samples
@@ -33,6 +37,7 @@ Never share:
 - MAC addresses
 - customer names
 - cloud instance IDs
+- identity anchor digests if they are considered sensitive in your environment
 - subscription/project/tenant IDs
 - raw full metadata documents
 - CPU serial numbers

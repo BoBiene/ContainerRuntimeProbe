@@ -15,8 +15,14 @@ public static class RuntimeSampleRenderer
     private const string CompactFormatVersion = "crp1";
     private const string DefaultTemplate = "runtime-sample.yml";
     private const string DefaultRepository = "BoBiene/ContainerRuntimeProbe";
+    private const string BodyFormatExpanded = "expanded";
     private const int CompactTokenLengthLimit = 80;
     private const int CoreSignalLimit = 6;
+    private const string EmptyFingerprintValue = "sha256:0";
+    private const string SocketPresentKey = "socket.present";
+    private const string PodmanValue = "podman";
+    private const string ContainerdValue = "containerd";
+    private const string KubernetesName = "Kubernetes";
     private static readonly Regex SafeTokenRegex = new("^[A-Za-z0-9._:-]+$", RegexOptions.Compiled);
 
     /// <summary>Builds sample artifacts from a report.</summary>
@@ -30,7 +36,7 @@ public static class RuntimeSampleRenderer
         var samplePayload = BuildSamplePayload(report, options, environmentKind, scenarioName, importantSignals);
 
         var compactData = BuildCompactSampleData(report, samplePayload, importantSignals);
-        var renderedUrl = RenderUrlArtifacts(report, options, scenarioName, compactData, samplePayload);
+        var renderedUrl = RenderUrlArtifacts(options, scenarioName, compactData, samplePayload);
         var compactSample = RenderCompactSample(compactData, renderedUrl.RenderOptions);
         var document = new RuntimeSampleDocument(
             "https://github.com/BoBiene/ContainerRuntimeProbe/schemas/runtime-sample.v1.json",
@@ -40,8 +46,8 @@ public static class RuntimeSampleRenderer
             new RuntimeSampleToolInfo("ContainerRuntimeProbe", GetToolVersion()),
             samplePayload);
 
-        var compactBody = BuildIssueBody(report, compactSample, scenarioName, samplePayload, expanded: false, options.Expected);
-        var expandedBody = BuildIssueBody(report, compactSample, scenarioName, samplePayload, expanded: true, options.Expected);
+        var compactBody = BuildIssueBody(compactSample, scenarioName, samplePayload, expanded: false, options.Expected);
+        var expandedBody = BuildIssueBody(compactSample, scenarioName, samplePayload, expanded: true, options.Expected);
 
         return new RuntimeSampleArtifacts(
             compactSample,
@@ -60,7 +66,7 @@ public static class RuntimeSampleRenderer
 
     /// <summary>Renders the compact markdown issue body.</summary>
     public static string ToMarkdown(RuntimeSampleArtifacts artifacts, string bodyFormat = "compact")
-        => string.Equals(bodyFormat, "expanded", StringComparison.OrdinalIgnoreCase)
+        => string.Equals(bodyFormat, BodyFormatExpanded, StringComparison.OrdinalIgnoreCase)
             ? artifacts.ExpandedBody
             : artifacts.CompactBody;
 
@@ -150,70 +156,13 @@ public static class RuntimeSampleRenderer
 
         foreach (var part in parts.Skip(1))
         {
-            if (string.IsNullOrWhiteSpace(part))
+            if (!TryParseCompactSection(part, knownSections, parsed, diagnostics, out var key, out var rawValue))
             {
-                diagnostics.Add("Empty section encountered.");
                 valid = false;
                 continue;
             }
 
-            var separator = part.IndexOf('=');
-            if (separator <= 0 || separator == part.Length - 1)
-            {
-                diagnostics.Add($"Malformed section '{part}'.");
-                valid = false;
-                continue;
-            }
-
-            var key = part[..separator];
-            var rawValue = part[(separator + 1)..];
-            if (!knownSections.Contains(key))
-            {
-                diagnostics.Add($"Unknown section '{key}'.");
-            }
-
-            if (parsed.ContainsKey(key))
-            {
-                diagnostics.Add($"Duplicate section '{key}'.");
-                valid = false;
-                continue;
-            }
-
-            var tokens = rawValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (tokens.Length == 0)
-            {
-                diagnostics.Add($"Section '{key}' is empty.");
-                valid = false;
-                continue;
-            }
-
-            var safeTokens = new List<string>(tokens.Length);
-            foreach (var token in tokens)
-            {
-                if (IsSuspiciousToken(token))
-                {
-                    diagnostics.Add($"Suspicious token '{token}' in section '{key}'.");
-                    valid = false;
-                    continue;
-                }
-
-                if (key is "cls" && !IsRecognizedClassificationToken(token))
-                {
-                    diagnostics.Add($"Unknown classification token '{token}'.");
-                }
-                else if (key is "conf" && !IsRecognizedConfidenceToken(token))
-                {
-                    diagnostics.Add($"Unknown confidence token '{token}'.");
-                }
-                else if (key is "p" && !IsRecognizedProbeToken(token))
-                {
-                    diagnostics.Add($"Unknown probe outcome token '{token}'.");
-                }
-
-                safeTokens.Add(token);
-            }
-
-            if (safeTokens.Count == 0)
+            if (!TryValidateCompactSectionTokens(key, rawValue, diagnostics, out var safeTokens))
             {
                 valid = false;
                 continue;
@@ -223,6 +172,96 @@ public static class RuntimeSampleRenderer
         }
 
         return new CompactRuntimeSampleParseResult(valid, CompactFormatVersion, parsed, diagnostics);
+    }
+
+    private static bool TryParseCompactSection(
+        string part,
+        IReadOnlySet<string> knownSections,
+        IReadOnlyDictionary<string, IReadOnlyList<string>> parsed,
+        ICollection<string> diagnostics,
+        out string key,
+        out string rawValue)
+    {
+        key = string.Empty;
+        rawValue = string.Empty;
+        if (string.IsNullOrWhiteSpace(part))
+        {
+            diagnostics.Add("Empty section encountered.");
+            return false;
+        }
+
+        var separator = part.IndexOf('=');
+        if (separator <= 0 || separator == part.Length - 1)
+        {
+            diagnostics.Add($"Malformed section '{part}'.");
+            return false;
+        }
+
+        key = part[..separator];
+        rawValue = part[(separator + 1)..];
+        if (!knownSections.Contains(key))
+        {
+            diagnostics.Add($"Unknown section '{key}'.");
+        }
+
+        if (parsed.ContainsKey(key))
+        {
+            diagnostics.Add($"Duplicate section '{key}'.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryValidateCompactSectionTokens(string key, string rawValue, ICollection<string> diagnostics, out IReadOnlyList<string> safeTokens)
+    {
+        var tokens = rawValue.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (tokens.Length == 0)
+        {
+            diagnostics.Add($"Section '{key}' is empty.");
+            safeTokens = [];
+            return false;
+        }
+
+        var validatedTokens = new List<string>(tokens.Length);
+        var valid = true;
+        foreach (var token in tokens)
+        {
+            if (!TryValidateCompactToken(key, token, diagnostics))
+            {
+                valid = false;
+                continue;
+            }
+
+            validatedTokens.Add(token);
+        }
+
+        safeTokens = validatedTokens;
+        return valid && validatedTokens.Count > 0;
+    }
+
+    private static bool TryValidateCompactToken(string key, string token, ICollection<string> diagnostics)
+    {
+        if (IsSuspiciousToken(token))
+        {
+            diagnostics.Add($"Suspicious token '{token}' in section '{key}'.");
+            return false;
+        }
+
+        if (key is "cls" && !IsRecognizedClassificationToken(token))
+        {
+            diagnostics.Add($"Unknown classification token '{token}'.");
+        }
+        else if (key is "conf" && !IsRecognizedConfidenceToken(token))
+        {
+            diagnostics.Add($"Unknown confidence token '{token}'.");
+        }
+        else if (key is "p" && !IsRecognizedProbeToken(token))
+        {
+            diagnostics.Add($"Unknown probe outcome token '{token}'.");
+        }
+
+        return true;
     }
 
     private static RuntimeSamplePayload BuildSamplePayload(
@@ -322,6 +361,7 @@ public static class RuntimeSampleRenderer
                     "hostname",
                     "container id",
                     "cloud instance id",
+                    "identity anchors",
                     "tokens",
                     "secrets",
                     "raw cpu serial",
@@ -368,7 +408,7 @@ public static class RuntimeSampleRenderer
                 NormalizeMemoryLimit(host.Hardware.CgroupMemoryLimitRaw, host.Hardware.MemoryTotalBytes),
                 host.Hardware.CpuFlagsHash),
             new CompactFingerprintSection(
-                diagnosticFingerprint is null ? "sha256:0" : ShortHash(diagnosticFingerprint.Value, 8),
+                diagnosticFingerprint is null ? EmptyFingerprintValue : ShortHash(diagnosticFingerprint.Value, 8),
                 diagnosticFingerprint?.StabilityLevel.ToString() ?? KnownValues.Unknown,
                 diagnosticFingerprint?.IncludedSignalCount ?? 0,
                 diagnosticFingerprint?.ExcludedSensitiveSignalCount ?? 0),
@@ -386,14 +426,13 @@ public static class RuntimeSampleRenderer
     }
 
     private static UrlArtifacts RenderUrlArtifacts(
-        ContainerRuntimeReport report,
         RuntimeSampleOptions options,
         string scenarioName,
         CompactSampleData compactData,
         RuntimeSamplePayload payload)
     {
         var warnings = new List<string>();
-        var currentBodyFormat = string.Equals(options.BodyFormat, "expanded", StringComparison.OrdinalIgnoreCase) ? "expanded" : "compact";
+        var currentBodyFormat = string.Equals(options.BodyFormat, BodyFormatExpanded, StringComparison.OrdinalIgnoreCase) ? BodyFormatExpanded : "compact";
         var renderOptions = new CompactRenderOptions(IncludeHardware: true, KernelReleaseLength: 48, FingerprintLength: 8, SignalMode: SignalReductionMode.All);
         var repository = string.IsNullOrWhiteSpace(options.Repository) ? DefaultRepository : options.Repository;
         var template = string.IsNullOrWhiteSpace(options.IssueTemplate) ? DefaultTemplate : options.IssueTemplate;
@@ -408,7 +447,7 @@ public static class RuntimeSampleRenderer
             return new UrlArtifacts(url, warnings, renderOptions);
         }
 
-        if (currentBodyFormat == "expanded")
+        if (currentBodyFormat == BodyFormatExpanded)
         {
             currentBodyFormat = "compact";
             warnings.Add("Expanded issue body was reduced to the compact body to stay within the URL length target.");
@@ -465,12 +504,12 @@ public static class RuntimeSampleRenderer
         string BuildUrl(CompactRenderOptions candidateOptions, string bodyFormat)
         {
             compactSample = RenderCompactSample(compactData, candidateOptions);
-            body = BuildIssueBody(report, compactSample, scenarioName, payload, bodyFormat == "expanded", options.Expected);
+            body = BuildIssueBody(compactSample, scenarioName, payload, bodyFormat == BodyFormatExpanded, options.Expected);
             return BuildIssueUrl(repository, template, scenarioName, body);
         }
     }
 
-    private static string BuildIssueBody(ContainerRuntimeReport report, string compactSample, string scenarioName, RuntimeSamplePayload payload, bool expanded, string? expected)
+    private static string BuildIssueBody(string compactSample, string scenarioName, RuntimeSamplePayload payload, bool expanded, string? expected)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Runtime Sample");
@@ -489,7 +528,7 @@ public static class RuntimeSampleRenderer
         sb.AppendLine($"- Platform Vendor: {payload.ActualClassification.PlatformVendor}");
         sb.AppendLine($"- Kernel Flavor: {payload.Host.VisibleKernel.Flavor}");
         sb.AppendLine($"- Kernel Build: {FormatSampleKernelBuild(payload.Host.VisibleKernel.Compiler)}");
-        sb.AppendLine($"- Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? "sha256:0"}");
+        sb.AppendLine($"- Diagnostic Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? EmptyFingerprintValue}");
         if (!string.IsNullOrWhiteSpace(expected))
         {
             sb.AppendLine($"- Expected: {expected}");
@@ -555,7 +594,7 @@ public static class RuntimeSampleRenderer
             $"- KernelBuild: {FormatSampleKernelBuild(payload.Host.VisibleKernel.Compiler)}",
             $"- PlatformVendor: {ClassificationValueFormatter.Format(report.Classification.PlatformVendor.Value)}",
             $"- CloudProvider: {ClassificationValueFormatter.Format(report.Classification.CloudProvider.Value)}",
-            $"- Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? "sha256:0"}"
+            $"- Diagnostic Fingerprint: {payload.Host.Fingerprint?.ShortValue ?? EmptyFingerprintValue}"
         ];
 
     private static IReadOnlyList<RuntimeSampleSignal> BuildImportantSignals(ContainerRuntimeReport report)
@@ -573,15 +612,8 @@ public static class RuntimeSampleRenderer
             signals.Add((priority, new RuntimeSampleSignal(key, value, tag)));
         }
 
-        if (evidence.Any(item => item.Key == "/.dockerenv" && string.Equals(item.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase)))
-        {
-            Add(1, "marker./.dockerenv", "true", "de");
-        }
-
-        if (evidence.Any(item => item.Key == "/run/.containerenv" && string.Equals(item.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase)))
-        {
-            Add(1, "marker./run/.containerenv", "true", "ce");
-        }
+        AddBooleanEvidenceSignal(evidence, Add, "/.dockerenv", "marker./.dockerenv", "de");
+        AddBooleanEvidenceSignal(evidence, Add, "/run/.containerenv", "marker./run/.containerenv", "ce");
 
         foreach (var pattern in NormalizeCgroupPatterns(evidence))
         {
@@ -603,50 +635,67 @@ public static class RuntimeSampleRenderer
             Add(1, "kernel.wsl", "true", "wsl");
         }
 
-        if (evidence.Any(item => item.Key == "env.KUBERNETES_SERVICE_HOST"))
-        {
-            Add(2, "env.KUBERNETES_SERVICE_HOST", "present", "ke");
-        }
-
-        if (evidence.Any(item => item.Key == "serviceaccount.token"))
-        {
-            Add(2, "serviceaccount.token", "present", "ksa");
-        }
-
-        if (evidence.Any(item => item.Key == "socket.present" && item.Value?.Contains("docker", StringComparison.OrdinalIgnoreCase) == true))
-        {
-            Add(2, "socket.present", "docker", "dockersock");
-        }
-
-        if (evidence.Any(item => item.Key == "socket.present" && item.Value?.Contains("podman", StringComparison.OrdinalIgnoreCase) == true))
-        {
-            Add(2, "socket.present", "podman", "podmansock");
-        }
-
-        if (evidence.Any(item => item.Key == "azure.imds.outcome" && item.Value == ProbeOutcome.Success.ToString()))
-        {
-            Add(2, "metadata.azure", "Success", "md:az");
-        }
-
-        if (evidence.Any(item => item.Key == "aws.imds.identity.outcome" && item.Value == ProbeOutcome.Success.ToString()))
-        {
-            Add(2, "metadata.aws", "Success", "md:aws");
-        }
-
-        if (evidence.Any(item => item.Key == "gcp.metadata.outcome" && item.Value == ProbeOutcome.Success.ToString()))
-        {
-            Add(2, "metadata.gcp", "Success", "md:gcp");
-        }
-
-        foreach (var ns in evidence.Where(item => item.Key.StartsWith("ns.", StringComparison.Ordinal) && item.Value != "unavailable"))
-        {
-            var hint = ns.Key.Split('.').Last();
-            Add(4, ns.Key, "present", $"ns:{hint}ns");
-        }
+        AddPresenceSignal(evidence, Add, "env.KUBERNETES_SERVICE_HOST", "ke");
+        AddPresenceSignal(evidence, Add, "serviceaccount.token", "ksa");
+        AddSocketSignal(evidence, Add, "docker", "dockersock");
+        AddSocketSignal(evidence, Add, PodmanValue, "podmansock");
+        AddMetadataOutcomeSignal(evidence, Add, "azure.imds.outcome", "metadata.azure", "md:az");
+        AddMetadataOutcomeSignal(evidence, Add, "aws.imds.identity.outcome", "metadata.aws", "md:aws");
+        AddMetadataOutcomeSignal(evidence, Add, "gcp.metadata.outcome", "metadata.gcp", "md:gcp");
+        AddNamespaceSignals(evidence, Add);
 
         Add(1, "runtime-api.outcome", NormalizeRuntimeApiSignal(report.Classification.RuntimeApi.Value), NormalizeRuntimeApiSignal(report.Classification.RuntimeApi.Value));
 
         return signals.OrderBy(item => item.priority).ThenBy(item => item.signal.Tag, StringComparer.Ordinal).Select(item => item.signal).ToArray();
+    }
+
+    private static void AddBooleanEvidenceSignal(
+        IReadOnlyList<EvidenceItem> evidence,
+        Action<int, string, string, string> add,
+        string evidenceKey,
+        string signalKey,
+        string tag)
+    {
+        if (evidence.Any(item => item.Key == evidenceKey && string.Equals(item.Value, bool.TrueString, StringComparison.OrdinalIgnoreCase)))
+        {
+            add(1, signalKey, bool.TrueString.ToLowerInvariant(), tag);
+        }
+    }
+
+    private static void AddPresenceSignal(IReadOnlyList<EvidenceItem> evidence, Action<int, string, string, string> add, string evidenceKey, string tag)
+    {
+        if (evidence.Any(item => item.Key == evidenceKey))
+        {
+            add(2, evidenceKey, "present", tag);
+        }
+    }
+
+    private static void AddSocketSignal(IReadOnlyList<EvidenceItem> evidence, Action<int, string, string, string> add, string runtimeName, string tag)
+    {
+        if (evidence.Any(item => item.Key == SocketPresentKey && item.Value?.Contains(runtimeName, StringComparison.OrdinalIgnoreCase) == true))
+        {
+            add(2, SocketPresentKey, runtimeName, tag);
+        }
+    }
+
+    private static void AddMetadataOutcomeSignal(IReadOnlyList<EvidenceItem> evidence, Action<int, string, string, string> add, string outcomeKey, string signalKey, string tag)
+    {
+        if (evidence.Any(item => item.Key == outcomeKey && item.Value == ProbeOutcome.Success.ToString()))
+        {
+            add(2, signalKey, ProbeOutcome.Success.ToString(), tag);
+        }
+    }
+
+    private static void AddNamespaceSignals(IReadOnlyList<EvidenceItem> evidence, Action<int, string, string, string> add)
+    {
+        foreach (var key in evidence
+            .Where(item => item.Key.StartsWith("ns.", StringComparison.Ordinal) && item.Value != "unavailable")
+            .Select(item => item.Key))
+        {
+            var parts = key.Split('.');
+            var hint = parts[^1];
+            add(4, key, "present", $"ns:{hint}ns");
+        }
     }
 
     private static string FormatSampleKernelBuild(RuntimeSampleKernelCompiler? compiler)
@@ -676,8 +725,8 @@ public static class RuntimeSampleRenderer
             var value = item.Value ?? string.Empty;
             if (value.Contains("/docker/", StringComparison.OrdinalIgnoreCase)) patterns.Add("docker");
             else if (value.Contains("/kubepods/", StringComparison.OrdinalIgnoreCase)) patterns.Add("kubepods");
-            else if (value.Contains("containerd", StringComparison.OrdinalIgnoreCase)) patterns.Add("containerd");
-            else if (value.Contains("podman", StringComparison.OrdinalIgnoreCase) || value.Contains("libpod", StringComparison.OrdinalIgnoreCase)) patterns.Add("podman");
+            else if (value.Contains(ContainerdValue, StringComparison.OrdinalIgnoreCase)) patterns.Add(ContainerdValue);
+            else if (value.Contains(PodmanValue, StringComparison.OrdinalIgnoreCase) || value.Contains("libpod", StringComparison.OrdinalIgnoreCase)) patterns.Add(PodmanValue);
             else if (value.Contains("ecs", StringComparison.OrdinalIgnoreCase)) patterns.Add("ecs");
             else patterns.Add("unknown");
         }
@@ -796,7 +845,7 @@ public static class RuntimeSampleRenderer
         if (report.Classification.Orchestrator.Value == OrchestratorKind.AzureContainerApps) return "AzureContainerApps";
         if (report.Classification.Orchestrator.Value == OrchestratorKind.AwsEcs) return "Ecs";
         if (report.Classification.Orchestrator.Value == OrchestratorKind.CloudRun) return "CloudRun";
-        if (report.Classification.Orchestrator.Value == OrchestratorKind.Kubernetes) return "Kubernetes";
+        if (report.Classification.Orchestrator.Value == OrchestratorKind.Kubernetes) return KubernetesName;
         if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == PlatformVendorKind.Apple) return "DockerDesktop";
         if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Podman) return "Podman";
         if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "DockerDesktopWsl2";
@@ -806,29 +855,19 @@ public static class RuntimeSampleRenderer
 
     private static string InferScenarioName(ContainerRuntimeReport report)
     {
-        if (report.Classification.PlatformVendor.Value == PlatformVendorKind.SiemensIndustrialEdge) return "siemens-industrial-edge";
-        if (report.Classification.Orchestrator.Value == OrchestratorKind.AzureContainerApps) return "azure-container-apps";
-        if (report.Classification.Orchestrator.Value == OrchestratorKind.CloudRun) return "google-cloud-run";
-        if (report.Classification.Orchestrator.Value == OrchestratorKind.AwsEcs)
+        if (report.Classification.PlatformVendor.Value == PlatformVendorKind.SiemensIndustrialEdge)
         {
-            var hasFargate = report.Probes.SelectMany(probe => probe.Evidence)
-                .Any(item => item.Key is "env.AWS_EXECUTION_ENV" or "AWS_EXECUTION_ENV" && item.Value?.Contains("fargate", StringComparison.OrdinalIgnoreCase) == true);
-            return hasFargate ? "aws-ecs-fargate" : "aws-ecs";
+            return "siemens-industrial-edge";
         }
 
-        if (report.Classification.Orchestrator.Value == OrchestratorKind.Kubernetes)
+        return report.Classification.Orchestrator.Value switch
         {
-            return report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Containerd
-                ? "kubernetes-containerd"
-                : "kubernetes";
-        }
-
-        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == PlatformVendorKind.Apple) return "docker-desktop";
-        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2) return "docker-wsl2";
-        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop) return "docker-desktop";
-        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Classification.CloudProvider.Value == CloudProviderKind.Azure) return "docker-azure";
-        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Podman) return "podman";
-        return "unknown-runtime";
+            OrchestratorKind.AzureContainerApps => "azure-container-apps",
+            OrchestratorKind.CloudRun => "google-cloud-run",
+            OrchestratorKind.AwsEcs => HasAwsFargateSignal(report) ? "aws-ecs-fargate" : "aws-ecs",
+            OrchestratorKind.Kubernetes => report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Containerd ? "kubernetes-containerd" : "kubernetes",
+            _ => InferStandaloneScenarioName(report)
+        };
     }
 
     private static string NormalizeScenario(string value)
@@ -872,7 +911,7 @@ public static class RuntimeSampleRenderer
     private static string MapOrchestrator(string value)
         => value switch
         {
-            "Kubernetes" => "orcK",
+            KubernetesName => "orcK",
             "AWS ECS" => "orcE",
             "Azure Container Apps" => "orcA",
             "Cloud Run" => "orcR",
@@ -894,9 +933,9 @@ public static class RuntimeSampleRenderer
         if (vendor == "Microsoft" || kernelFlavor == "WSL2") return "pvMS";
         if (vendor == "Apple") return "pvAP";
         if (kernelFlavor == "DockerDesktop") return "pvDD";
-        if (orchestrator == "Kubernetes" && cloud == "Azure") return "pvAKS";
-        if (orchestrator == "Kubernetes" && cloud == "AWS") return "pvEKS";
-        if (orchestrator == "Kubernetes" && cloud == "GoogleCloud") return "pvGKE";
+        if (orchestrator == KubernetesName && cloud == "Azure") return "pvAKS";
+        if (orchestrator == KubernetesName && cloud == "AWS") return "pvEKS";
+        if (orchestrator == KubernetesName && cloud == "GoogleCloud") return "pvGKE";
         return "pv0";
     }
 
@@ -983,7 +1022,50 @@ public static class RuntimeSampleRenderer
     }
 
     private static string NormalizeCpuFamily(string? family)
-        => string.IsNullOrWhiteSpace(family) ? "unk" : AsciiToken(family.Length > 16 ? family[..16] : family);
+    {
+        if (string.IsNullOrWhiteSpace(family))
+        {
+            return "unk";
+        }
+
+        var normalized = family.Length > 16 ? family[..16] : family;
+        return AsciiToken(normalized);
+    }
+
+    private static bool HasAwsFargateSignal(ContainerRuntimeReport report)
+        => report.Probes.SelectMany(probe => probe.Evidence)
+            .Any(item => item.Key is "env.AWS_EXECUTION_ENV" or "AWS_EXECUTION_ENV"
+                && item.Value?.Contains("fargate", StringComparison.OrdinalIgnoreCase) == true);
+
+    private static string InferStandaloneScenarioName(ContainerRuntimeReport report)
+    {
+        if (report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop || report.Classification.PlatformVendor.Value == PlatformVendorKind.Apple)
+        {
+            return "docker-desktop";
+        }
+
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.WSL2)
+        {
+            return "docker-wsl2";
+        }
+
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Host.VisibleKernel.Flavor == KernelFlavor.DockerDesktop)
+        {
+            return "docker-desktop";
+        }
+
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Docker && report.Classification.CloudProvider.Value == CloudProviderKind.Azure)
+        {
+            return "docker-azure";
+        }
+
+        if (report.Classification.ContainerRuntime.Value == ContainerRuntimeKind.Podman)
+        {
+            return PodmanValue;
+        }
+
+        return "unknown-runtime";
+    }
 
     private static string NormalizeMemoryBucketShort(long? bytes)
     {
@@ -1026,7 +1108,7 @@ public static class RuntimeSampleRenderer
     {
         if (string.IsNullOrWhiteSpace(hash))
         {
-            return "sha256:0";
+            return EmptyFingerprintValue;
         }
 
         var prefix = hash.StartsWith("sha256:", StringComparison.OrdinalIgnoreCase) ? "sha256:" : string.Empty;

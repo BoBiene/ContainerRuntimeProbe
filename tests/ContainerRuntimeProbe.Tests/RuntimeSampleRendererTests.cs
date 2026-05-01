@@ -175,6 +175,18 @@ public sealed class RuntimeSampleRendererTests
     }
 
     [Fact]
+    public void SampleJson_DoesNotExposeIdentityAnchors()
+    {
+        var artifacts = RuntimeSampleRenderer.Build(TestReportFactory.CreateSampleReport());
+
+        var json = RuntimeSampleRenderer.ToJson(artifacts);
+        var lower = json.ToLowerInvariant();
+
+        Assert.DoesNotContain("identityanchors", lower, StringComparison.Ordinal);
+        Assert.DoesNotContain("cloudinstanceidentity", lower, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void UrlGeneration_ShrinksBody_WhenTargetLengthIsSmall()
     {
         var artifacts = RuntimeSampleRenderer.Build(

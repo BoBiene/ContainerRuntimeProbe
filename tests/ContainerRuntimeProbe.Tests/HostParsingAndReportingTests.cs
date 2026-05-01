@@ -418,6 +418,8 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("- Platform Vendor: Microsoft Hyper-V", markdown);
         Assert.Contains("### Platform / DMI", markdown);
         Assert.Contains("### Device Tree", markdown);
+        Assert.Contains("### Identity Anchors", markdown);
+        Assert.Contains("- Kind: CloudInstanceIdentity", markdown);
         Assert.Contains("- System Vendor: Microsoft Corporation", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
         Assert.Contains("\"ProbeToolInfo\":", json, StringComparison.Ordinal);
@@ -425,13 +427,15 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
         Assert.Contains("\"DeviceTree\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"IdentityAnchors\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
         Assert.Contains("HardwareVendor", text);
         Assert.Contains("Architecture", text);
         Assert.Contains("DeviceTreeModel", text);
+        Assert.Contains("IdentityAnchors", text);
         Assert.Contains("abcdef1", text);
         Assert.Contains("Runtime-reported host OS: Ubuntu 24.04 (High).", text);
-        Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
+        Assert.Matches(@"DiagnosticFingerprint\s+:\s+sha256:", text);
     }
 
     private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence)

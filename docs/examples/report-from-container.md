@@ -56,13 +56,16 @@
 - Memory: 7,75 GB visible, cgroup limit: Unknown
 - Machine Type: Unknown
 
-### Host Fingerprint
+### Diagnostic Fingerprints
 - Algorithm: CRP-HOST-FP-v1
 - Value: sha256:6813124e32d17aa8a06b66e1a8417b2ae389c100c021906b7a3ff48a2b62a5a3
 - Stability: KernelOnly
 - Included Signals: 8
 - Excluded Sensitive Signals: 1
 - Warning: Fingerprint is diagnostic only and not a security identity.
+
+### Identity Anchors
+- No explicit identity anchors were derived from the visible environment.
 
 ## Security and Limitations
 - None detected by current probes.
