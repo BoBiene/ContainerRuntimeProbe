@@ -1,5 +1,7 @@
+using System.Globalization;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
+using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe.Classification;
 
@@ -206,6 +208,8 @@ internal static class PlatformEvidenceBuilder
 
 internal static class TrustedPlatformBuilder
 {
+    private const string WindowsTrustProbeId = "windows-trust";
+
     internal static IReadOnlyList<TrustedPlatformSummary> Build(IReadOnlyList<ProbeResult> probes)
     {
         var flattened = probes.SelectMany(probe => probe.Evidence).ToArray();
@@ -274,7 +278,7 @@ internal static class TrustedPlatformBuilder
 
     private static TrustedPlatformSummary? BuildWindowsHostTpm(IReadOnlyList<EvidenceItem> evidence)
     {
-        var tpmOutcome = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+        var tpmOutcome = evidence.FirstOrDefault(item => item.ProbeId == WindowsTrustProbeId
             && item.Key == "trust.windows.tpm.outcome");
         var tpmOutcomeValue = tpmOutcome?.Value;
         if (!string.Equals(tpmOutcomeValue, ProbeOutcome.Success.ToString(), StringComparison.Ordinal))
@@ -282,11 +286,11 @@ internal static class TrustedPlatformBuilder
             return null;
         }
 
-        var version = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+        var version = evidence.FirstOrDefault(item => item.ProbeId == WindowsTrustProbeId
             && item.Key == "trust.windows.tpm.version")?.Value;
-        var interfaceType = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+        var interfaceType = evidence.FirstOrDefault(item => item.ProbeId == WindowsTrustProbeId
             && item.Key == "trust.windows.tpm.interface_type")?.Value;
-        var implementationRevision = evidence.FirstOrDefault(item => item.ProbeId == "windows-trust"
+        var implementationRevision = evidence.FirstOrDefault(item => item.ProbeId == WindowsTrustProbeId
             && item.Key == "trust.windows.tpm.implementation_revision")?.Value;
 
         var trustEvidence = new List<TrustedPlatformEvidence>
@@ -374,7 +378,7 @@ internal static class TrustedPlatformBuilder
 
     private static TrustedPlatformSummary? BuildSiemensIedRuntime(IReadOnlyList<EvidenceItem> evidence)
     {
-        var certsipsOutcome = evidence.FirstOrDefault(item => item.ProbeId == "platform-context"
+        var certsipsOutcome = evidence.FirstOrDefault(item => item.ProbeId == SiemensIedRuntimeProbe.ProbeId
             && item.Key == "trust.ied.certsips.outcome");
         var certsipsOutcomeValue = certsipsOutcome?.Value;
         if (!string.Equals(certsipsOutcomeValue, ProbeOutcome.Success.ToString(), StringComparison.Ordinal))
@@ -393,7 +397,7 @@ internal static class TrustedPlatformBuilder
                 "Documented IED runtime artifact is present at the expected local path.")
         };
 
-        var parseError = evidence.Any(item => item.ProbeId == "platform-context"
+        var parseError = evidence.Any(item => item.ProbeId == SiemensIedRuntimeProbe.ProbeId
             && item.Key == "trust.ied.certsips.parse_error");
         var authApiPath = FirstValue(evidence, "trust.ied.certsips.auth_api_path");
         var secureStoragePath = FirstValue(evidence, "trust.ied.certsips.secure_storage_api_path");
@@ -460,14 +464,24 @@ internal static class TrustedPlatformBuilder
                 "The artifact names the local service expected to back the IED runtime APIs."));
         }
 
-        if (hasCertificateChain)
+        if (HasTrustKey(evidence, "trust.ied.certsips.cert_chain_present"))
         {
             trustEvidence.Add(new TrustedPlatformEvidence(
                 TrustedPlatformSourceType.LocalFile,
-                "trust.ied.certsips.certificate_chain",
+            "trust.ied.certsips.cert_chain_present",
                 bool.TrueString,
                 Confidence.Medium,
                 "The artifact includes certificate material for later endpoint binding checks."));
+        }
+
+        if (HasTrustKey(evidence, "trust.ied.certsips.certificates_chain_present"))
+        {
+            trustEvidence.Add(new TrustedPlatformEvidence(
+            TrustedPlatformSourceType.LocalFile,
+            "trust.ied.certsips.certificates_chain_present",
+            bool.TrueString,
+            Confidence.Medium,
+            "The artifact includes certificate material for later endpoint binding checks."));
         }
 
         if (endpointReachable)
@@ -605,13 +619,13 @@ internal static class TrustedPlatformBuilder
     }
 
     private static DateTimeOffset? ParseDateTimeOffset(string? value)
-        => DateTimeOffset.TryParse(value, out var parsed) ? parsed : null;
+        => DateTimeOffset.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out var parsed) ? parsed : null;
 
     private static string? FirstValue(IReadOnlyList<EvidenceItem> evidence, string key)
-        => evidence.FirstOrDefault(item => item.ProbeId == "platform-context" && item.Key == key)?.Value;
+        => evidence.FirstOrDefault(item => item.ProbeId == SiemensIedRuntimeProbe.ProbeId && item.Key == key)?.Value;
 
     private static bool HasTrustKey(IReadOnlyList<EvidenceItem> evidence, string key)
-        => evidence.Any(item => item.ProbeId == "platform-context" && item.Key == key);
+        => evidence.Any(item => item.ProbeId == SiemensIedRuntimeProbe.ProbeId && item.Key == key);
 
     private static bool IsAbsoluteApiPath(string? path)
         => !string.IsNullOrWhiteSpace(path)

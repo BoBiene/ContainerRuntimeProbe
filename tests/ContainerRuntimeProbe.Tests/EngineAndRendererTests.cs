@@ -120,20 +120,20 @@ public sealed class EngineAndRendererTests
     {
         var engine = new ContainerRuntimeProbeEngine(
         [
-            new FixedProbe("platform-context",
+            new FixedProbe("siemens-ied-runtime",
             [
-                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
-                new EvidenceItem("platform-context", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.auth_api.status", "401"),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.not_after", "2026-05-01T00:00:00.0000000+00:00"),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.chain_sha256", "presented-chain-hash", EvidenceSensitivity.Sensitive),
-                new EvidenceItem("platform-context", "trust.ied.endpoint.tls.binding", "matched")
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.outcome", "Success"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.auth_api.reachable", bool.TrueString),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.auth_api.status", "401"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.not_after", "2026-05-01T00:00:00.0000000+00:00"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.chain_sha256", "presented-chain-hash", EvidenceSensitivity.Sensitive),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "matched")
             ])
         ]);
 

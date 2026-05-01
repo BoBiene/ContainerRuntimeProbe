@@ -423,11 +423,11 @@ public sealed class ClassifierTests
     public void Classifier_TrustedIedArtifact_ClassifiesAsSiemensIndustrialEdge()
     {
         var report = Classifier.Classify([
-            new ProbeResult("platform-context", ProbeOutcome.Success, [
-                new EvidenceItem("platform-context", "trust.ied.certsips.outcome", "Success"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
-                new EvidenceItem("platform-context", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive)
+            new ProbeResult("siemens-ied-runtime", ProbeOutcome.Success, [
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.outcome", "Success"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.auth_api_path", "/api/v1/auth"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.certificates_chain_present", bool.TrueString, EvidenceSensitivity.Sensitive)
             ])
         ]);
 

@@ -25,6 +25,7 @@ public sealed class ContainerRuntimeProbeEngine
         yield return new MarkerFileProbe();
         yield return new EnvironmentProbe();
         yield return new PlatformContextProbe();
+        yield return new SiemensIedRuntimeProbe();
 
         if (OperatingSystem.IsWindows())
         {
