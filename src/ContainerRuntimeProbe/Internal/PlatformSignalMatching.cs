@@ -2,21 +2,6 @@ namespace ContainerRuntimeProbe.Internal;
 
 internal static class PlatformSignalMatching
 {
-    internal static IReadOnlyList<string> FindSignalsFromEnvironmentKey(string? key)
-    {
-        if (string.IsNullOrWhiteSpace(key))
-        {
-            return [];
-        }
-
-        var normalized = key.Replace('_', '-');
-        var compact = key.Replace("_", string.Empty, StringComparison.Ordinal);
-        return FindSignals(normalized, includeGenericIndustrial: false)
-            .Concat(FindSignals(compact, includeGenericIndustrial: false))
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
-    }
-
     private static readonly string[] SubstringSignals =
     [
         "industrial-edge",

@@ -21,7 +21,6 @@ public sealed class PlatformContextProbeTests
     {
         var environment = new Dictionary<string, string?>
         {
-            ["HOSTNAME"] = "ied-edge-node",
             ["IOTEDGE_MODULEID"] = "edge-agent",
             ["SIEMENS_API_TOKEN"] = "top-secret"
         };
@@ -61,8 +60,6 @@ public sealed class PlatformContextProbeTests
         Assert.Equal(ProbeOutcome.Success, result.Outcome);
         Assert.Contains(result.Evidence, item => item.Key == "env.IOTEDGE_MODULEID" && item.Value == "edge-agent");
         Assert.Contains(result.Evidence, item => item.Key == "env.SIEMENS_API_TOKEN" && item.Value == "<redacted>");
-        Assert.Contains(result.Evidence, item => item.Key == "env.signal" && item.Value == "iotedge");
-        Assert.Contains(result.Evidence, item => item.Key == "env.signal" && item.Value == "siemens");
         Assert.Contains(result.Evidence, item => item.Key == "mountinfo.signal" && item.Value == "industrial-edge");
         Assert.Contains(result.Evidence, item => item.Key == "cgroup.signal" && item.Value == "siemens");
         Assert.Contains(result.Evidence, item => item.Key == "hostname.signal" && item.Value == "ied");

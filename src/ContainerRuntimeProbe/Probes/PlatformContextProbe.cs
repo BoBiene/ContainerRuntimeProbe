@@ -113,25 +113,13 @@ internal sealed class PlatformContextProbe : IProbe
 
     private void AddEnvironmentEvidence(List<EvidenceItem> evidence, ProbeContext context)
     {
-        var environment = _getEnvironment().ToArray();
-        var hostname = environment.FirstOrDefault(pair => string.Equals(pair.Key, "HOSTNAME", StringComparison.OrdinalIgnoreCase)).Value;
-        foreach (var signal in PlatformSignalMatching.FindSignals(hostname, includeGenericIndustrial: false))
-        {
-            evidence.Add(new EvidenceItem(Id, "hostname.signal", signal, EvidenceSensitivity.Sensitive));
-        }
-
-        foreach (var (key, value) in environment
+        foreach (var (key, value) in _getEnvironment()
                      .Where(pair => !string.IsNullOrWhiteSpace(pair.Key))
                      .Where(pair => PlatformEnvironmentPrefixes.Any(prefix => pair.Key.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))))
         {
             var sensitive = Redaction.IsSensitiveKey(key) || key.Equals("HOSTNAME", StringComparison.OrdinalIgnoreCase);
             var redactedValue = sensitive ? Redaction.MaybeRedact(key, value, context.IncludeSensitive) : value?.Trim();
             evidence.Add(new EvidenceItem(Id, $"env.{key}", redactedValue, sensitive ? EvidenceSensitivity.Sensitive : EvidenceSensitivity.Public));
-
-            foreach (var signal in PlatformSignalMatching.FindSignalsFromEnvironmentKey(key))
-            {
-                evidence.Add(new EvidenceItem(Id, "env.signal", signal));
-            }
 
             foreach (var signal in PlatformSignalMatching.FindSignals(value, includeGenericIndustrial: false))
             {
