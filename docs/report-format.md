@@ -3,6 +3,11 @@
 `ContainerRuntimeReport` fields:
 - `GeneratedAt`, `Duration`
 - `ProbeToolInfo` with semantic `Version` and optional short `GitCommit`
+- `Summary`
+  - top-level structured summary composed of `Environment` and `Identity`
+  - `Environment.Sections[]` uses `EnvironmentSummarySection(Kind, Title, Facts)`
+  - `Identity.Sections[]` uses `IdentitySummarySection(Kind, Title, Facts)`
+  - each `SummaryFact` carries `Label`, `Value`, `Scope`, optional `Level`, `Confidence`, optional `SourceKind`, `Usage`, and optional `EvidenceKeys[]`
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
 - `Classification`
@@ -73,7 +78,7 @@
 - Diagnostic fingerprints are correlation helpers only and must not be treated as host identity.
 - Identity anchors are modeled separately because some consumers may use them for correlation or license binding, but they remain read-only observed values rather than provisioned platform identities.
 - Default safe reports redact sensitive identity-anchor values even though the anchor metadata remains visible.
-- Standard Markdown and text reports render `Key Findings` as grouped high-level statements, while the compact `sample` output intentionally omits identity anchors.
+- Standard Markdown and text reports render a structured `Summary` section first, split into neutral `Environment` facts and scope-oriented `Identity` facts.
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.
@@ -90,6 +95,100 @@
   "ProbeToolInfo": {
     "Version": "1.2.3",
     "GitCommit": "a1b2c3d"
+  },
+  "Summary": {
+    "Environment": {
+      "Sections": [
+        {
+          "Kind": "Runtime",
+          "Title": "Runtime",
+          "Facts": [
+            {
+              "Label": "Mode",
+              "Value": "Containerized",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": []
+            },
+            {
+              "Label": "Runtime",
+              "Value": "Docker",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": []
+            }
+          ]
+        },
+        {
+          "Kind": "Host",
+          "Title": "Host",
+          "Facts": [
+            {
+              "Label": "Host OS",
+              "Value": "Ubuntu 24.04.4 LTS",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "RuntimeReportedHostOsInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": ["runtime-api:docker.info.operating_system"]
+            },
+            {
+              "Label": "Hardware",
+              "Value": "Microsoft Corporation Virtual Machine",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "HostDmiInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_name"]
+            }
+          ]
+        }
+      ]
+    },
+    "Identity": {
+      "Sections": [
+        {
+          "Kind": "DeploymentIdentity",
+          "Title": "Deployment Identity",
+          "Facts": [
+            {
+              "Label": "Deployment Fingerprint",
+              "Value": "sha256:...",
+              "Scope": "Deployment",
+              "Level": 2,
+              "Confidence": "Medium",
+              "SourceKind": "CRP-HOST-FP-v1",
+              "Usage": "Correlation",
+              "EvidenceKeys": ["kernel.release"]
+            }
+          ]
+        },
+        {
+          "Kind": "HostIdentity",
+          "Title": "Host Identity",
+          "Facts": [
+            {
+              "Label": "Cloud Host ID",
+              "Value": "sha256:...",
+              "Scope": "Host",
+              "Level": 3,
+              "Confidence": "High",
+              "SourceKind": "CloudInstanceIdentity",
+              "Usage": "BindingCandidate",
+              "EvidenceKeys": ["cloud.instance.id"]
+            }
+          ]
+        }
+      ]
+    }
   },
   "Classification": {
     "IsContainerized": { "Value": "True", "Confidence": "High", "Reasons": [] }
@@ -193,19 +292,45 @@
       },
       "CloudMachineType": "Standard_D4s_v5"
     },
-    "Fingerprint": {
-      "Algorithm": "CRP-HOST-FP-v1",
-      "Value": "sha256:...",
-      "Stability": "RuntimeApiBacked",
-      "IncludedSignalCount": 12,
-      "ExcludedSensitiveSignalCount": 2,
-      "Components": [
-        { "Name": "kernel.release", "Included": true, "RawValueRedacted": "6.17.0-1011-azure" }
-      ],
-      "Warnings": [
-        "Fingerprint is diagnostic only and not a security identity."
-      ]
-    }
+    "DiagnosticFingerprints": [
+      {
+        "Purpose": "EnvironmentCorrelation",
+        "Algorithm": "CRP-HOST-FP-v1",
+        "Value": "sha256:...",
+        "Stability": "RuntimeApiBacked",
+        "StabilityLevel": "UpdateSensitive",
+        "UniquenessLevel": "Medium",
+        "CorroborationLevel": "CrossSource",
+        "SourceClasses": ["KernelSignal", "RuntimeApi"],
+        "IncludedSignalCount": 12,
+        "ExcludedSensitiveSignalCount": 2,
+        "Components": [
+          { "Name": "kernel.release", "Included": true, "RawValueRedacted": "6.17.0-1011-azure" }
+        ],
+        "Warnings": [
+          "Fingerprint is diagnostic only and not a security identity."
+        ],
+        "Reasons": [
+          "Includes kernel and runtime signals for environment correlation."
+        ]
+      }
+    ],
+    "IdentityAnchors": [
+      {
+        "Kind": "CloudInstanceIdentity",
+        "Algorithm": "CRP-CLOUD-INSTANCE-v1",
+        "Value": "sha256:...",
+        "Scope": "Host",
+        "BindingSuitability": "LicenseBinding",
+        "Strength": "Strong",
+        "Sensitivity": "Sensitive",
+        "EvidenceReferences": ["cloud.instance.id"],
+        "Warnings": [],
+        "Reasons": [
+          "Digest derived from observed cloud instance identity metadata."
+        ]
+      }
+    ]
   }
 }
 ```

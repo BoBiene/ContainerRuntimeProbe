@@ -1,15 +1,23 @@
 # Container Runtime Report
 ## Summary
-- IsContainerized: True (Low)
-- ContainerRuntime: Unknown (Unknown)
-- Virtualization: None (Medium)
-- HostFamily: Linux (High)
-- HostType: StandardLinux (High)
-- EnvironmentType: Unknown (Low)
-- RuntimeApi: Unknown (Unknown)
-- Orchestrator: Unknown (Unknown)
-- CloudProvider: Unknown (Unknown)
-- PlatformVendor: Unknown (Unknown)
+### Environment
+#### Runtime
+| Label | Value |
+| --- | --- |
+| Mode | Containerized |
+
+#### Host
+| Label | Value |
+| --- | --- |
+| Host OS | Linux 6.17.0-1010-azure |
+| CPU | AMD EPYC 9V74 80-Core Processor |
+| Memory | 7.75 GB |
+
+### Identity
+#### Deployment Identity
+| Label | Value | Level | Usage |
+| --- | --- | --- | --- |
+| Deployment Fingerprint | sha256:6813124e32d17aa8a06b66e1a8417b2ae389c100c021906b7a3ff48a2b62a5a3 | L2 | Correlation |
 
 ## Host OS / Node
 ### Container Image OS

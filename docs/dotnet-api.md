@@ -25,25 +25,32 @@ The engine:
 - runs the configured probes concurrently
 - normalizes the collected evidence into a single `ContainerRuntimeReport`
 - applies central redaction when `includeSensitive` is `false`
-- builds higher-level summaries such as `Classification`, `Host`, `PlatformEvidence`, and `TrustedPlatforms`
+- builds higher-level summaries such as `Summary`, `Classification`, `Host`, `PlatformEvidence`, and `TrustedPlatforms`
 - separates diagnostic host fingerprints from future bindable identity anchors
 
 You can also pass explicit `ProbeExecutionOptions` when you want to narrow the probe set or override cloud and Kubernetes endpoints for testing.
 
-When you want the most relevant findings as a structured API instead of renderer-specific text, call `report.GetRelevantFindings()`:
+When you want the top-level structured summary instead of renderer-specific text, read `report.Summary` or derive it on demand via `report.GetSummary()`:
 
 ```csharp
 using ContainerRuntimeProbe;
 
-var findings = report.GetRelevantFindings();
+var summary = report.Summary ?? report.GetSummary();
 
-foreach (var finding in findings)
+foreach (var section in summary.Environment.Sections)
 {
-  Console.WriteLine($"[{finding.Kind}] {finding.Summary}");
+  Console.WriteLine($"[{section.Kind}] {section.Title}");
 }
 ```
 
-Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human-readable `Summary`, `Confidence`, and referenced evidence keys. Trusted-platform findings also expose `VerificationLevel`, while heuristic platform findings expose `Score`.
+`ReportSummary` is intentionally split into two neutral views:
+
+- `Environment`
+  - compact runtime, execution-context, host, platform, and trust facts for the observed system
+- `Identity`
+  - scope-oriented workload, deployment, node/platform, and host identity candidates with `Level` and `Usage`
+
+If you only need one side, you can also call `report.GetEnvironmentSummary()` or `report.GetIdentitySummary()` directly.
 
 ## ContainerRuntimeReport
 
@@ -55,6 +62,8 @@ Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human
   - raw probe outcomes and normalized evidence after redaction
 - `SecurityWarnings`
   - report-level warnings such as a visible Docker socket or relaxed Kubernetes TLS mode
+- `Summary`
+  - structured top-level summary composed of `Environment` and `Identity`
 - `Classification`
   - weighted conclusions about containerization, runtime, orchestrator, cloud, host, virtualization, and platform vendor
 - `Host`

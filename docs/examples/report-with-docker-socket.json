@@ -2,6 +2,116 @@
   "GeneratedAt": "2026-04-28T14:47:12.8823751+00:00",
   "Duration": "00:00:06.1781433",
   "ProbeToolInfo": null,
+  "Summary": {
+    "Environment": {
+      "Sections": [
+        {
+          "Kind": "Runtime",
+          "Title": "Runtime",
+          "Facts": [
+            {
+              "Label": "Mode",
+              "Value": "Containerized",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "Low",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "marker-files:/.dockerenv",
+                "proc-files:/proc/self/mountinfo:signal"
+              ]
+            },
+            {
+              "Label": "Runtime",
+              "Value": "Podman",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "Medium",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "runtime-api:/run/docker.sock:/_ping:status"
+              ]
+            },
+            {
+              "Label": "API",
+              "Value": "DockerEngineApi",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "Medium",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "runtime-api:/run/docker.sock:/version:status"
+              ]
+            }
+          ]
+        },
+        {
+          "Kind": "Host",
+          "Title": "Host",
+          "Facts": [
+            {
+              "Label": "Host OS",
+              "Value": "Ubuntu 24.04.4 LTS",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "RuntimeReportedHostOsInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "runtime-api:docker.info.operating_system"
+              ]
+            },
+            {
+              "Label": "CPU",
+              "Value": "AMD EPYC 9V74 80-Core Processor",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "Unknown",
+              "SourceKind": "HostCpuInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": null
+            },
+            {
+              "Label": "Memory",
+              "Value": "7.75 GB",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "Unknown",
+              "SourceKind": "HostMemoryInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": null
+            }
+          ]
+        }
+      ]
+    },
+    "Identity": {
+      "Sections": [
+        {
+          "Kind": "DeploymentIdentity",
+          "Title": "Deployment Identity",
+          "Facts": [
+            {
+              "Label": "Deployment Fingerprint",
+              "Value": "sha256:4ea14e1e2e254175246ddd5f0a803b70f57914c0ec4c4e3d2e92c25b64b560fb",
+              "Scope": "Deployment",
+              "Level": 2,
+              "Confidence": "Medium",
+              "SourceKind": "CRP-HOST-FP-v1",
+              "Usage": "Correlation",
+              "EvidenceKeys": [
+                "kernel.release",
+                "runtime.engine.version"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "Probes": [
     {
       "ProbeId": "marker-files",

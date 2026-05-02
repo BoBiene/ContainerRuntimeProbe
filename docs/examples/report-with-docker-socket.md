@@ -1,15 +1,25 @@
 # Container Runtime Report
 ## Summary
-- IsContainerized: True (Low)
-- ContainerRuntime: Podman (Medium)
-- Virtualization: None (Medium)
-- HostFamily: Linux (High)
-- HostType: StandardLinux (High)
-- EnvironmentType: Unknown (Low)
-- RuntimeApi: DockerEngineApi (Medium)
-- Orchestrator: Unknown (Unknown)
-- CloudProvider: Unknown (Unknown)
-- PlatformVendor: Unknown (Unknown)
+### Environment
+#### Runtime
+| Label | Value |
+| --- | --- |
+| Mode | Containerized |
+| Runtime | Podman |
+| API | DockerEngineApi |
+
+#### Host
+| Label | Value |
+| --- | --- |
+| Host OS | Ubuntu 24.04.4 LTS |
+| CPU | AMD EPYC 9V74 80-Core Processor |
+| Memory | 7.75 GB |
+
+### Identity
+#### Deployment Identity
+| Label | Value | Level | Usage |
+| --- | --- | --- | --- |
+| Deployment Fingerprint | sha256:4ea14e1e2e254175246ddd5f0a803b70f57914c0ec4c4e3d2e92c25b64b560fb | L2 | Correlation |
 
 ## Host OS / Node
 ### Container Image OS
