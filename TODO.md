@@ -114,7 +114,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist 
   - Wenn `Host OS` aus `UnderlyingHostOs` oder `VisibleKernel` faellt, muessen `Confidence`, `SourceKind` und `EvidenceKeys` zum tatsaechlich verwendeten Pfad passen statt weiter vom Runtime-Host zu stammen.
 - [x] **31. Report-/API-Doku und Beispielprofile aktualisieren**
   - `report-format.md`, `dotnet-api.md` und passende Beispielreports dokumentieren die neue Summary und die Scope-Regeln fuer die Zielvarianten.
-- [ ] **32. Abschlussvalidierung und neue Open Points einsortieren**
+- [x] **32. Abschlussvalidierung und neue Open Points einsortieren**
   - Nach Build/Test/Smoke werden neue technische Schulden oder noetige Refactorings als weitere TODO-Punkte angelegt und in denselben iterativen Plan aufgenommen.
 
 ## Critical
