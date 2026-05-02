@@ -10,6 +10,14 @@ namespace ContainerRuntimeProbe.Rendering;
 /// <summary>Renders <see cref="ContainerRuntimeReport"/> into JSON, Markdown, or compact text formats.</summary>
 public static class ReportRenderer
 {
+    private static readonly (string Title, ReportFindingKind[] Kinds)[] KeyFindingGroups =
+    [
+        ("Execution Context", [ReportFindingKind.Containerization, ReportFindingKind.Environment, ReportFindingKind.Orchestrator]),
+        ("Host Platform", [ReportFindingKind.HostOs, ReportFindingKind.Virtualization, ReportFindingKind.PlatformVendor, ReportFindingKind.Hardware]),
+        ("Trust Signals", [ReportFindingKind.TrustedPlatform, ReportFindingKind.PlatformEvidence]),
+        ("Identity Signals", [ReportFindingKind.IdentityAnchor])
+    ];
+
     private static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
 
     private static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum
@@ -166,9 +174,13 @@ public static class ReportRenderer
             return;
         }
 
-        foreach (var finding in findings)
+        foreach (var (title, groupFindings) in GroupKeyFindings(findings))
         {
-            sb.AppendLine($"- {finding.Summary}");
+            sb.AppendLine($"### {title}");
+            foreach (var finding in groupFindings)
+            {
+                sb.AppendLine($"- {finding.Summary}");
+            }
         }
     }
 
@@ -361,12 +373,44 @@ public static class ReportRenderer
             return;
         }
 
-        foreach (var finding in findings)
+        foreach (var (title, groupFindings) in GroupKeyFindings(findings))
         {
-            sb.AppendLine($"- {finding.Summary}");
+            sb.AppendLine(title);
+            foreach (var finding in groupFindings)
+            {
+                sb.AppendLine($"- {finding.Summary}");
+            }
+
+            sb.AppendLine();
+        }
+    }
+
+    private static IReadOnlyList<(string Title, IReadOnlyList<ReportFinding> Findings)> GroupKeyFindings(IReadOnlyList<ReportFinding> findings)
+    {
+        var grouped = new List<(string Title, IReadOnlyList<ReportFinding> Findings)>();
+
+        foreach (var (title, kinds) in KeyFindingGroups)
+        {
+            var groupFindings = findings
+                .Where(finding => kinds.Contains(finding.Kind))
+                .ToArray();
+
+            if (groupFindings.Length > 0)
+            {
+                grouped.Add((title, groupFindings));
+            }
         }
 
-        sb.AppendLine();
+        var remaining = findings
+            .Where(finding => !KeyFindingGroups.Any(group => group.Kinds.Contains(finding.Kind)))
+            .ToArray();
+
+        if (remaining.Length > 0)
+        {
+            grouped.Add(("Additional Signals", remaining));
+        }
+
+        return grouped;
     }
 
     private static void AppendPlatformEvidenceMarkdown(StringBuilder sb, IReadOnlyList<PlatformEvidenceSummary>? platformEvidence)

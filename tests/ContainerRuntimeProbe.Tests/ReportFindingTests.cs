@@ -56,5 +56,11 @@ public sealed class ReportFindingTests
         var hostFinding = Assert.Single(findings.Where(finding => finding.Kind == ReportFindingKind.HostOs));
         Assert.Equal("Ubuntu 24.04", hostFinding.Value);
         Assert.Contains("runtime-api:docker.info.operating_system", hostFinding.EvidenceKeys);
+
+        var identityFinding = Assert.Single(findings.Where(finding => finding.Kind == ReportFindingKind.IdentityAnchor));
+        Assert.Equal(nameof(IdentityAnchorKind.CloudInstanceIdentity), identityFinding.Key);
+        Assert.Equal(nameof(IdentityAnchorScope.Host), identityFinding.Value);
+        Assert.Equal("CRP-CLOUD-INSTANCE-v1", identityFinding.Method);
+        Assert.Contains("cloud-metadata:aws.instance_id", identityFinding.EvidenceKeys);
     }
 }

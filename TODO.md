@@ -79,6 +79,42 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Cloud-/Kubernetes-Rollout
 - [x] **22. Renderer-, Doku- und Negativtests nachziehen**
   - Jede neue Anchor-Klasse braucht Default-Redaction, Renderer-Abdeckung und explizite Ausschluss-Tests fuer schwache Ersatzsignale.
 
+## Neutral Summary Report Model (2026-05-02)
+
+Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist eine neutrale, scope-saubere Summary-Schicht fuer Laufkontext und sichtbare Identitaetskandidaten, ohne den bisherigen Detailreport zu verlieren.
+
+### Phase 1: Contract and structure
+
+- [ ] **23. Neutralen Summary-Rollout im Repo verankern**
+  - Der neue Ausbau wird im `TODO.md` als Vier-Phasen-Plan mit neutraler Report-Sprache, Scope-Regeln und Follow-up-Pfaden festgehalten.
+- [ ] **24. Summary-Modelle und Scopes in dedizierten Files einfuehren**
+  - `EnvironmentSummary`, `IdentitySummary` und ihre Facts sollen nicht als weitere grosse Klassen in bestehende Sammelfiles gepresst werden; Scope-Typen fuer `Host`, `Node`, `Platform`, `Deployment`, `Workload` und `Runtime` werden explizit modelliert.
+
+### Phase 2: Summary derivation
+
+- [ ] **25. EnvironmentSummary-Ableitung implementieren**
+  - Der Report soll kompakte, neutrale Fakten zu Runtime, Execution Context, Host, Platform und Trust ableiten, ohne Unknowns oder narrative Vollsaetze in die Summary zu ziehen.
+- [ ] **26. IdentitySummary-Ableitung und Level-Mapping implementieren**
+  - Sichtbare Identitaetskandidaten werden strikt nach `Workload`, `Deployment`, `Node/Platform` und `Host` getrennt; Levels werden zentral aus bestehenden Staerke-/Trust-Signalen abgeleitet.
+- [ ] **27. Deployment-Identity-Pfad und Scope-Matrix kodieren**
+  - Auch wenn noch nicht jede Quelle voll implementiert ist, soll das Modell den separaten `Deployment`-Scope bereits sauber tragen und die Varianten `Windows Bare`, `Standalone Container`, `Industrial Container` und `Kubernetes` explizit abdecken.
+
+### Phase 3: Rendering and structure
+
+- [ ] **28. Summary in JSON, Markdown und Text integrieren**
+  - `ContainerRuntimeReport` liefert die neue Summary strukturiert in JSON; Markdown und Text rendern oben kompakte Facts/Rows und lassen die bisherigen Detailsektionen darunter vollstaendig stehen.
+- [ ] **29. Summary- und Renderer-Helfer bei Bedarf aufsplitten**
+  - Wenn `Renderers.cs`, `ContainerRuntimeReportExtensions.cs` oder Modellfiles durch den Ausbau zu komplex werden, werden Hilfslogik und Modelle in dedizierte Files verschoben statt mehrere grosse Klassen in einem File zu sammeln.
+
+### Phase 4: Validation and follow-up
+
+- [ ] **30. Summary-Testmatrix und Golden-Coverage nachziehen**
+  - Unit- und Renderer-Tests muessen `EnvironmentSummary`, `IdentitySummary`, Scope-Trennung, K8s-Mehrfachspuren und fehlende Unknowns absichern.
+- [ ] **31. Report-/API-Doku und Beispielprofile aktualisieren**
+  - `report-format.md`, `dotnet-api.md` und passende Beispielreports dokumentieren die neue Summary und die Scope-Regeln fuer die Zielvarianten.
+- [ ] **32. Abschlussvalidierung und neue Open Points einsortieren**
+  - Nach Build/Test/Smoke werden neue technische Schulden oder noetige Refactorings als weitere TODO-Punkte angelegt und in denselben iterativen Plan aufgenommen.
+
 ## Critical
 
 All critical issues resolved. ✅

@@ -529,7 +529,10 @@ public sealed class HostParsingAndReportingTests
         var text = ReportRenderer.ToText(report);
 
         Assert.Contains("## Key Findings", markdown);
+        Assert.Contains("### Host Platform", markdown);
+        Assert.Contains("### Identity Signals", markdown);
         Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
+        Assert.Contains("- Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", markdown);
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("## Probe Tool Information", markdown);
         Assert.Contains("- Git Commit: abcdef1", markdown);
@@ -552,8 +555,11 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("Architecture", text);
         Assert.Contains("DeviceTreeModel", text);
         Assert.Contains("IdentityAnchors", text);
+        Assert.Contains("Host Platform", text);
+        Assert.Contains("Identity Signals", text);
         Assert.Contains("abcdef1", text);
         Assert.Contains("Runtime-reported host OS: Ubuntu 24.04 (High).", text);
+        Assert.Contains("Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", text);
         Assert.Matches(@"DiagnosticFingerprint\s+:\s+sha256:", text);
     }
 
