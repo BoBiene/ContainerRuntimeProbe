@@ -85,9 +85,9 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist 
 
 ### Phase 1: Contract and structure
 
-- [ ] **23. Neutralen Summary-Rollout im Repo verankern**
+- [x] **23. Neutralen Summary-Rollout im Repo verankern**
   - Der neue Ausbau wird im `TODO.md` als Vier-Phasen-Plan mit neutraler Report-Sprache, Scope-Regeln und Follow-up-Pfaden festgehalten.
-- [ ] **24. Summary-Modelle und Scopes in dedizierten Files einfuehren**
+- [x] **24. Summary-Modelle und Scopes in dedizierten Files einfuehren**
   - `EnvironmentSummary`, `IdentitySummary` und ihre Facts sollen nicht als weitere grosse Klassen in bestehende Sammelfiles gepresst werden; Scope-Typen fuer `Host`, `Node`, `Platform`, `Deployment`, `Workload` und `Runtime` werden explizit modelliert.
 
 ### Phase 2: Summary derivation
