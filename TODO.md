@@ -15,11 +15,11 @@ Arbeitsregeln fuer diese Runde:
 
 - [x] **34. Format-aware identity projection defaults abschliessen**
   - JSON redigiert Identity-Anchor-Werte standardmaessig, Markdown und Text lassen sie standardmaessig sichtbar, sofern kein Override gesetzt ist.
-- [ ] **35. Workload- und Environment-L1-Semantik fuer Containerfaelle abschliessen**
+- [x] **35. Workload- und Environment-L1-Semantik fuer Containerfaelle abschliessen**
   - Containerisierte Faelle bekommen eine schwache `Container ID` aus Namespace-Tupeln und eine schwache `Deployment ID` bzw. `Environment ID` aus der Summary-Korrelation.
-- [ ] **36. Windows host evidence parity abschliessen**
+- [x] **36. Windows host evidence parity abschliessen**
   - Windows sammelt konservativ CPU-Familie/Modell/Stepping, sichtbaren Speicher, Chassis-Vendor und den robusteren `MachineGuid`-Pfad.
-- [ ] **37. Identity matrix und aktive Candidate-Planung dokumentieren**
+- [x] **37. Identity matrix und aktive Candidate-Planung dokumentieren**
   - Die Matrix ist als Referenzdoku verlinkt und das TODO-Backlog wird daraus in konkrete Implementierungsschritte ueberfuehrt.
 
 ### Planned Implementation Steps

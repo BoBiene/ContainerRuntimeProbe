@@ -29,6 +29,7 @@ Documentation:
 [docs/report-format.md](docs/report-format.md)
 [docs/dotnet-api.md](docs/dotnet-api.md)
 [docs/hardware-vendors.md](docs/hardware-vendors.md)
+[docs/identity-matrix.md](docs/identity-matrix.md)
 
 ## What is collected
 
