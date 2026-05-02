@@ -72,4 +72,43 @@ public sealed class IdentitySummaryTests
         var nodePlatformSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.NodePlatformIdentity));
         Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Platform ID" && fact.Level == 4);
     }
+
+    [Fact]
+    public void GetIdentitySummary_AddsDeploymentFingerprint_ForContainerizedVariants()
+    {
+        var report = TestReportFactory.CreateSampleReport();
+
+        var summary = report.GetIdentitySummary();
+
+        var deploymentSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.DeploymentIdentity));
+        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment Fingerprint" && fact.Level == 2 && fact.Scope == SummaryScope.Deployment);
+    }
+
+    [Theory]
+    [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
+    [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]
+    [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Wago, SummaryVariantKind.IndustrialContainer)]
+    [InlineData(ContainerizationKind.True, OrchestratorKind.Kubernetes, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.KubernetesWorkload)]
+    public void GetSummaryVariant_MapsKnownVariants(ContainerizationKind containerization, OrchestratorKind orchestrator, OperatingSystemFamily hostOsFamily, PlatformVendorKind platformVendor, SummaryVariantKind expected)
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Classification = baseReport.Classification with
+            {
+                IsContainerized = new ClassificationResult<ContainerizationKind>(containerization, Confidence.High, []),
+                Orchestrator = new ClassificationResult<OrchestratorKind>(orchestrator, orchestrator == OrchestratorKind.Unknown ? Confidence.Unknown : Confidence.High, []),
+                PlatformVendor = new ClassificationResult<PlatformVendorKind>(platformVendor, platformVendor == PlatformVendorKind.Unknown ? Confidence.Unknown : Confidence.High, [])
+            },
+            Host = baseReport.Host with
+            {
+                RuntimeReportedHostOs = baseReport.Host.RuntimeReportedHostOs with
+                {
+                    Family = hostOsFamily
+                }
+            }
+        };
+
+        Assert.Equal(expected, report.GetSummaryVariant());
+    }
 }

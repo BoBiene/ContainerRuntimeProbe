@@ -96,7 +96,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist 
   - Der Report soll kompakte, neutrale Fakten zu Runtime, Execution Context, Host, Platform und Trust ableiten, ohne Unknowns oder narrative Vollsaetze in die Summary zu ziehen.
 - [x] **26. IdentitySummary-Ableitung und Level-Mapping implementieren**
   - Sichtbare Identitaetskandidaten werden strikt nach `Workload`, `Deployment`, `Node/Platform` und `Host` getrennt; Levels werden zentral aus bestehenden Staerke-/Trust-Signalen abgeleitet.
-- [ ] **27. Deployment-Identity-Pfad und Scope-Matrix kodieren**
+- [x] **27. Deployment-Identity-Pfad und Scope-Matrix kodieren**
   - Auch wenn noch nicht jede Quelle voll implementiert ist, soll das Modell den separaten `Deployment`-Scope bereits sauber tragen und die Varianten `Windows Bare`, `Standalone Container`, `Industrial Container` und `Kubernetes` explizit abdecken.
 
 ### Phase 3: Rendering and structure

@@ -13,9 +13,36 @@ public static partial class ContainerRuntimeReportSummaryExtensions
 
         var sections = new List<IdentitySummarySection>();
         AddIdentitySection(sections, report, IdentitySummarySectionKind.WorkloadIdentity, "Workload Identity", IsWorkloadAnchor);
+        AddDeploymentIdentitySection(sections, report);
         AddIdentitySection(sections, report, IdentitySummarySectionKind.NodePlatformIdentity, "Node/Platform Identity", IsNodeOrPlatformAnchor);
         AddIdentitySection(sections, report, IdentitySummarySectionKind.HostIdentity, "Host Identity", IsHostAnchor);
         return new IdentitySummary(sections);
+    }
+
+    private static void AddDeploymentIdentitySection(List<IdentitySummarySection> sections, ContainerRuntimeReport report)
+    {
+        if (report.GetSummaryVariant() is not (SummaryVariantKind.StandaloneContainer or SummaryVariantKind.IndustrialContainer or SummaryVariantKind.KubernetesWorkload))
+        {
+            return;
+        }
+
+        var facts = report.Host.DiagnosticFingerprints
+            .Where(fingerprint => fingerprint.Purpose is DiagnosticFingerprintPurpose.EnvironmentCorrelation or DiagnosticFingerprintPurpose.RuntimeProfile)
+            .Select(fingerprint => new SummaryFact(
+                GetDeploymentLabel(fingerprint),
+                fingerprint.Value,
+                SummaryScope.Deployment,
+                Level: GetFingerprintLevel(fingerprint),
+                Confidence: MapFingerprintConfidence(fingerprint.UniquenessLevel),
+                SourceKind: fingerprint.Algorithm,
+                Usage: SummaryUsageKind.Correlation,
+                EvidenceKeys: fingerprint.Components.Where(component => component.Included).Select(component => component.Name).ToArray()))
+            .ToArray();
+
+        if (facts.Length > 0)
+        {
+            sections.Add(new IdentitySummarySection(IdentitySummarySectionKind.DeploymentIdentity, "Deployment Identity", facts));
+        }
     }
 
     private static void AddIdentitySection(
@@ -140,5 +167,31 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             BindingSuitability.LicenseBinding => SummaryUsageKind.BindingCandidate,
             BindingSuitability.ExternalAttestation => SummaryUsageKind.BindingCandidate,
             _ => SummaryUsageKind.Informational
+        };
+
+    private static string GetDeploymentLabel(DiagnosticFingerprint fingerprint)
+        => fingerprint.Purpose switch
+        {
+            DiagnosticFingerprintPurpose.RuntimeProfile => "Runtime Fingerprint",
+            _ => "Deployment Fingerprint"
+        };
+
+    private static int GetFingerprintLevel(DiagnosticFingerprint fingerprint)
+        => fingerprint.StabilityLevel switch
+        {
+            DiagnosticFingerprintStabilityLevel.PlatformAnchored => 4,
+            DiagnosticFingerprintStabilityLevel.ProfileStable => 3,
+            DiagnosticFingerprintStabilityLevel.UpdateSensitive => 2,
+            DiagnosticFingerprintStabilityLevel.Ephemeral => 1,
+            _ => 0
+        };
+
+    private static Confidence MapFingerprintConfidence(DiagnosticFingerprintUniquenessLevel uniquenessLevel)
+        => uniquenessLevel switch
+        {
+            DiagnosticFingerprintUniquenessLevel.High => Confidence.High,
+            DiagnosticFingerprintUniquenessLevel.Medium => Confidence.Medium,
+            DiagnosticFingerprintUniquenessLevel.Low => Confidence.Low,
+            _ => Confidence.Unknown
         };
 }

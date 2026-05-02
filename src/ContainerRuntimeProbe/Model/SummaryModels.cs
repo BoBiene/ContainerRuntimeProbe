@@ -40,6 +40,25 @@ public enum SummaryUsageKind
     BindingCandidate
 }
 
+/// <summary>Identifies the broad system variant summarized by a report.</summary>
+public enum SummaryVariantKind
+{
+    /// <summary>The broad system variant could not be determined.</summary>
+    Unknown,
+
+    /// <summary>The report describes a non-containerized Windows host.</summary>
+    WindowsBare,
+
+    /// <summary>The report describes a standalone container workload outside a cluster.</summary>
+    StandaloneContainer,
+
+    /// <summary>The report describes an industrial or appliance-oriented container workload.</summary>
+    IndustrialContainer,
+
+    /// <summary>The report describes a Kubernetes-managed workload.</summary>
+    KubernetesWorkload
+}
+
 /// <summary>Identifies a top-level environment summary section.</summary>
 public enum EnvironmentSummarySectionKind
 {
