@@ -1,3 +1,4 @@
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -30,5 +31,33 @@ public sealed class EnvironmentSummaryTests
         Assert.Contains(platformSection.Facts, fact => fact.Label == "Machine Type" && fact.Value == "Standard_D4s_v5");
 
         Assert.DoesNotContain(summary.Sections.SelectMany(section => section.Facts), fact => fact.Value == "Unknown");
+    }
+
+    [Fact]
+    public void GetEnvironmentSummary_UsesVisibleKernelMetadata_WhenRuntimeHostOsIsUnavailable()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Host = baseReport.Host with
+            {
+                RuntimeReportedHostOs = baseReport.Host.RuntimeReportedHostOs with
+                {
+                    Name = null,
+                    Version = null,
+                    Confidence = Confidence.Unknown,
+                    EvidenceReferences = []
+                }
+            }
+        };
+
+        var summary = report.GetEnvironmentSummary();
+
+        var hostSection = Assert.Single(summary.Sections.Where(section => section.Kind == EnvironmentSummarySectionKind.Host));
+        var hostOsFact = Assert.Single(hostSection.Facts.Where(fact => fact.Label == "Host OS"));
+        Assert.Equal("Linux 6.17.0-1011-azure", hostOsFact.Value);
+        Assert.Equal(Confidence.Medium, hostOsFact.Confidence);
+        Assert.Equal(nameof(VisibleKernelInfo), hostOsFact.SourceKind);
+        Assert.Contains("proc-files:kernel.release", hostOsFact.EvidenceKeys ?? []);
     }
 }

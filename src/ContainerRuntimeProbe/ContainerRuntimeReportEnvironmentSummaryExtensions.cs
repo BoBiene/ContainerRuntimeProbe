@@ -89,16 +89,10 @@ public static partial class ContainerRuntimeReportSummaryExtensions
     private static void AddHostSection(List<EnvironmentSummarySection> sections, ContainerRuntimeReport report)
     {
         var facts = new List<SummaryFact>();
-        var hostOs = GetPreferredHostOs(report);
-        if (!string.IsNullOrWhiteSpace(hostOs))
+        var hostOsFact = GetHostOsFact(report);
+        if (hostOsFact is not null)
         {
-            facts.Add(new SummaryFact(
-                "Host OS",
-                hostOs,
-                SummaryScope.Host,
-                Confidence: report.Host.RuntimeReportedHostOs.Confidence,
-                SourceKind: nameof(RuntimeReportedHostOsInfo),
-                EvidenceKeys: report.Host.RuntimeReportedHostOs.EvidenceReferences));
+            facts.Add(hostOsFact);
         }
 
         var virtualization = GetVirtualizationValue(report);
@@ -213,21 +207,41 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             EvidenceKeys: CollectEvidenceKeys(reasons)));
     }
 
-    private static string? GetPreferredHostOs(ContainerRuntimeReport report)
+    private static SummaryFact? GetHostOsFact(ContainerRuntimeReport report)
     {
         var runtimeHostOs = FormatHostOs(report.Host.RuntimeReportedHostOs.Name, report.Host.RuntimeReportedHostOs.Version);
         if (!string.Equals(runtimeHostOs, KnownValues.Unknown, StringComparison.Ordinal))
         {
-            return runtimeHostOs;
+            return new SummaryFact(
+                "Host OS",
+                runtimeHostOs,
+                SummaryScope.Host,
+                Confidence: report.Host.RuntimeReportedHostOs.Confidence,
+                SourceKind: nameof(RuntimeReportedHostOsInfo),
+                EvidenceKeys: report.Host.RuntimeReportedHostOs.EvidenceReferences);
         }
 
         if (!string.IsNullOrWhiteSpace(report.Host.UnderlyingHostOs.Name))
         {
-            return report.Host.UnderlyingHostOs.Name;
+            return new SummaryFact(
+                "Host OS",
+                report.Host.UnderlyingHostOs.Name,
+                SummaryScope.Host,
+                Confidence: report.Host.UnderlyingHostOs.Confidence,
+                SourceKind: nameof(UnderlyingHostOsInfo),
+                EvidenceKeys: report.Host.UnderlyingHostOs.EvidenceReferences);
         }
 
         var kernel = JoinNonEmpty(report.Host.VisibleKernel.Name, report.Host.VisibleKernel.Release);
-        return string.IsNullOrWhiteSpace(kernel) ? null : kernel;
+        return string.IsNullOrWhiteSpace(kernel)
+            ? null
+            : new SummaryFact(
+                "Host OS",
+                kernel,
+                SummaryScope.Host,
+                Confidence: report.Host.VisibleKernel.Confidence,
+                SourceKind: nameof(VisibleKernelInfo),
+                EvidenceKeys: report.Host.VisibleKernel.EvidenceReferences);
     }
 
     private static string? GetVirtualizationValue(ContainerRuntimeReport report)
