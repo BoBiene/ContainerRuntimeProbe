@@ -44,7 +44,7 @@ Arbeitsregeln fuer diese Runde:
   - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
 - [x] **47. Identities "Stacked" ausgeben
   - Bei L2 auch die L1 Idenentity mit ausgeben im report (Bei L3 entsprechend L2&L1 und so weiter)
-- [ ] **48. Abschlussvalidierung, Doku und Nachlauf**
+- [x] **48. Abschlussvalidierung, Doku und Nachlauf**
   - Jede neue Quelle braucht passende Tests, Renderer-/Summary-Abdeckung, Doku-Updates und eine Abschlusspruefung der offenen Risiken.
 
 ## Archived Completed Rollouts
@@ -60,8 +60,10 @@ Arbeitsregeln fuer diese Runde:
 
 ## Deferred Or External
 
-- [ ] **SampleRegressionTests pre-existing failure**
-  - `docs/samples/examples/*.sample.json` fehlen weiterhin im Repository; der Fehler predatiert die aktuelle Candidate-Runde.
+- [ ] **SampleRegressionTests fixture gap**
+  - `docs/samples/examples/*.sample.json` fehlen weiterhin im Repository; der Volltestlauf ueberspringt die Probe deshalb weiterhin.
+- [ ] **Bottlerocket distro fixture gap**
+  - Das Fixture `bottlerocket/1.19.4` fehlt weiterhin; der zugehoerige Distro-Family-Test bleibt deshalb uebersprungen.
 - [ ] **Git history cleanup**
   - Fruehe Commits auf dem Alt-Branch mit GPL-Daten sollten vor einem Merge nach `main` separat bereinigt werden, falls die Historie sauber bleiben soll.
 - [ ] **Override-Loader stretch**

@@ -92,7 +92,8 @@ That means consumers can safely serialize and forward the returned report withou
 - `IdentityAnchors`
   - explicit read-only anchor candidates for stronger workload or host binding scenarios
   - intentionally kept separate from diagnostic fingerprints so diagnostics do not silently become license-binding identifiers
-  - current implementation derives digested anchors from explicit cloud instance IDs, Kubernetes node identities, Siemens IED certificate-chain evidence with matched local TLS binding, host-only `MachineIdDigest` correlation anchors from local Windows `MachineGuid` or Linux `machine-id` values outside containerized environments, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs in containerized environments
+  - current implementation derives digested anchors from explicit cloud instance IDs, provider-boundary cloud environment IDs, Kubernetes node identities, Kubernetes service-account CA digests, Compose or Portainer deployment metadata, Siemens IED certificate-chain evidence with matched local TLS binding, guest-visible hypervisor VM UUIDs, visible TPM public material digests, host-only `MachineIdDigest` correlation anchors from local Windows `MachineGuid` or Linux `machine-id` values outside containerized environments, explicit hardware identifiers, weak `HostProfileIdentity` fallbacks, and workload-scoped `ContainerRuntimeIdentity` anchors from runtime inspect IDs, Kubernetes workload tokens, or namespace tuples in containerized environments
+  - weaker fallback anchors remain present alongside stronger same-scope anchors so consumers can see the full visible L3/L2/L1 stack
   - anchor values remain redacted in the default safe report even though the anchor metadata stays visible
   - environments without strong anchor sources can legitimately return an empty list
 

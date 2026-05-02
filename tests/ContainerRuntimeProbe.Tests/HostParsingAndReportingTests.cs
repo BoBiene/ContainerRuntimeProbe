@@ -247,7 +247,7 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("kubernetes", "kubernetes.node.provider_id", "azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a", EvidenceSensitivity.Sensitive)
         ]);
 
-        Assert.Equal(2, report.Host.IdentityAnchors.Count);
+        Assert.Equal(3, report.Host.IdentityAnchors.Count);
 
         var cloudAnchor = Assert.Single(report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.CloudInstanceIdentity));
         Assert.Equal("CRP-CLOUD-INSTANCE-v1", cloudAnchor.Algorithm);
@@ -257,8 +257,9 @@ public sealed class HostParsingAndReportingTests
         Assert.StartsWith("sha256:", cloudAnchor.Value, StringComparison.Ordinal);
         Assert.DoesNotContain("i-0abc123def4567890", cloudAnchor.Value, StringComparison.Ordinal);
 
-        var kubernetesAnchor = Assert.Single(report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity));
-        Assert.Equal(IdentityAnchorStrength.Strong, kubernetesAnchor.Strength);
+        var kubernetesAnchors = report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity).ToArray();
+        var kubernetesAnchor = Assert.Single(kubernetesAnchors.Where(anchor => anchor.Strength == IdentityAnchorStrength.Strong));
+        Assert.Contains(kubernetesAnchors, anchor => anchor.Strength == IdentityAnchorStrength.Medium);
         Assert.Equal(BindingSuitability.LicenseBinding, kubernetesAnchor.BindingSuitability);
         Assert.StartsWith("sha256:", kubernetesAnchor.Value, StringComparison.Ordinal);
         Assert.Contains(kubernetesAnchor.EvidenceReferences, reference => reference == "kubernetes:kubernetes.node.uid");
