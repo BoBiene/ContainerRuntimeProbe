@@ -34,7 +34,7 @@ Arbeitsregeln fuer diese Runde:
   - Ein Cluster-/Environment-Digest wird aus bereits sichtbarem Service-Account-CA- oder API-Zertifikatsmaterial abgeleitet, ohne neue Rechte zu erwarten.
 - [x] **42. Compose- und Portainer-Deployment-Identity erweitern**
   - Sichtbare Compose-/Portainer-Metadaten aus Socket-Inspect werden als staerkerer Deployment-/Environment-Kandidat genutzt.
-- [ ] **43. Kubernetes workload candidate sources erweitern**
+- [x] **43. Kubernetes workload candidate sources erweitern**
   - Sichtbare Pod-/Container-Korrelation aus CGroup- oder Mount-Signalen wird ausgewertet, wenn kein Runtime-Inspect moeglich ist.
 - [ ] **44. Cloud Environment-L2 einfuehren**
   - Mandanten-, Projekt- oder Subscription-nahe Cloud-Metadaten werden als Environment-Kandidaten modelliert, wenn sie sichtbar und sicher nutzbar sind.
@@ -42,7 +42,9 @@ Arbeitsregeln fuer diese Runde:
   - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.
 - [ ] **46. Hypervisor identity path einfuehren**
   - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
-- [ ] **47. Abschlussvalidierung, Doku und Nachlauf**
+- [ ] **47. Identities "Stacked" ausgeben
+  - Bei L2 auch die L1 Idenentity mit ausgeben im report (Bei L3 entsprechend L2&L1 und so weiter)
+- [ ] **48. Abschlussvalidierung, Doku und Nachlauf**
   - Jede neue Quelle braucht passende Tests, Renderer-/Summary-Abdeckung, Doku-Updates und eine Abschlusspruefung der offenen Risiken.
 
 ## Archived Completed Rollouts

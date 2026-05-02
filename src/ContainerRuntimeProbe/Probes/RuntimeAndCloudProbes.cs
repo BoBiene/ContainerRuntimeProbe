@@ -394,6 +394,7 @@ internal sealed class KubernetesProbe : IProbe
             if (podResult.status.HasValue) evidence.Add(new EvidenceItem(Id, "api.pod.status", podResult.status.Value.ToString()));
             if (podResult.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(podResult.body))
             {
+                AddPodIdentityEvidence(evidence, podResult.body!);
                 await ProbeNodeInfoAsync(client, evidence, podResult.body!, context.CancellationToken).ConfigureAwait(false);
             }
         }
@@ -411,6 +412,15 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         return handler;
+    }
+
+    private void AddPodIdentityEvidence(List<EvidenceItem> evidence, string podJson)
+    {
+        using var podDoc = JsonDocument.Parse(podJson);
+        if (podDoc.RootElement.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.pod.uid", JsonHelper.GetString(metadata, "uid"), EvidenceSensitivity.Sensitive);
+        }
     }
 
     private async Task ProbeNodeInfoAsync(HttpClient client, List<EvidenceItem> evidence, string podJson, CancellationToken ct)

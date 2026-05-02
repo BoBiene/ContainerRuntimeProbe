@@ -50,7 +50,7 @@
     - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
     - the current `HardwareIdentity` path is limited to explicit host-visible hardware identifiers such as SMBIOS UUIDs or serials, device-tree or SoC serials, and CPU serials when they are directly visible
     - the current `HostProfileIdentity` path is limited to coarse host profile signals such as visible kernel, CPU, memory bucket, DMI or device-tree product families, and virtualization/modalias hints, and only appears when no stronger host anchor is visible
-    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs and is intentionally scoped to workload correlation rather than host binding
+    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs, Kubernetes pod/container workload tokens when inspect is unavailable, and the namespace-tuple fallback, and remains intentionally scoped to workload correlation rather than host binding
     - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
 - `Virtualization`
@@ -68,7 +68,7 @@
 - `IdentityAnchors[]`
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
-  - current built-in sources are cloud instance identity metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, and explicit runtime inspect container IDs
+  - current built-in sources are cloud instance identity metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
   - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 

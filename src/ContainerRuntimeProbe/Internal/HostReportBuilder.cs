@@ -847,6 +847,48 @@ internal static class HostReportBuilder
                 ["Digest derived from observed runtime inspect container ID."]);
         }
 
+        var kubernetesPodUid = new[]
+        {
+            GetValue(evidence, "kubernetes.pod.uid"),
+            GetValue(evidence, "kubernetes.cgroup.pod_uid")
+        }
+        .FirstOrDefault(value => !string.IsNullOrWhiteSpace(value) && !string.Equals(value, Redaction.RedactedValue, StringComparison.Ordinal));
+
+        var kubernetesContainerToken = GetValue(evidence, "kubernetes.cgroup.container_token");
+        if (!string.IsNullOrWhiteSpace(kubernetesContainerToken) && !string.Equals(kubernetesContainerToken, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            var anchorSeed = string.IsNullOrWhiteSpace(kubernetesPodUid)
+                ? kubernetesContainerToken
+                : $"{kubernetesPodUid}\n{kubernetesContainerToken}";
+
+            return new IdentityAnchor(
+                IdentityAnchorKind.ContainerRuntimeIdentity,
+                "CRP-KUBERNETES-WORKLOAD-v1",
+                ComputeIdentityAnchorDigest("kubernetes-workload:container-token", anchorSeed),
+                IdentityAnchorScope.Workload,
+                BindingSuitability.Correlation,
+                IdentityAnchorStrength.Medium,
+                IdentityAnchorSensitivity.Sensitive,
+                GetEvidenceReferencesForKeys(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid", "kubernetes.cgroup.container_token"),
+                ["Kubernetes workload tokens are pod or container-instance scoped and change whenever the pod is recreated or the container is restarted."],
+                ["Digest derived from Kubernetes pod metadata and cgroup-derived container token because no runtime inspect container ID was visible."]);
+        }
+
+        if (!string.IsNullOrWhiteSpace(kubernetesPodUid))
+        {
+            return new IdentityAnchor(
+                IdentityAnchorKind.ContainerRuntimeIdentity,
+                "CRP-KUBERNETES-WORKLOAD-v1",
+                ComputeIdentityAnchorDigest("kubernetes-workload:pod-uid", kubernetesPodUid),
+                IdentityAnchorScope.Workload,
+                BindingSuitability.Correlation,
+                IdentityAnchorStrength.Weak,
+                IdentityAnchorSensitivity.Sensitive,
+                GetEvidenceReferencesForKeys(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid"),
+                ["Pod UIDs are pod-scoped and may not distinguish multiple containers within the same pod."],
+                ["Digest derived from Kubernetes pod UID because no per-container runtime ID was visible."]);
+        }
+
         var pidNamespace = GetValue(evidence, "ns.pid");
         var mountNamespace = GetValue(evidence, "ns.mnt");
         var networkNamespace = GetValue(evidence, "ns.net");

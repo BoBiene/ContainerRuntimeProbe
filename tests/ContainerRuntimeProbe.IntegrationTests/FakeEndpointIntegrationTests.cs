@@ -442,7 +442,7 @@ public sealed class FakeEndpointIntegrationTests
                 {
                     statusCode = 200;
                     body = """
-                        {"spec":{"nodeName":"worker-a"}}
+                        {"metadata":{"uid":"0d2f65de-7d7d-4f0d-93f1-6f85cc4ab111"},"spec":{"nodeName":"worker-a"}}
                         """;
                 }
                 else if (path == "/api/v1/nodes/worker-a")
@@ -493,6 +493,7 @@ public sealed class FakeEndpointIntegrationTests
             Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.name" && e.Value == "worker-a");
             Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.uid" && e.Value == "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111");
             Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.provider_id" && e.Value!.Contains("aks-worker-a", StringComparison.Ordinal));
+            Assert.Contains(result.Evidence, e => e.Key == "kubernetes.pod.uid" && e.Value == "0d2f65de-7d7d-4f0d-93f1-6f85cc4ab111");
         }
         finally
         {

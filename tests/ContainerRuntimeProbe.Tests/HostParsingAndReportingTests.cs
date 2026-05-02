@@ -440,6 +440,27 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsKubernetesWorkloadIdentity_FromPodUidAndCgroupToken_WhenInspectIdUnavailable()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "kubernetes.pod.uid", "550e8400-e29b-41d4-a716-446655440000", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "kubernetes.cgroup.container_token", "0123456789abcdef", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+
+        Assert.Equal("CRP-KUBERNETES-WORKLOAD-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("0123456789abcdef", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "kubernetes:kubernetes.pod.uid");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:kubernetes.cgroup.container_token");
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
     {
         var report = BuildHostReport([

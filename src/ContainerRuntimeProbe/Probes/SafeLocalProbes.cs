@@ -273,7 +273,12 @@ internal sealed class UnixHostProbe : IProbe
             if (file == "/proc/1/cgroup" || file == "/proc/self/cgroup")
             {
                 foreach (var signal in Parsing.ParseCgroupSignals(text!))
+                {
                     evidence.Add(new EvidenceItem(Id, $"{file}:signal", signal));
+                    var (podUid, containerToken) = Parsing.ExtractKubernetesWorkloadIdentifiers(signal);
+                    AddSensitiveEvidenceIfPresent(evidence, "kubernetes.cgroup.pod_uid", podUid, context.IncludeSensitive);
+                    AddSensitiveEvidenceIfPresent(evidence, "kubernetes.cgroup.container_token", containerToken, context.IncludeSensitive);
+                }
             }
             else if (file.Contains("mountinfo", StringComparison.Ordinal))
             {
