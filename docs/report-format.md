@@ -8,6 +8,7 @@
   - `Environment.Sections[]` uses `EnvironmentSummarySection(Kind, Title, Facts)`
   - `Identity.Sections[]` uses `IdentitySummarySection(Kind, Title, Facts)`
   - stronger identity facts may appear together with weaker fallback facts for the same scope when both are visible
+  - current identity labels include `Workload ID`, `Container ID`, `Deployment ID`, `Environment ID`, `Runtime Profile ID`, `Platform ID`, `Node ID`, `Hypervisor ID`, and `Host ID`
   - each `SummaryFact` carries `Label`, `Value`, `Scope`, optional `Level`, `Confidence`, optional `SourceKind`, `Usage`, and optional `EvidenceKeys[]`
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
@@ -44,7 +45,7 @@
 - `VisibleKernel`
   - `IdentityAnchors`
     - explicit digest-based identity anchors separate from diagnostic fingerprints
-    - current built-in kinds are `CloudInstanceIdentity`, `CloudEnvironmentIdentity`, `KubernetesNodeIdentity`, `KubernetesEnvironmentIdentity`, `DeploymentEnvironmentIdentity`, `VendorRuntimeIdentity`, `HypervisorIdentity`, `TpmPublicKeyDigest`, `MachineIdDigest`, `HardwareIdentity`, `HostProfileIdentity`, and `ContainerRuntimeIdentity`
+    - current built-in kinds are `CloudInstanceIdentity`, `CloudEnvironmentIdentity`, `KubernetesNodeIdentity`, `KubernetesEnvironmentIdentity`, `DeploymentEnvironmentIdentity`, `VendorRuntimeIdentity`, `HypervisorIdentity`, `TpmPublicKeyDigest`, `MachineIdDigest`, `HardwareIdentity`, `HostProfileIdentity`, `WorkloadProfileIdentity`, and `ContainerRuntimeIdentity`
     - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
     - the current `CloudEnvironmentIdentity` path is limited to visible provider-boundary metadata such as AWS account IDs, Azure subscription IDs, GCP project IDs, or OCI compartment IDs
     - the current `HypervisorIdentity` path is limited to guest-visible VM UUID evidence such as `dmi.product_uuid` when the runtime is already classified as virtualized
@@ -54,7 +55,8 @@
     - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
     - the current `HardwareIdentity` path is limited to explicit host-visible hardware identifiers such as SMBIOS UUIDs or serials, device-tree or SoC serials, and CPU serials when they are directly visible
     - the current `HostProfileIdentity` path is limited to coarse host profile signals such as visible kernel, CPU, memory bucket, DMI or device-tree product families, and virtualization/modalias hints, and remains a weak host-correlation fallback even when stronger host anchors are also visible
-    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs, Kubernetes pod/container workload tokens, and the namespace-tuple fallback, and weaker workload fallbacks remain visible beside stronger runtime-scoped IDs
+    - the current `WorkloadProfileIdentity` path is limited to normalized workload hostname plus visible pod, namespace, and Compose/stack context signals, and it remains a weak correlation-only `Workload ID`
+    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs and Kubernetes pod/container workload tokens; weaker workload fallbacks remain visible separately as `Workload ID`
     - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
 - `Virtualization`
@@ -68,12 +70,13 @@
 - `DiagnosticFingerprints[]`
   - diagnostic-only fingerprints for environment correlation and profiling
   - current first built-in entry continues to use `Algorithm = CRP-HOST-FP-v1`
+  - standalone container summaries currently surface that fingerprint as `Runtime Profile ID`; Kubernetes or industrial variants surface it as weak `Environment ID`
   - each entry carries `Purpose`, `Algorithm`, `Value`, legacy `Stability`, `StabilityLevel`, `UniquenessLevel`, `CorroborationLevel`, `SourceClasses[]`, `IncludedSignalCount`, `ExcludedSensitiveSignalCount`, `Components[]`, `Warnings[]`, and `Reasons[]`
 - `IdentityAnchors[]`
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
-  - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, guest-visible hypervisor VM UUID digests, TPM public-material digests, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
-  - weaker fallback anchors such as host-profile, namespace-tuple, or node-provider-ID candidates remain present even when a stronger same-scope identity is also visible
+  - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, guest-visible hypervisor VM UUID digests, TPM public-material digests, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, weak workload-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
+  - weaker fallback anchors such as host-profile, workload-profile, or node-provider-ID candidates remain present even when a stronger same-scope identity is also visible
   - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 
@@ -88,6 +91,7 @@
 - Identity anchors are modeled separately because some consumers may use them for correlation or license binding, but they remain read-only observed values rather than provisioned platform identities.
 - Default safe reports redact sensitive identity-anchor values even though the anchor metadata remains visible.
 - Standard Markdown and text reports render a structured `Summary` section first, split into neutral `Environment` facts and scope-oriented `Identity` facts.
+- The mixed summary section title is `Deployment / Environment Identity` because it can hold `Deployment ID`, `Environment ID`, `Runtime Profile ID`, or `Platform ID` depending on which explicit signals are visible.
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.
@@ -95,6 +99,53 @@
 - For the current container TPM visibility flow, `TrustedPlatforms[].VerificationLevel` is intentionally capped at `1`: a TPM-related device node is visible in the current process environment. This is an explicit local artifact, but not a host-identity or ownership proof.
 - JSON uses the enum names emitted by `System.Text.Json`. Examples: `Containerd`, `AwsEcs`, `CloudRun`, `AzureContainerApps`, and `SiemensIndustrialEdge`.
 - Markdown and text renderers keep user-facing labels such as `containerd`, `AWS ECS`, `Cloud Run`, and `Siemens Industrial Edge`.
+
+## Identity summary examples
+
+Standalone container with only weak workload correlation:
+
+```text
+Workload Identity
+  Workload ID             : sha256:... [L1] [Correlation]
+
+Deployment / Environment Identity
+  Runtime Profile ID      : sha256:... [L1] [Correlation]
+```
+
+Standalone container with runtime inspect container ID:
+
+```text
+Workload Identity
+  Container ID            : sha256:... [L2] [Correlation]
+  Workload ID             : sha256:... [L1] [Correlation]
+
+Deployment / Environment Identity
+  Runtime Profile ID      : sha256:... [L1] [Correlation]
+```
+
+Docker Compose or Portainer deployment:
+
+```text
+Workload Identity
+  Container ID            : sha256:... [L2] [Correlation]
+  Workload ID             : sha256:... [L1] [Correlation]
+
+Deployment / Environment Identity
+  Deployment ID           : sha256:... [L2] [Correlation]
+  Runtime Profile ID      : sha256:... [L1] [Correlation]
+```
+
+Kubernetes workload:
+
+```text
+Workload Identity
+  Container ID            : sha256:... [L2] [Correlation]
+  Workload ID             : sha256:... [L1] [Correlation]
+
+Deployment / Environment Identity
+  Environment ID          : sha256:... [L2] [Correlation]
+  Environment ID          : sha256:... [L1] [Correlation]
+```
 
 ## JSON structure (contract)
 ```json
@@ -166,13 +217,13 @@
       "Sections": [
         {
           "Kind": "DeploymentIdentity",
-          "Title": "Deployment Identity",
+          "Title": "Deployment / Environment Identity",
           "Facts": [
             {
-              "Label": "Deployment Fingerprint",
+              "Label": "Runtime Profile ID",
               "Value": "sha256:...",
-              "Scope": "Deployment",
-              "Level": 2,
+              "Scope": "Runtime",
+              "Level": 1,
               "Confidence": "Medium",
               "SourceKind": "CRP-HOST-FP-v1",
               "Usage": "Correlation",

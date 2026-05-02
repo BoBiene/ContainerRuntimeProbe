@@ -8,6 +8,7 @@ namespace ContainerRuntimeProbe.Internal;
 internal static class HostReportBuilder
 {
     private const string KernelReleaseKey = "kernel.release";
+    private static readonly string[] WorkloadHostnameEvidenceKeys = ["HOSTNAME", "kernel.hostname", "/etc/hostname", "/proc/sys/kernel/hostname"];
 
     public static HostReport Build(IReadOnlyList<ProbeResult> probes, ReportClassification classification, FingerprintMode fingerprintMode)
     {
@@ -350,10 +351,16 @@ internal static class HostReportBuilder
         var corroborationLevel = ClassifyDiagnosticCorroborationLevel(sourceClasses);
         var reasons = BuildDiagnosticFingerprintReasons(stabilityLevel, sourceClasses, excluded.Count).ToArray();
 
+        var purpose = classification.IsContainerized.Value == ContainerizationKind.@True
+            && classification.Orchestrator.Value == OrchestratorKind.Unknown
+            && classification.PlatformVendor.Value == PlatformVendorKind.Unknown
+            ? DiagnosticFingerprintPurpose.RuntimeProfile
+            : DiagnosticFingerprintPurpose.EnvironmentCorrelation;
+
         return
         [
             new DiagnosticFingerprint(
-                DiagnosticFingerprintPurpose.EnvironmentCorrelation,
+                purpose,
                 "CRP-HOST-FP-v1",
                 HostParsing.ComputeFingerprint(included),
                 stability,
@@ -909,6 +916,115 @@ internal static class HostReportBuilder
         return NormalizeHostProfileToken(firstCompatible);
     }
 
+    private static IdentityAnchor? BuildWorkloadProfileIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var included = new Dictionary<string, string>(StringComparer.Ordinal);
+        AddWorkloadProfileComponent(included, "workload.hostname", GetVisibleWorkloadHostname(evidence));
+        AddWorkloadProfileComponent(included, "kubernetes.pod.uid", NormalizeWorkloadProfileToken(GetFirstVisibleValue(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid")));
+        AddWorkloadProfileComponent(included, "kubernetes.container.token", NormalizeWorkloadProfileToken(GetValue(evidence, "kubernetes.cgroup.container_token")));
+        AddWorkloadProfileComponent(included, "namespace.pid", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.pid")));
+        AddWorkloadProfileComponent(included, "namespace.mnt", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.mnt")));
+        AddWorkloadProfileComponent(included, "namespace.net", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.net")));
+        AddWorkloadProfileComponent(included, "compose.project", NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.compose.project")));
+        AddWorkloadProfileComponent(included, "compose.stack.namespace", NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.stack.namespace")));
+
+        if (included.Count == 0)
+        {
+            return null;
+        }
+
+        var fingerprint = HostParsing.ComputeFingerprint(included);
+        var evidenceReferences = GetEvidenceReferencesForKeys(
+            evidence,
+            "HOSTNAME",
+            "kernel.hostname",
+            "/etc/hostname",
+            "/proc/sys/kernel/hostname",
+            "kubernetes.pod.uid",
+            "kubernetes.cgroup.pod_uid",
+            "kubernetes.cgroup.container_token",
+            "ns.pid",
+            "ns.mnt",
+            "ns.net",
+            "compose.label.com.docker.compose.project",
+            "compose.label.com.docker.stack.namespace");
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.WorkloadProfileIdentity,
+            "CRP-WORKLOAD-PROFILE-v1",
+            ComputeIdentityAnchorDigest("workload-profile", fingerprint),
+            IdentityAnchorScope.Workload,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Weak,
+            IdentityAnchorSensitivity.Sensitive,
+            evidenceReferences,
+            ["Workload profile digests are correlation-only hints and may change when the workload hostname, namespaces, pod placement, or compose context changes."],
+            ["Digest derived from workload-scoped hostname and visible namespace or orchestration signals inside the current container."]);
+    }
+
+    private static void AddWorkloadProfileComponent(IDictionary<string, string> included, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            included[key] = value.Trim();
+        }
+    }
+
+    private static string? GetVisibleWorkloadHostname(IReadOnlyList<EvidenceItem> evidence)
+    {
+        foreach (var key in WorkloadHostnameEvidenceKeys)
+        {
+            var normalized = NormalizeWorkloadHostname(GetValue(evidence, key));
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                return normalized;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? GetFirstVisibleValue(IReadOnlyList<EvidenceItem> evidence, params string[] keys)
+    {
+        foreach (var key in keys)
+        {
+            var value = GetValue(evidence, key);
+            if (!string.IsNullOrWhiteSpace(value) && !string.Equals(value, Redaction.RedactedValue, StringComparison.Ordinal))
+            {
+                return value;
+            }
+        }
+
+        return null;
+    }
+
+    private static string? NormalizeWorkloadHostname(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || string.Equals(value, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        var normalized = value.Trim().Trim('.').ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(normalized)
+            || normalized is "localhost" or "localhost.localdomain" or "(none)" or "none" or "unknown")
+        {
+            return null;
+        }
+
+        return normalized;
+    }
+
+    private static string? NormalizeWorkloadProfileToken(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || string.Equals(value, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return value.Trim().ToLowerInvariant();
+    }
+
     private static IReadOnlyList<IdentityAnchor> BuildContainerRuntimeIdentityAnchors(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
     {
         if (classification.IsContainerized.Value != ContainerizationKind.@True)
@@ -917,6 +1033,12 @@ internal static class HostReportBuilder
         }
 
         var anchors = new List<IdentityAnchor>();
+
+        var workloadProfileAnchor = BuildWorkloadProfileIdentityAnchor(evidence);
+        if (workloadProfileAnchor is not null)
+        {
+            anchors.Add(workloadProfileAnchor);
+        }
 
         var containerId = GetValue(evidence, "container.id");
         if (!string.IsNullOrWhiteSpace(containerId) && !string.Equals(containerId, Redaction.RedactedValue, StringComparison.Ordinal))
@@ -960,43 +1082,6 @@ internal static class HostReportBuilder
                 ["Kubernetes workload tokens are pod or container-instance scoped and change whenever the pod is recreated or the container is restarted."],
                 ["Digest derived from Kubernetes pod metadata and cgroup-derived container token as a workload-scoped fallback identity."]));
         }
-
-        if (!string.IsNullOrWhiteSpace(kubernetesPodUid))
-        {
-            anchors.Add(new IdentityAnchor(
-                IdentityAnchorKind.ContainerRuntimeIdentity,
-                "CRP-KUBERNETES-WORKLOAD-v1",
-                ComputeIdentityAnchorDigest("kubernetes-workload:pod-uid", kubernetesPodUid),
-                IdentityAnchorScope.Workload,
-                BindingSuitability.Correlation,
-                IdentityAnchorStrength.Weak,
-                IdentityAnchorSensitivity.Sensitive,
-                GetEvidenceReferencesForKeys(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid"),
-                ["Pod UIDs are pod-scoped and may not distinguish multiple containers within the same pod."],
-                ["Digest derived from Kubernetes pod UID as a weaker workload fallback identity."]));
-        }
-
-        var pidNamespace = GetValue(evidence, "ns.pid");
-        var mountNamespace = GetValue(evidence, "ns.mnt");
-        var networkNamespace = GetValue(evidence, "ns.net");
-        if (string.IsNullOrWhiteSpace(pidNamespace)
-            || string.IsNullOrWhiteSpace(mountNamespace)
-            || string.IsNullOrWhiteSpace(networkNamespace))
-        {
-            return anchors;
-        }
-
-        anchors.Add(new IdentityAnchor(
-            IdentityAnchorKind.ContainerRuntimeIdentity,
-            "CRP-CONTAINER-NS-v1",
-            ComputeIdentityAnchorDigest("container-runtime:namespaces", $"{pidNamespace}\n{mountNamespace}\n{networkNamespace}"),
-            IdentityAnchorScope.Workload,
-            BindingSuitability.Correlation,
-            IdentityAnchorStrength.Weak,
-            IdentityAnchorSensitivity.Sensitive,
-            GetEvidenceReferencesForKeys(evidence, "ns.pid", "ns.mnt", "ns.net"),
-            ["Namespace tuples are workload-instance scoped and typically change whenever the container or pod is recreated."],
-            ["Digest derived from visible PID, mount, and network namespace tuple as a weaker workload fallback identity."]));
 
         return anchors;
     }

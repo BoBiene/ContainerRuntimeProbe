@@ -105,7 +105,7 @@ internal static class TestReportFactory
                     "Standard_D4s_v5"),
                 [
                     new DiagnosticFingerprint(
-                        DiagnosticFingerprintPurpose.EnvironmentCorrelation,
+                        DiagnosticFingerprintPurpose.RuntimeProfile,
                         "CRP-HOST-FP-v1",
                         "sha256:0123456789abcdef",
                         FingerprintStability.RuntimeApiBacked,
@@ -117,7 +117,7 @@ internal static class TestReportFactory
                         [DiagnosticFingerprintSourceClass.KernelSignal, DiagnosticFingerprintSourceClass.RuntimeApi],
                         [new DiagnosticFingerprintComponent("kernel.release", true, "6.17.0-1011-azure")],
                         ["Fingerprint is diagnostic only and not a security identity."],
-                        ["Includes kernel and runtime signals for environment correlation."])
+                        ["Includes kernel and runtime signals for runtime correlation."])
                 ],
                     [
                         new IdentityAnchor(

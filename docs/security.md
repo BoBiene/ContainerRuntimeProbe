@@ -3,16 +3,19 @@
 - No credential endpoints are queried.
 - Sensitive env-like keys are redacted unless `--include-sensitive true`.
 - Hostnames are redacted by default.
+- Workload or container hostnames are treated as workload-scoped sensitive signals, never as host identity.
 - Probe networking is allowlisted to known metadata routes/endpoints.
 - Docker/Podman socket visibility is reported as a security warning.
 - Probe failures return typed outcomes (`Unavailable`, `AccessDenied`, `Timeout`, `NotSupported`, `Error`) instead of crashing.
 - Docker-socket probing is read-only (`GET` requests only).
 - Host fingerprint mode defaults to `safe` and excludes hostname, container ID, pod name, instance IDs, subscription/project/tenant/compartment IDs, MAC/IP data, CPU serials, and raw overlay paths.
+- The weak `Workload ID` may include normalized workload hostname plus namespace or orchestration signals, but it remains `L1` correlation only and must never be used for license binding.
 - CPU flags are summarized as count + hash; raw flag lists are not emitted into the fingerprint by default.
 - The host fingerprint is diagnostic only and must not be used as a security identity or attestation claim.
 - Identity anchors are modeled separately from diagnostic fingerprints and are derived only from explicit read-only sources.
-- Current anchor values are digests over observed cloud instance IDs, visible cloud account/subscription/project/compartment metadata, Kubernetes node identities, visible Kubernetes service-account CA bundles, visible Compose or Portainer deployment metadata labels, matched Siemens IED certificate-chain runtime evidence, guest-visible hypervisor VM UUID digests, visible TPM public material digests, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, weak public host-profile signals, explicit runtime inspect container IDs, or Kubernetes pod/container workload tokens, not raw IDs.
+- Current anchor values are digests over observed cloud instance IDs, visible cloud account/subscription/project/compartment metadata, Kubernetes node identities, visible Kubernetes service-account CA bundles, visible Compose or Portainer deployment metadata labels, matched Siemens IED certificate-chain runtime evidence, guest-visible hypervisor VM UUID digests, visible TPM public material digests, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, weak public host-profile signals, weak workload-profile signals such as normalized workload hostname plus namespace or pod context, explicit runtime inspect container IDs, or Kubernetes pod/container workload tokens, not raw IDs.
 - Identity anchor values are redacted in the default host report unless `--include-sensitive true` is used.
+- Even when sensitive output is enabled, raw hostnames are still unsuitable for binding because they are user-controlled, duplicate-prone, and environment-specific.
 - The package does not create TPM keys, provision certificates, or mutate the platform; future TPM support must stay read-only and digest-based.
 
 
