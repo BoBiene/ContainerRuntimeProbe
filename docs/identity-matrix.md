@@ -49,9 +49,9 @@ These are the realistic next candidates if the goal is at least one `Host` L1 ev
 
 | Candidate raw source | Likely systems | Probe surface | Intended target | Proposed level if used alone | Proposed level when corroborated | Why it matters |
 | --- | --- | --- | --- | --- | --- | --- |
-| SMBIOS UUID or serials such as `product_uuid`, `product_serial`, `board_serial`, `chassis_serial` | Linux hosts, many VMs, some containers with readable `/sys/class/dmi/id/*` | new `proc-files` inputs | Host | L2 | L3 with cloud/node/trust corroboration | Better host uniqueness than public vendor strings. Not currently collected. |
+| SMBIOS UUID or serials such as `product_uuid`, `product_serial`, `board_serial`, `chassis_serial` | Linux hosts, many VMs, some containers with readable `/sys/class/dmi/id/*` | `proc-files` raw evidence | Host | L2 | L3 with cloud/node/trust corroboration | Better host uniqueness than public vendor strings. Raw evidence is now collected but not yet promoted. |
 | CPU serial | ARM SBCs, industrial ARM, some embedded Linux | existing `proc-files` can already emit `cpu.serial` when visible | Host | L2 | L3 with corroboration | Often absent on x86, but strong on some appliance and SBC targets. Must remain sensitive/redacted. |
-| Device-tree serial number or SoC unique serial | ARM appliances, embedded boards | new `proc-files` inputs under device-tree / SoC | Host | L2 | L3 with corroboration | Important for industrial or edge hardware where DMI is absent but SoC identity exists. |
+| Device-tree serial number or SoC unique serial | ARM appliances, embedded boards | `proc-files` raw evidence under device-tree / SoC | Host | L2 | L3 with corroboration | Important for industrial or edge hardware where DMI is absent but SoC identity exists. Raw evidence is now collected but not yet promoted. |
 | Public host-profile digest built from kernel, CPU, memory bucket, DMI vendor/product, virtualization, and platform modalias families | Generic containers with no explicit stable host ID | existing `proc-files`, `runtime-api`, classification | Host | L1 | stays L1 unless paired with explicit host ID | This is the only realistic universal fallback, but it is a weak host-correlation profile, not a strong physical-host identity. |
 | Pod UID or cgroup-derived pod/container token | Kubernetes workloads | existing mount/cgroup parsing or downward API env if present | Container | L1 or L2 | L2 with runtime container ID or pod metadata | Useful where runtime sockets are absent but Kubernetes-specific workload tokens are still visible. |
 | Compose / Portainer project labels | Docker Compose, Portainer | existing `runtime-api` compose label extraction | Environment / Deployment | L2 | L2 | Better deployment identity than the generic diagnostic fingerprint when Compose labels are visible. |
@@ -82,7 +82,7 @@ The local Podman and kind captures in `artifacts/` currently show:
 - `/sys/hypervisor/type` was not useful in the sampled Podman and kind runs
 - no visible `machine.id`
 - no visible `windows.machine_guid`
-- no visible DMI serial/UUID fields because those are not collected today
+- no visible DMI serial/UUID fields in the sampled local Podman and kind reports
 - no visible `cpu.serial` in the sampled local Podman and kind runs
 
 That means the current local container samples are enough for:

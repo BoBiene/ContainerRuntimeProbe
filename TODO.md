@@ -24,7 +24,7 @@ Arbeitsregeln fuer diese Runde:
 
 ### Planned Implementation Steps
 
-- [ ] **38. Linux host unique-ID evidence sammeln**
+- [x] **38. Linux host unique-ID evidence sammeln**
   - `proc-files` sammelt zusaetzlich hostgebundene, read-only Quellen wie SMBIOS-UUIDs/Serien und ARM-/SoC-Serienwerte, soweit sie sichtbar sind.
 - [ ] **39. Host-Anchor aus expliziten Hardware-IDs einfuehren**
   - Sichtbare SMBIOS-, CPU- oder SoC-Identifier werden mit klaren Staerke- und Container-Grenzen in konservative Host-Anchors umgesetzt.

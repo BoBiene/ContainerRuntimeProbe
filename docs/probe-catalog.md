@@ -17,8 +17,11 @@
   - public vendor kernel sysctls discovered conservatively under `/proc/sys/kernel/` for suffixes `*_hw_version`, `*_hw_revision`, `*_install_flag`
   - `/proc/cpuinfo`, `/sys/devices/system/cpu/{online,possible,present}`
   - `/sys/class/dmi/id/{sys_vendor,product_name,product_family,product_version,board_vendor,board_name,chassis_vendor,bios_vendor,modalias}`
+  - sensitive host-ID candidates from `/sys/class/dmi/id/{product_uuid,product_serial,board_serial,chassis_serial}` when readable; they remain redacted unless sensitive output is enabled
   - `/proc/device-tree/{model,compatible}` and `/sys/firmware/devicetree/base/{model,compatible}` when publicly readable
+  - sensitive device-tree serial candidates from `/proc/device-tree/serial-number` and `/sys/firmware/devicetree/base/serial-number` when readable; they remain redacted unless sensitive output is enabled
   - `/sys/devices/soc0/{machine,family,soc_id,revision}` when publicly readable
+  - sensitive SoC serial candidates from `/sys/devices/soc0/serial_number` when readable; they remain redacted unless sensitive output is enabled
   - `/sys/bus/platform/devices/*/{modalias,uevent}` for non-addressed platform devices; extracts `MODALIAS` and `OF_COMPATIBLE_*` lines
   - `/proc/meminfo`, `/sys/fs/cgroup/memory*`, `/sys/fs/cgroup/cpu*`
   - `/proc/self/ns/*`

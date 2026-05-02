@@ -118,6 +118,14 @@ internal sealed class UnixHostProbe : IProbe
         "/sys/class/dmi/id/modalias"
     ];
 
+    private static readonly string[] SensitiveDmiFiles =
+    [
+        "/sys/class/dmi/id/product_uuid",
+        "/sys/class/dmi/id/product_serial",
+        "/sys/class/dmi/id/board_serial",
+        "/sys/class/dmi/id/chassis_serial"
+    ];
+
     private static readonly string[] PublicDeviceTreeFiles =
     [
         "/proc/device-tree/model",
@@ -126,12 +134,23 @@ internal sealed class UnixHostProbe : IProbe
         "/sys/firmware/devicetree/base/compatible"
     ];
 
+    private static readonly string[] SensitiveDeviceTreeFiles =
+    [
+        "/proc/device-tree/serial-number",
+        "/sys/firmware/devicetree/base/serial-number"
+    ];
+
     private static readonly string[] PublicSocFiles =
     [
         "/sys/devices/soc0/machine",
         "/sys/devices/soc0/family",
         "/sys/devices/soc0/soc_id",
         "/sys/devices/soc0/revision"
+    ];
+
+    private static readonly string[] SensitiveSocFiles =
+    [
+        "/sys/devices/soc0/serial_number"
     ];
 
     private static readonly string[] VirtualizationFiles =
@@ -187,8 +206,11 @@ internal sealed class UnixHostProbe : IProbe
         .. BaseKernelSysctlFiles,
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
         .. PublicDmiFiles,
+        .. SensitiveDmiFiles,
         .. PublicDeviceTreeFiles,
+        .. SensitiveDeviceTreeFiles,
         .. PublicSocFiles,
+        .. SensitiveSocFiles,
         .. VirtualizationFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
@@ -359,12 +381,26 @@ internal sealed class UnixHostProbe : IProbe
             else if (file.StartsWith("/sys/class/dmi/id/", StringComparison.Ordinal))
             {
                 var key = file.Split('/').Last();
-                AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+                if (key is "product_uuid" or "product_serial" or "board_serial" or "chassis_serial")
+                {
+                    AddSensitiveEvidenceIfPresent(evidence, $"dmi.{key}", text, context.IncludeSensitive);
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+                }
             }
             else if (file.StartsWith("/sys/devices/soc0/", StringComparison.Ordinal))
             {
                 var key = file.Split('/').Last();
-                AddEvidenceIfPresent(evidence, $"soc.{key}", text?.Trim());
+                if (key == "serial_number")
+                {
+                    AddSensitiveEvidenceIfPresent(evidence, $"soc.{key}", text, context.IncludeSensitive);
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"soc.{key}", text?.Trim());
+                }
             }
             else if (file == "/proc/modules")
             {
@@ -411,6 +447,10 @@ internal sealed class UnixHostProbe : IProbe
             else if (file is "/proc/device-tree/compatible" or "/sys/firmware/devicetree/base/compatible")
             {
                 AddEvidenceIfPresent(evidence, "device_tree.compatible", NormalizeDeviceTreeText(text));
+            }
+            else if (file is "/proc/device-tree/serial-number" or "/sys/firmware/devicetree/base/serial-number")
+            {
+                AddSensitiveEvidenceIfPresent(evidence, "device_tree.serial_number", NormalizeDeviceTreeText(text), context.IncludeSensitive);
             }
             else if (file == "/proc/meminfo")
             {
@@ -510,6 +550,14 @@ internal sealed class UnixHostProbe : IProbe
         if (!string.IsNullOrWhiteSpace(value))
         {
             evidence.Add(new EvidenceItem("proc-files", key, value.Trim()));
+        }
+    }
+
+    private static void AddSensitiveEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, bool includeSensitive)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem("proc-files", key, includeSensitive ? value.Trim() : "redacted", EvidenceSensitivity.Sensitive));
         }
     }
 

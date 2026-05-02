@@ -147,6 +147,43 @@ public sealed class UnixHostProbeTests
     }
 
     [Fact]
+    public async Task UnixHostProbe_ExtractsSensitiveHardwareIdentitySignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/sys/class/dmi/id/product_uuid"] = "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A\n",
+            ["/sys/class/dmi/id/product_serial"] = "SN-123456\n",
+            ["/sys/class/dmi/id/board_serial"] = "BOARD-42\n",
+            ["/sys/class/dmi/id/chassis_serial"] = "CHASSIS-99\n",
+            ["/proc/device-tree/serial-number"] = "ABC123XYZ\0",
+            ["/sys/devices/soc0/serial_number"] = "SOC-0001\n"
+        };
+
+        var probe = new UnixHostProbe(values.Keys.ToArray(), (path, _, _) =>
+            Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.product_uuid" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.product_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.board_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.chassis_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "device_tree.serial_number" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "soc.serial_number" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.product_uuid" && item.Value == "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.product_serial" && item.Value == "SN-123456" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.board_serial" && item.Value == "BOARD-42" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.chassis_serial" && item.Value == "CHASSIS-99" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "device_tree.serial_number" && item.Value == "ABC123XYZ" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "soc.serial_number" && item.Value == "SOC-0001" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
     public async Task UnixHostProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
     {
         var values = new Dictionary<string, string>
