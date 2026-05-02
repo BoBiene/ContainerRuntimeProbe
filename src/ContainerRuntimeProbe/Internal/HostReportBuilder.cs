@@ -391,6 +391,12 @@ internal static class HostReportBuilder
             anchors.Add(linuxMachineIdAnchor);
         }
 
+        var hardwareIdentityAnchor = BuildHardwareIdentityAnchor(evidence);
+        if (hardwareIdentityAnchor is not null)
+        {
+            anchors.Add(hardwareIdentityAnchor);
+        }
+
         var containerRuntimeAnchor = BuildContainerRuntimeIdentityAnchor(evidence, classification);
         if (containerRuntimeAnchor is not null)
         {
@@ -562,6 +568,43 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, "machine.id", "os.id", KernelReleaseKey),
             ["machine-id is installation-stable but may change across reinstallation, image cloning, or explicit regeneration."],
             ["Digest derived from observed Linux machine-id value."]);
+    }
+
+    private static IdentityAnchor? BuildHardwareIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var components = new[]
+        {
+            (Key: "dmi.product_uuid", Value: GetValue(evidence, "dmi.product_uuid")),
+            (Key: "dmi.product_serial", Value: GetValue(evidence, "dmi.product_serial")),
+            (Key: "dmi.board_serial", Value: GetValue(evidence, "dmi.board_serial")),
+            (Key: "dmi.chassis_serial", Value: GetValue(evidence, "dmi.chassis_serial")),
+            (Key: "device_tree.serial_number", Value: GetValue(evidence, "device_tree.serial_number")),
+            (Key: "soc.serial_number", Value: GetValue(evidence, "soc.serial_number")),
+            (Key: "cpu.serial", Value: GetValue(evidence, "cpu.serial"))
+        }
+        .Where(component => !string.IsNullOrWhiteSpace(component.Value) && !string.Equals(component.Value, Redaction.RedactedValue, StringComparison.Ordinal))
+        .OrderBy(component => component.Key, StringComparer.Ordinal)
+        .ToArray();
+
+        if (components.Length == 0)
+        {
+            return null;
+        }
+
+        var digestSeed = string.Join("\n", components.Select(component => $"{component.Key}:{component.Value!.Trim()}"));
+        var evidenceKeys = components.Select(component => component.Key).ToArray();
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.HardwareIdentity,
+            "CRP-HARDWARE-ID-v1",
+            ComputeIdentityAnchorDigest("hardware-identity", digestSeed),
+            IdentityAnchorScope.Host,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, evidenceKeys),
+            ["Hardware identifiers may change after board replacement, firmware reset, or vendor-specific re-provisioning."],
+            ["Digest derived from explicit host-visible hardware identifier signals."]);
     }
 
     private static IdentityAnchor? BuildContainerRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)

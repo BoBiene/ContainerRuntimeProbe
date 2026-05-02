@@ -354,6 +354,48 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsHardwareIdentity_FromExplicitDmiIdentifiers_InContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "dmi.product_serial", "SN-123456", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HardwareIdentity));
+
+        Assert.Equal("CRP-HARDWARE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_uuid");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_serial");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsHardwareIdentity_FromCpuAndSocSerialSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.serial", "ABC123XYZ", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "soc.serial_number", "SOC-0001", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HardwareIdentity));
+
+        Assert.Equal("CRP-HARDWARE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("ABC123XYZ", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:cpu.serial");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:soc.serial_number");
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
     {
         var report = BuildHostReport([

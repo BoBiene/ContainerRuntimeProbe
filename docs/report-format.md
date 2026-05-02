@@ -43,9 +43,10 @@
 - `VisibleKernel`
   - `IdentityAnchors`
     - explicit digest-based identity anchors separate from diagnostic fingerprints
-    - current built-in kinds are `CloudInstanceIdentity`, `KubernetesNodeIdentity`, `VendorRuntimeIdentity`, `MachineIdDigest`, and `ContainerRuntimeIdentity`
+    - current built-in kinds are `CloudInstanceIdentity`, `KubernetesNodeIdentity`, `VendorRuntimeIdentity`, `MachineIdDigest`, `HardwareIdentity`, and `ContainerRuntimeIdentity`
     - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
     - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
+    - the current `HardwareIdentity` path is limited to explicit host-visible hardware identifiers such as SMBIOS UUIDs or serials, device-tree or SoC serials, and CPU serials when they are directly visible
     - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs and is intentionally scoped to workload correlation rather than host binding
     - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
@@ -64,7 +65,7 @@
 - `IdentityAnchors[]`
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
-  - current built-in sources are cloud instance identity metadata, Kubernetes node identity metadata, Siemens IED runtime certificate-chain identity, host machine-id style digests, and explicit runtime inspect container IDs
+  - current built-in sources are cloud instance identity metadata, Kubernetes node identity metadata, Siemens IED runtime certificate-chain identity, host machine-id style digests, explicit hardware identifier digests, and explicit runtime inspect container IDs
   - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 

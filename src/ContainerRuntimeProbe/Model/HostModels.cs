@@ -191,6 +191,7 @@ public enum IdentityAnchorKind
     TpmPublicKeyDigest,
     MachineCertificateDigest,
     MachineIdDigest,
+    HardwareIdentity,
     CloudInstanceIdentity,
     KubernetesNodeIdentity,
     VendorRuntimeIdentity,

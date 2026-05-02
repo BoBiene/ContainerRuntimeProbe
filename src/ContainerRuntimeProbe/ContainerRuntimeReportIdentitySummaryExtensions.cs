@@ -97,6 +97,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.KubernetesNodeIdentity => "Node ID",
             IdentityAnchorKind.VendorRuntimeIdentity => "Platform ID",
             IdentityAnchorKind.CloudInstanceIdentity => "Cloud Host ID",
+            IdentityAnchorKind.HardwareIdentity => "Host ID",
             _ => "Host ID"
         };
 
@@ -108,6 +109,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.KubernetesNodeIdentity => SummaryScope.Node,
             IdentityAnchorKind.VendorRuntimeIdentity => SummaryScope.Platform,
             IdentityAnchorKind.CloudInstanceIdentity => SummaryScope.Host,
+            IdentityAnchorKind.HardwareIdentity => SummaryScope.Host,
             _ => anchor.Scope switch
             {
                 IdentityAnchorScope.ContainerRuntime => SummaryScope.Runtime,
