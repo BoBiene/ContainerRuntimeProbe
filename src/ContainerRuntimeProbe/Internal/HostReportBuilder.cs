@@ -325,6 +325,7 @@ internal static class HostReportBuilder
         AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "kernel.hostname", "HOSTNAME");
         AddExcludedIfPresent(evidence, excluded, "cpu.serial", "cpu.serial");
         AddExcludedIfPresent(evidence, excluded, "container.inspect", "container.inspect.status", "container.inspect.outcome");
+        AddExcludedIfPresent(evidence, excluded, "tpm.public_material", "device.tpm.ek_cert.sha256", "device.tpm.pubek.sha256");
         AddExcludedIfPresent(evidence, excluded, "cloud.environment", "aws.account_id", "azure.subscription_id", "gcp.project_id", "oci.compartment_id");
         AddExcludedIfPresent(evidence, excluded, "cloud.instance_id", "aws.instance_id", "azure.vm_id", "oci.instance_id");
 
@@ -408,6 +409,12 @@ internal static class HostReportBuilder
         if (linuxMachineIdAnchor is not null)
         {
             anchors.Add(linuxMachineIdAnchor);
+        }
+
+        var tpmPublicKeyAnchor = BuildTpmPublicKeyAnchor(evidence);
+        if (tpmPublicKeyAnchor is not null)
+        {
+            anchors.Add(tpmPublicKeyAnchor);
         }
 
         var hardwareIdentityAnchor = BuildHardwareIdentityAnchor(evidence);
@@ -721,6 +728,33 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, evidenceKeys),
             ["Hardware identifiers may change after board replacement, firmware reset, or vendor-specific re-provisioning."],
             ["Digest derived from explicit host-visible hardware identifier signals."]);
+    }
+
+    private static IdentityAnchor? BuildTpmPublicKeyAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var source = new[]
+        {
+            (Key: "device.tpm.ek_cert.sha256", Value: GetValue(evidence, "device.tpm.ek_cert.sha256"), Source: "ek_cert"),
+            (Key: "device.tpm.pubek.sha256", Value: GetValue(evidence, "device.tpm.pubek.sha256"), Source: "pubek")
+        }
+        .FirstOrDefault(candidate => !string.IsNullOrWhiteSpace(candidate.Value) && !string.Equals(candidate.Value, Redaction.RedactedValue, StringComparison.Ordinal));
+
+        if (string.IsNullOrWhiteSpace(source.Value))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.TpmPublicKeyDigest,
+            "CRP-TPM-PUBLIC-v1",
+            ComputeIdentityAnchorDigest("tpm-public-material", source.Value),
+            IdentityAnchorScope.Host,
+            BindingSuitability.ExternalAttestation,
+            IdentityAnchorStrength.Strong,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, source.Key, "device.tpm.path", "trust.windows.tpm.outcome"),
+            ["TPM public material identifies a TPM device but does not by itself prove quote freshness, current ownership, or caller binding."],
+            [$"Digest derived from read-only TPM public material ({source.Source}) visible to the current process."]);
     }
 
     private static IdentityAnchor? BuildWeakHostProfileIdentityAnchor(

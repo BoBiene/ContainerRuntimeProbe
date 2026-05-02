@@ -22,6 +22,7 @@
   - sensitive device-tree serial candidates from `/proc/device-tree/serial-number` and `/sys/firmware/devicetree/base/serial-number` when readable; they remain redacted unless sensitive output is enabled
   - `/sys/devices/soc0/{machine,family,soc_id,revision}` when publicly readable
   - sensitive SoC serial candidates from `/sys/devices/soc0/serial_number` when readable; they remain redacted unless sensitive output is enabled
+  - sensitive TPM public-material digests from `/sys/class/tpm/*/device/{ek_cert,pubek}` when readable; the probe stores only a SHA-256 digest of the observed public material and keeps it redacted unless sensitive output is enabled
   - `/sys/bus/platform/devices/*/{modalias,uevent}` for non-addressed platform devices; extracts `MODALIAS` and `OF_COMPATIBLE_*` lines
   - `/proc/meminfo`, `/sys/fs/cgroup/memory*`, `/sys/fs/cgroup/cpu*`
   - `/proc/self/ns/*`
@@ -45,7 +46,7 @@
 
 ## Identity Anchor Notes
 - `IdentityAnchors` are separate from `TrustedPlatforms` and are built from explicit observed IDs rather than heuristic strings.
-- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `CloudEnvironmentIdentity` from visible AWS account, Azure subscription, GCP project, or OCI compartment metadata, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, `KubernetesEnvironmentIdentity` from the visible service-account CA bundle digest, `DeploymentEnvironmentIdentity` from visible Compose or Portainer deployment metadata labels, `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched, host-only `MachineIdDigest` anchors from local Windows `MachineGuid` or Linux `machine-id` values as conservative correlation anchors, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs, Kubernetes pod/container workload tokens, or the namespace-tuple fallback.
+- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `CloudEnvironmentIdentity` from visible AWS account, Azure subscription, GCP project, or OCI compartment metadata, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, `KubernetesEnvironmentIdentity` from the visible service-account CA bundle digest, `DeploymentEnvironmentIdentity` from visible Compose or Portainer deployment metadata labels, `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched, `TpmPublicKeyDigest` from visible TPM public material digests, host-only `MachineIdDigest` anchors from local Windows `MachineGuid` or Linux `machine-id` values as conservative correlation anchors, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs, Kubernetes pod/container workload tokens, or the namespace-tuple fallback.
 - Weak generic signals such as hostname, DNS labels, mount paths, cgroup strings, or visible TPM device nodes do not become license-binding anchors on their own.
 - Anchor values are stored as digests and are redacted in the default host report.
 - Future TPM or machine-certificate anchors must stay read-only and digest-based; the package must not create TPM keys or provision certificates.

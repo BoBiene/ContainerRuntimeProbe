@@ -167,21 +167,21 @@ public static partial class ContainerRuntimeReportSummaryExtensions
 
     private static int GetCorroboratingLevel(ContainerRuntimeReport report, IdentityAnchor anchor)
     {
-        var platformKey = anchor.Kind switch
+        string[]? platformKeys = anchor.Kind switch
         {
-            IdentityAnchorKind.VendorRuntimeIdentity => "siemens-ied-runtime",
-            IdentityAnchorKind.TpmPublicKeyDigest => "windows-host-tpm",
-            IdentityAnchorKind.ContainerDeviceAnchor => "container-tpm-visible",
+            IdentityAnchorKind.VendorRuntimeIdentity => ["siemens-ied-runtime"],
+            IdentityAnchorKind.TpmPublicKeyDigest => ["windows-host-tpm", "container-tpm-visible"],
+            IdentityAnchorKind.ContainerDeviceAnchor => ["container-tpm-visible"],
             _ => null
         };
 
-        if (platformKey is null || report.TrustedPlatforms is null)
+        if (platformKeys is null || report.TrustedPlatforms is null)
         {
             return 0;
         }
 
         return report.TrustedPlatforms
-            .Where(summary => string.Equals(summary.PlatformKey, platformKey, StringComparison.Ordinal))
+            .Where(summary => platformKeys.Contains(summary.PlatformKey, StringComparer.Ordinal))
             .Select(summary => summary.VerificationLevel)
             .DefaultIfEmpty(0)
             .Max();

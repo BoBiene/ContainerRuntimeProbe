@@ -11,7 +11,7 @@
 - CPU flags are summarized as count + hash; raw flag lists are not emitted into the fingerprint by default.
 - The host fingerprint is diagnostic only and must not be used as a security identity or attestation claim.
 - Identity anchors are modeled separately from diagnostic fingerprints and are derived only from explicit read-only sources.
-- Current anchor values are digests over observed cloud instance IDs, visible cloud account/subscription/project/compartment metadata, Kubernetes node identities, visible Kubernetes service-account CA bundles, visible Compose or Portainer deployment metadata labels, matched Siemens IED certificate-chain runtime evidence, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, weak public host-profile signals, explicit runtime inspect container IDs, or Kubernetes pod/container workload tokens, not raw IDs.
+- Current anchor values are digests over observed cloud instance IDs, visible cloud account/subscription/project/compartment metadata, Kubernetes node identities, visible Kubernetes service-account CA bundles, visible Compose or Portainer deployment metadata labels, matched Siemens IED certificate-chain runtime evidence, visible TPM public material digests, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, weak public host-profile signals, explicit runtime inspect container IDs, or Kubernetes pod/container workload tokens, not raw IDs.
 - Identity anchor values are redacted in the default host report unless `--include-sensitive true` is used.
 - The package does not create TPM keys, provision certificates, or mutate the platform; future TPM support must stay read-only and digest-based.
 
@@ -39,6 +39,7 @@ Never share:
 - cloud instance IDs
 - identity anchor digests if they are considered sensitive in your environment
 - subscription/project/tenant/compartment IDs
+- TPM public-material digests if they are considered sensitive in your environment
 - raw full metadata documents
 - CPU serial numbers
 - raw full cgroup paths with container IDs if this is sensitive in your environment

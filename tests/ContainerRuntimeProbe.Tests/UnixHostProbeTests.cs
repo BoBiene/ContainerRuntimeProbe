@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Text;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
@@ -272,7 +273,7 @@ public sealed class UnixHostProbeTests
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
                 : (ProbeOutcome.Unavailable, (string?)null, (string?)null)),
-            enumerateFiles: path => path == "/proc/sys/kernel" ? [] : [],
+            enumerateFiles: _ => [],
             enumerateEntries: path => path == "/sys/bus/platform/devices"
                 ? ["/sys/bus/platform/devices/wsysinit_init", "/sys/bus/platform/devices/10050000.sram"]
                 : []);
@@ -327,6 +328,26 @@ public sealed class UnixHostProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpm0");
         Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/vtpmx");
         Assert.DoesNotContain(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpmrm0");
+    }
+
+    [Fact]
+    public async Task UnixHostProbe_ReportsVisibleTpmPublicMaterialDigest()
+    {
+        var probe = new UnixHostProbe(
+            [],
+            (_, _, _) => Task.FromResult((ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            enumerateEntries: path => path == "/sys/class/tpm" ? ["/sys/class/tpm/tpm0"] : [],
+            pathExists: path => path == "/dev/tpm0",
+            readFileBytesAsync: (path, _, _) => Task.FromResult(path == "/sys/class/tpm/tpm0/device/pubek"
+                ? (ProbeOutcome.Success, Encoding.ASCII.GetBytes("PUBEK-DATA"), (string?)null)
+                : (ProbeOutcome.Unavailable, (byte[]?)null, (string?)null)));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpm0");
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.pubek.sha256" && item.Value is not null && item.Value.StartsWith("sha256:", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "device.tpm.pubek.sha256" && item.Value is not null && item.Value.Contains("PUBEK-DATA", StringComparison.Ordinal));
     }
 
     private static string NormalizeArchitectureRaw(Architecture architecture)

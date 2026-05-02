@@ -43,9 +43,10 @@
 - `VisibleKernel`
   - `IdentityAnchors`
     - explicit digest-based identity anchors separate from diagnostic fingerprints
-    - current built-in kinds are `CloudInstanceIdentity`, `CloudEnvironmentIdentity`, `KubernetesNodeIdentity`, `KubernetesEnvironmentIdentity`, `DeploymentEnvironmentIdentity`, `VendorRuntimeIdentity`, `MachineIdDigest`, `HardwareIdentity`, `HostProfileIdentity`, and `ContainerRuntimeIdentity`
+    - current built-in kinds are `CloudInstanceIdentity`, `CloudEnvironmentIdentity`, `KubernetesNodeIdentity`, `KubernetesEnvironmentIdentity`, `DeploymentEnvironmentIdentity`, `VendorRuntimeIdentity`, `TpmPublicKeyDigest`, `MachineIdDigest`, `HardwareIdentity`, `HostProfileIdentity`, and `ContainerRuntimeIdentity`
     - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
     - the current `CloudEnvironmentIdentity` path is limited to visible provider-boundary metadata such as AWS account IDs, Azure subscription IDs, GCP project IDs, or OCI compartment IDs
+    - the current `TpmPublicKeyDigest` path is limited to digests over visible TPM public material such as Linux `ek_cert` or `pubek` artifacts when they are readable from the current process environment
     - the current `KubernetesEnvironmentIdentity` path is limited to the visible service-account CA bundle digest and intentionally works without Pod or Node RBAC
     - the current `DeploymentEnvironmentIdentity` path is limited to visible Compose project, Docker stack namespace, or Portainer deployment labels from runtime inspect metadata
     - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
@@ -69,7 +70,7 @@
 - `IdentityAnchors[]`
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
-  - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
+  - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, TPM public-material digests, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
   - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 

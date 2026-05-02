@@ -36,6 +36,7 @@ Current summary mapping is:
 | Host | Kubernetes node provider ID | `kubernetes`: `kubernetes.node.provider_id` | Host | L2 | Implemented | Medium fallback when UID is unavailable but provider ID is visible. |
 | Host | Windows MachineGuid | `proc-files`: `windows.machine_guid` | Host | L2 | Implemented | Only outside containerized classifications. Conservative host-correlation anchor. |
 | Host | Linux machine-id | `proc-files`: `machine.id` | Host | L2 | Implemented | Only outside containerized classifications. Conservative host-correlation anchor. |
+| Host | TPM public-material digest | `proc-files`: `device.tpm.ek_cert.sha256`, `device.tpm.pubek.sha256` | Host | L3 | Implemented | Strong host anchor when read-only TPM public material is visible through the local Linux TPM sysfs path. |
 | Host | Explicit hardware identifiers | `proc-files`: `dmi.product_uuid`, `dmi.product_serial`, `dmi.board_serial`, `dmi.chassis_serial`, `device_tree.serial_number`, `soc.serial_number`, `cpu.serial` | Host | L2 | Implemented | Conservative host anchor from directly visible hardware-bound identifiers. |
 | Host | Public host-profile digest | visible kernel, CPU family/model, memory bucket, DMI or device-tree product hints, virtualization/modalias hints | Host | L1 | Implemented | Weak host-correlation fallback when no explicit host-bound identifier is visible. |
 | Container | Runtime inspect container ID | `runtime-api`: `container.id` | Workload | L2 | Implemented | Good application-container-instance identity when a socket-backed inspect path is readable. |
@@ -63,7 +64,7 @@ These are the realistic next candidates if the goal is at least one `Host` L1 ev
 | Compose / Portainer project labels | Docker Compose, Portainer | existing `runtime-api` compose label extraction | Environment / Deployment | L2 | L2 | These labels are now promoted when visible through socket-backed inspect metadata. |
 | Kubernetes control-plane CA bundle digest or API server SPKI digest | Kubernetes, including no-RBAC service-account cases | service-account CA material today; API certificate material later if needed | Environment | L2 | L3 with API identity corroboration | The service-account CA digest is now promoted; API certificate material remains a future corroboration path. |
 | Cloud tenant / project / subscription digest | Cloud-managed environments | cloud metadata normalization where visible | Environment | L2 | L2 or L3 depending on provider certainty | Now promoted from visible AWS/Azure/GCP/OCI provider-boundary metadata. |
-| TPM public material digest such as EK pubkey or persistent public key digest | Windows hosts, Linux with visible TPM, some appliance systems | new read-only TPM probe | Host or Platform | L3 | L4 with trusted verification | Stronger than device-node visibility alone. Current code intentionally stops at TPM visibility, not identity. |
+| TPM public material digest such as EK pubkey or persistent public key digest | Windows hosts, Linux with visible TPM, some appliance systems | read-only Linux TPM sysfs public material today; broader TPM retrieval later if needed | Host or Platform | L3 | L4 with trusted verification | Linux TPM public material is now promoted when visible; stronger corroboration and broader platform coverage remain future work. |
 | VM UUID / generation ID / guest-visible hypervisor instance UUID | Hyper-V, VMware, Xen, KVM guests | new hypervisor-specific read-only probes | Hypervisor | L2 | L3 with corroboration | The best path to a hypervisor or substrate ID. Note that this identifies the guest/substrate instance, not necessarily the physical hypervisor host. |
 
 ## System-by-system matrix
@@ -108,6 +109,8 @@ If the product goal is truly "at least one Host L1 in every situation", there ar
 2. Add stronger read-only host-bound raw sources first: SMBIOS UUID/serials, device-tree or SoC serials, CPU serial where available, and optionally TPM public material digests.
 
 For Kubernetes without RBAC, the best environment upgrade path is a digest over the visible control-plane CA bundle or API server SPKI, because that respects the requirement to work only with what is already visible.
+
+For TPM-backed host identity, the current read-only path is a digest over visible TPM public material such as Linux `ek_cert` or `pubek` sysfs artifacts when those files are exposed to the current process.
 
 For cloud-managed environments with reachable provider metadata, the current conservative environment path is a digest over the visible provider boundary identifier such as AWS account, Azure subscription, GCP project, or OCI compartment metadata.
 

@@ -548,6 +548,28 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsTpmPublicKeyDigest_FromVisiblePublicMaterial()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "device.tpm.path", "/dev/tpm0"),
+            new EvidenceItem("proc-files", "device.tpm.pubek.sha256", "sha256:abcdef0123456789", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.TpmPublicKeyDigest));
+
+        Assert.Equal("CRP-TPM-PUBLIC-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.ExternalAttestation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Strong, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.NotEqual("sha256:abcdef0123456789", anchor.Value);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:device.tpm.pubek.sha256");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("does not by itself prove", StringComparison.Ordinal));
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("read-only TPM public material", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsWeakHostProfileIdentity_WhenOnlyCoarseHostProfileSignalsAreVisible()
     {
         var report = BuildHostReport([

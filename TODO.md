@@ -38,7 +38,7 @@ Arbeitsregeln fuer diese Runde:
   - Sichtbare Pod-/Container-Korrelation aus CGroup- oder Mount-Signalen wird ausgewertet, wenn kein Runtime-Inspect moeglich ist.
 - [x] **44. Cloud Environment-L2 einfuehren**
   - Mandanten-, Projekt- oder Subscription-nahe Cloud-Metadaten werden als Environment-Kandidaten modelliert, wenn sie sichtbar und sicher nutzbar sind.
-- [ ] **45. TPM public-material identity path einfuehren**
+- [x] **45. TPM public-material identity path einfuehren**
   - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.
 - [ ] **46. Hypervisor identity path einfuehren**
   - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
