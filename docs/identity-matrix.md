@@ -37,6 +37,7 @@ Current summary mapping is:
 | Host | Windows MachineGuid | `proc-files`: `windows.machine_guid` | Host | L2 | Implemented | Only outside containerized classifications. Conservative host-correlation anchor. |
 | Host | Linux machine-id | `proc-files`: `machine.id` | Host | L2 | Implemented | Only outside containerized classifications. Conservative host-correlation anchor. |
 | Host | Explicit hardware identifiers | `proc-files`: `dmi.product_uuid`, `dmi.product_serial`, `dmi.board_serial`, `dmi.chassis_serial`, `device_tree.serial_number`, `soc.serial_number`, `cpu.serial` | Host | L2 | Implemented | Conservative host anchor from directly visible hardware-bound identifiers. |
+| Host | Public host-profile digest | visible kernel, CPU family/model, memory bucket, DMI or device-tree product hints, virtualization/modalias hints | Host | L1 | Implemented | Weak host-correlation fallback when no explicit host-bound identifier is visible. |
 | Container | Runtime inspect container ID | `runtime-api`: `container.id` | Workload | L2 | Implemented | Good application-container-instance identity when a socket-backed inspect path is readable. |
 | Container | Namespace tuple | `proc-files`: `ns.pid`, `ns.mnt`, `ns.net` | Workload | L1 | Implemented | Weak fallback when no runtime inspect ID is visible. Restart and reschedule sensitive. |
 | Environment | Diagnostic deployment/environment fingerprint | `Host.DiagnosticFingerprints[]` | Deployment / Platform | L1 | Implemented | Shown as `Deployment ID` for standalone containers and `Environment ID` for Kubernetes or industrial variants. Diagnostic only. |
@@ -53,7 +54,7 @@ These are the realistic next candidates if the goal is at least one `Host` L1 ev
 | SMBIOS UUID or serials such as `product_uuid`, `product_serial`, `board_serial`, `chassis_serial` | Linux hosts, many VMs, some containers with readable `/sys/class/dmi/id/*` | `proc-files` raw evidence | Host | L2 | L3 with cloud/node/trust corroboration | Better host uniqueness than public vendor strings. Now promoted into a conservative host anchor when visible. |
 | CPU serial | ARM SBCs, industrial ARM, some embedded Linux | existing `proc-files` can already emit `cpu.serial` when visible | Host | L2 | L3 with corroboration | Often absent on x86, but strong on some appliance and SBC targets. Now promoted into a conservative host anchor when visible. |
 | Device-tree serial number or SoC unique serial | ARM appliances, embedded boards | `proc-files` raw evidence under device-tree / SoC | Host | L2 | L3 with corroboration | Important for industrial or edge hardware where DMI is absent but SoC identity exists. Now promoted into a conservative host anchor when visible. |
-| Public host-profile digest built from kernel, CPU, memory bucket, DMI vendor/product, virtualization, and platform modalias families | Generic containers with no explicit stable host ID | existing `proc-files`, `runtime-api`, classification | Host | L1 | stays L1 unless paired with explicit host ID | This is the only realistic universal fallback, but it is a weak host-correlation profile, not a strong physical-host identity. |
+| Public host-profile digest built from kernel, CPU, memory bucket, DMI vendor/product, virtualization, and platform modalias families | Generic containers with no explicit stable host ID | existing `proc-files`, `runtime-api`, classification | Host | L1 | stays L1 unless paired with explicit host ID | This is now promoted when no explicit host anchor is visible, but it remains a weak host-correlation profile rather than a strong physical-host identity. |
 | Pod UID or cgroup-derived pod/container token | Kubernetes workloads | existing mount/cgroup parsing or downward API env if present | Container | L1 or L2 | L2 with runtime container ID or pod metadata | Useful where runtime sockets are absent but Kubernetes-specific workload tokens are still visible. |
 | Compose / Portainer project labels | Docker Compose, Portainer | existing `runtime-api` compose label extraction | Environment / Deployment | L2 | L2 | Better deployment identity than the generic diagnostic fingerprint when Compose labels are visible. |
 | Kubernetes control-plane CA bundle digest or API server SPKI digest | Kubernetes, including no-RBAC service-account cases | new Kubernetes probe evidence from service-account CA material | Environment | L2 | L3 with API identity corroboration | Respects the no-RBAC rule and can still identify the cluster environment more directly than a generic deployment fingerprint. |
@@ -67,9 +68,9 @@ These are the realistic next candidates if the goal is at least one `Host` L1 ev
 | --- | --- | --- | --- | --- | --- | --- |
 | Windows host process | `windows.machine_guid`, Windows BIOS registry, Windows CPU registry, memory API | L2 via `MachineGuid` | n/a | none | none | TPM public material for Host L3/L4 |
 | Linux host process | `machine.id`, CPU, memory, DMI, device-tree, virtualization files | L2 via `machine.id` | n/a | none | none | SMBIOS UUID/serial or TPM public material |
-| Generic Docker/Podman container on native Linux | CPU, memory, DMI when visible, namespace tuple, optional runtime inspect | usually none | L2 via `container.id`, else L1 via namespace tuple | L1 `Deployment ID` | none | Host L1 via public host-profile digest or Host L2 via SMBIOS serial/UUID |
-| Container on WSL2 / Hyper-V | CPU, memory, `cpu.flag.hypervisor`, `bus.vmbus.present`, `platform.modalias`, namespace tuple | none in current code | L2 via `container.id`, else L1 via namespace tuple | L1 `Deployment ID` | none, only vendor classification | Hypervisor L2 via VM generation/UUID; Host L1 only via weak host-profile digest unless stronger host IDs become visible |
-| Kubernetes workload without RBAC to read Pod/Node | service-account env, API version outcome, namespace tuple, kernel/hardware profile | none in current code | L1 via namespace tuple | L1 `Environment ID` | none | Environment L2 via cluster CA digest; Host only if stronger host-local serial/UUID becomes visible |
+| Generic Docker/Podman container on native Linux | CPU, memory, DMI when visible, namespace tuple, optional runtime inspect | L1 via host-profile digest, or L2 via explicit hardware IDs when visible | L2 via `container.id`, else L1 via namespace tuple | L1 `Deployment ID` | none | Compose or Portainer metadata for stronger environment identity |
+| Container on WSL2 / Hyper-V | CPU, memory, `cpu.flag.hypervisor`, `bus.vmbus.present`, `platform.modalias`, namespace tuple | L1 via weak host-profile digest unless stronger host IDs become visible | L2 via `container.id`, else L1 via namespace tuple | L1 `Deployment ID` | none, only vendor classification | Hypervisor L2 via VM generation/UUID |
+| Kubernetes workload without RBAC to read Pod/Node | service-account env, API version outcome, namespace tuple, kernel/hardware profile | L1 via weak host-profile digest when enough coarse host signals are visible | L1 via namespace tuple | L1 `Environment ID` | none | Environment L2 via cluster CA digest |
 | Kubernetes workload with readable Pod/Node metadata | Kubernetes API metadata, optional node UID/provider ID, namespace tuple | L3 via node UID or L2 via provider ID | L1 or L2 depending on workload source | L1 today | none | Environment L2 via cluster CA digest or future cluster UID anchor |
 | Cloud VM container with reachable IMDS | cloud instance metadata, cloud region, machine type, namespace tuple | L3 via cloud instance ID | L1 or L2 depending on runtime visibility | L1 today | none | Cloud tenant/project digest for Environment L2 |
 | Siemens IED runtime | documented runtime artifact, TLS binding, optional endpoint verification | host depends on separate host signals | workload depends on separate container signals | L3 or L4 platform/environment identity | none | none needed for environment; host still needs separate signals |
@@ -88,11 +89,12 @@ The local Podman and kind captures in `artifacts/` currently show:
 
 That means the current local container samples are enough for:
 
+- `Host` L1 via weak host-profile digest
 - `Container` L1 everywhere via namespace tuples
 - `Environment` L1 in Kubernetes and standalone container summaries
 - hypervisor or WSL2 vendor classification
 
-They are not enough for an honest physical `Host` L1 under the current strict semantics, because the visible local signals are host-adjacent profile hints, not an explicit host-bound identifier.
+They are still not enough for a stronger `Host` L2/L3 anchor under the current strict semantics, because the visible local signals are host-adjacent profile hints, not an explicit host-bound identifier.
 
 ## Practical recommendation
 

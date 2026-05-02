@@ -28,7 +28,7 @@ Arbeitsregeln fuer diese Runde:
   - `proc-files` sammelt zusaetzlich hostgebundene, read-only Quellen wie SMBIOS-UUIDs/Serien und ARM-/SoC-Serienwerte, soweit sie sichtbar sind.
 - [x] **39. Host-Anchor aus expliziten Hardware-IDs einfuehren**
   - Sichtbare SMBIOS-, CPU- oder SoC-Identifier werden mit klaren Staerke- und Container-Grenzen in konservative Host-Anchors umgesetzt.
-- [ ] **40. Schwachen universellen Host-L1-Fallback einfuehren**
+- [x] **40. Schwachen universellen Host-L1-Fallback einfuehren**
   - Wenn keine explizite Host-ID sichtbar ist, wird ein rein korrelationsgeeigneter Host-Profil-Digest als `L1` abgebildet.
 - [ ] **41. Kubernetes Environment-L2 ohne RBAC einfuehren**
   - Ein Cluster-/Environment-Digest wird aus bereits sichtbarem Service-Account-CA- oder API-Zertifikatsmaterial abgeleitet, ohne neue Rechte zu erwarten.

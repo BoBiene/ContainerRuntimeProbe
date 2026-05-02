@@ -460,6 +460,46 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsWeakHostProfileIdentity_WhenOnlyCoarseHostProfileSignalsAreVisible()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "platform.modalias", "acpi:VMBUS:00"),
+            new EvidenceItem("proc-files", "bus.vmbus.present", "true")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HostProfileIdentity));
+
+        Assert.Equal("CRP-HOST-PROFILE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Weak, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:kernel.release");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:platform.modalias");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("weak correlation", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildWeakHostProfileIdentity_WhenExplicitHostIdentityExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HardwareIdentity);
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HostProfileIdentity);
+    }
+
+    [Fact]
     public void HostReport_Wsl2Kernel_InfersVirtualizationAndUnderlyingWindowsHost()
     {
         var report = BuildHostReport([

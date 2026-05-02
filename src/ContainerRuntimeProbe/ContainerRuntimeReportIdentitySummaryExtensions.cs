@@ -98,6 +98,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.VendorRuntimeIdentity => "Platform ID",
             IdentityAnchorKind.CloudInstanceIdentity => "Cloud Host ID",
             IdentityAnchorKind.HardwareIdentity => "Host ID",
+            IdentityAnchorKind.HostProfileIdentity => "Host ID",
             _ => "Host ID"
         };
 
@@ -110,6 +111,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.VendorRuntimeIdentity => SummaryScope.Platform,
             IdentityAnchorKind.CloudInstanceIdentity => SummaryScope.Host,
             IdentityAnchorKind.HardwareIdentity => SummaryScope.Host,
+            IdentityAnchorKind.HostProfileIdentity => SummaryScope.Host,
             _ => anchor.Scope switch
             {
                 IdentityAnchorScope.ContainerRuntime => SummaryScope.Runtime,

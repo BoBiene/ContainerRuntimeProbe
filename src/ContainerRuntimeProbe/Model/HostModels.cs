@@ -192,6 +192,7 @@ public enum IdentityAnchorKind
     MachineCertificateDigest,
     MachineIdDigest,
     HardwareIdentity,
+    HostProfileIdentity,
     CloudInstanceIdentity,
     KubernetesNodeIdentity,
     VendorRuntimeIdentity,

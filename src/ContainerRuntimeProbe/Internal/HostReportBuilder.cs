@@ -21,7 +21,7 @@ internal static class HostReportBuilder
         var underlyingHostOs = BuildUnderlyingHostOs(runtimeHostOs, virtualization, visibleKernel);
         var hardware = BuildHardware(evidence, runtimeHostOs, visibleKernel, defaultArchitectureRaw);
         var diagnosticFingerprints = BuildDiagnosticFingerprints(evidence, classification, runtimeHostOs, visibleKernel, hardware, fingerprintMode);
-        var identityAnchors = BuildIdentityAnchors(evidence, classification);
+        var identityAnchors = BuildIdentityAnchors(evidence, classification, runtimeHostOs, visibleKernel, virtualization, hardware);
 
         return new HostReport(containerImageOs, visibleKernel, runtimeHostOs, virtualization, underlyingHostOs, hardware, diagnosticFingerprints, identityAnchors);
     }
@@ -368,7 +368,13 @@ internal static class HostReportBuilder
         ];
     }
 
-    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
+    private static IReadOnlyList<IdentityAnchor> BuildIdentityAnchors(
+        IReadOnlyList<EvidenceItem> evidence,
+        ReportClassification classification,
+        RuntimeReportedHostOsInfo runtimeHostOs,
+        VisibleKernelInfo visibleKernel,
+        VirtualizationInfo virtualization,
+        HostHardwareInfo hardware)
     {
         var anchors = new List<IdentityAnchor>();
         anchors.AddRange(BuildCloudInstanceIdentityAnchors(evidence));
@@ -395,6 +401,12 @@ internal static class HostReportBuilder
         if (hardwareIdentityAnchor is not null)
         {
             anchors.Add(hardwareIdentityAnchor);
+        }
+
+        var weakHostProfileAnchor = BuildWeakHostProfileIdentityAnchor(evidence, runtimeHostOs, visibleKernel, virtualization, hardware, anchors);
+        if (weakHostProfileAnchor is not null)
+        {
+            anchors.Add(weakHostProfileAnchor);
         }
 
         var containerRuntimeAnchor = BuildContainerRuntimeIdentityAnchor(evidence, classification);
@@ -605,6 +617,139 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, evidenceKeys),
             ["Hardware identifiers may change after board replacement, firmware reset, or vendor-specific re-provisioning."],
             ["Digest derived from explicit host-visible hardware identifier signals."]);
+    }
+
+    private static IdentityAnchor? BuildWeakHostProfileIdentityAnchor(
+        IReadOnlyList<EvidenceItem> evidence,
+        RuntimeReportedHostOsInfo runtimeHostOs,
+        VisibleKernelInfo visibleKernel,
+        VirtualizationInfo virtualization,
+        HostHardwareInfo hardware,
+        IReadOnlyCollection<IdentityAnchor> existingAnchors)
+    {
+        if (existingAnchors.Any(anchor => anchor.Scope == IdentityAnchorScope.Host))
+        {
+            return null;
+        }
+
+        var included = new Dictionary<string, string>(StringComparer.Ordinal);
+        AddHostProfileComponent(included, "runtime.host.os.normalized", runtimeHostOs.Family != OperatingSystemFamily.Unknown ? runtimeHostOs.Family.ToString() : null);
+        AddHostProfileComponent(included, KernelReleaseKey, visibleKernel.Release);
+        AddHostProfileComponent(included, "kernel.flavor", visibleKernel.Flavor != KernelFlavor.Unknown ? visibleKernel.Flavor.ToString() : null);
+        AddHostProfileComponent(included, "architecture.normalized", hardware.Architecture != ArchitectureKind.Unknown ? hardware.Architecture.ToString() : null);
+        AddHostProfileComponent(included, "cpu.vendor", NormalizeHostProfileToken(hardware.Cpu.Vendor));
+        AddHostProfileComponent(included, "cpu.family", NormalizeHostProfileToken(hardware.Cpu.Family));
+        AddHostProfileComponent(included, "cpu.model_name.normalized", HostParsing.NormalizeModelName(hardware.Cpu.ModelName));
+        AddHostProfileComponent(included, "memory.total.bucket", HostParsing.NormalizeMemoryBucket(hardware.Memory.MemTotalBytes));
+        AddHostProfileComponent(included, "virtualization.kind", virtualization.Kind != VirtualizationKind.Unknown ? virtualization.Kind.ToString() : null);
+        AddHostProfileComponent(included, "virtualization.vendor", NormalizeHostProfileToken(virtualization.PlatformVendor));
+        AddHostProfileComponent(included, "dmi.sys_vendor.normalized", NormalizeHostProfileToken(hardware.Dmi.SystemVendor));
+        AddHostProfileComponent(included, "dmi.product_name.normalized", NormalizeHostProfileToken(hardware.Dmi.ProductName));
+        AddHostProfileComponent(included, "dmi.product_family.normalized", NormalizeHostProfileToken(hardware.Dmi.ProductFamily));
+        AddHostProfileComponent(included, "dmi.modalias.family", NormalizeModaliasFamily(hardware.Dmi.Modalias));
+        AddHostProfileComponent(included, "platform.modalias.family", NormalizeModaliasFamily(GetValue(evidence, "platform.modalias")));
+        AddHostProfileComponent(included, "device_tree.model.normalized", NormalizeHostProfileToken(hardware.DeviceTree.Model));
+        AddHostProfileComponent(included, "device_tree.compatible.family", NormalizeCompatibleFamily(hardware.DeviceTree.Compatible));
+
+        var hasProfileSignals = included.Keys.Any(key => key.StartsWith("cpu.", StringComparison.Ordinal)
+            || key.StartsWith("memory.", StringComparison.Ordinal)
+            || key.StartsWith("dmi.", StringComparison.Ordinal)
+            || key.StartsWith("device_tree.", StringComparison.Ordinal)
+            || key.StartsWith("platform.", StringComparison.Ordinal)
+            || key.StartsWith("virtualization.", StringComparison.Ordinal));
+        if (!hasProfileSignals || included.Count < 4)
+        {
+            return null;
+        }
+
+        var fingerprint = HostParsing.ComputeFingerprint(included);
+        var evidenceReferences = runtimeHostOs.EvidenceReferences
+            .Concat(virtualization.EvidenceReferences)
+            .Concat(GetEvidenceReferencesForKeys(
+                evidence,
+                KernelReleaseKey,
+                "runtime.architecture",
+                "cpu.vendor",
+                "cpu.model_name",
+                "memory.mem_total_bytes",
+                "docker.info.mem_total",
+                "podman.info.mem_total",
+                "dmi.sys_vendor",
+                "dmi.product_name",
+                "dmi.product_family",
+                "dmi.modalias",
+                "platform.modalias",
+                "device_tree.model",
+                "device_tree.compatible",
+                "cpu.flag.hypervisor",
+                "bus.vmbus.present",
+                "sys.hypervisor.type"))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(value => value, StringComparer.Ordinal)
+            .ToArray();
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.HostProfileIdentity,
+            "CRP-HOST-PROFILE-v1",
+            ComputeIdentityAnchorDigest("host-profile", fingerprint),
+            IdentityAnchorScope.Host,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Weak,
+            IdentityAnchorSensitivity.Public,
+            evidenceReferences,
+            ["Public host-profile digests are weak correlation hints and may collide across similar hosts or drift after kernel, memory, virtualization, or hardware-profile changes."],
+            ["Digest derived from coarse host profile signals because no explicit host-bound identifier was visible."]);
+    }
+
+    private static void AddHostProfileComponent(IDictionary<string, string> included, string key, string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            included[key] = value.Trim();
+        }
+    }
+
+    private static string? NormalizeHostProfileToken(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var parts = value.Trim()
+            .ToLowerInvariant()
+            .Split([' ', '\t', '/', '\\', ',', ';', ':', '|', '(', ')', '[', ']'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(6)
+            .ToArray();
+
+        return parts.Length == 0 ? null : string.Join('-', parts);
+    }
+
+    private static string? NormalizeModaliasFamily(string? value)
+    {
+        var normalized = NormalizeHostProfileToken(value);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return null;
+        }
+
+        var parts = normalized.Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Take(3)
+            .ToArray();
+
+        return parts.Length == 0 ? null : string.Join('-', parts);
+    }
+
+    private static string? NormalizeCompatibleFamily(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var firstCompatible = value.Split([',', '\n', '\0'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .FirstOrDefault();
+        return NormalizeHostProfileToken(firstCompatible);
     }
 
     private static IdentityAnchor? BuildContainerRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)

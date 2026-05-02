@@ -11,7 +11,7 @@
 - CPU flags are summarized as count + hash; raw flag lists are not emitted into the fingerprint by default.
 - The host fingerprint is diagnostic only and must not be used as a security identity or attestation claim.
 - Identity anchors are modeled separately from diagnostic fingerprints and are derived only from explicit read-only sources.
-- Current anchor values are digests over observed cloud instance IDs, Kubernetes node identities, matched Siemens IED certificate-chain runtime evidence, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, or explicit runtime inspect container IDs, not raw IDs.
+- Current anchor values are digests over observed cloud instance IDs, Kubernetes node identities, matched Siemens IED certificate-chain runtime evidence, local host machine-id sources such as Windows `MachineGuid` or Linux `machine-id`, explicit host-visible hardware identifiers such as SMBIOS or SoC serials, weak public host-profile signals, or explicit runtime inspect container IDs, not raw IDs.
 - Identity anchor values are redacted in the default host report unless `--include-sensitive true` is used.
 - The package does not create TPM keys, provision certificates, or mutate the platform; future TPM support must stay read-only and digest-based.
 
