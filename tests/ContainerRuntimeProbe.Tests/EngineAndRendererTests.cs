@@ -2,6 +2,7 @@ using ContainerRuntimeProbe.Rendering;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 using System.Threading;
+using System.Text.Json;
 using ContainerRuntimeProbe.Internal;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -64,14 +65,25 @@ public sealed class EngineAndRendererTests
         var text = ReportRenderer.ToText(report);
         var json = ReportRenderer.ToJson(report);
 
-        Assert.Contains("## Key Findings", markdown);
-        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", markdown);
-        Assert.Contains("Findings", text);
-        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", text);
+        Assert.Contains("## Summary", markdown);
+        Assert.Contains("### Environment", markdown);
+        Assert.Contains("### Identity", markdown);
+        Assert.Contains("#### Trust", markdown);
+        Assert.Contains("| siemens-ied-runtime | Verified, Level 4 |", markdown);
+        Assert.Contains("| Cloud Host ID | <redacted> | L3 | BindingCandidate |", markdown);
+        Assert.Contains("Summary", text);
+        Assert.Contains("Environment", text);
+        Assert.Contains("Identity", text);
+        Assert.Contains("Trust", text);
+        Assert.Contains("siemens-ied-runtime", text);
+        Assert.Contains("Cloud Host ID", text);
         Assert.Contains("## Platform Evidence", markdown);
         Assert.Contains("## Trusted Platforms", markdown);
         Assert.Contains("PlatformEvidence : siemens-industrial-edge", text);
         Assert.Contains("TrustedPlatform  : siemens-ied-runtime", text);
+        Assert.Contains("\"Summary\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Environment\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Identity\":", json, StringComparison.Ordinal);
         Assert.Contains("\"PlatformEvidence\":", json, StringComparison.Ordinal);
         Assert.Contains("\"TrustedPlatforms\":", json, StringComparison.Ordinal);
     }
@@ -151,6 +163,97 @@ public sealed class EngineAndRendererTests
         Assert.Equal(4, trustedPlatform.VerificationLevel);
         Assert.Contains(trustedPlatform.Evidence, evidence => evidence.Key == "trust.ied.certsips.cert_chain_sha256" && evidence.Value == Redaction.RedactedValue);
         Assert.Contains(trustedPlatform.Evidence, evidence => evidence.Key == "trust.ied.endpoint.tls.chain_sha256" && evidence.Value == Redaction.RedactedValue);
+    }
+
+    [Fact]
+    public async Task RunAsync_RedactsIdentityAnchorValues_WhenIncludeSensitiveIsFalse()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("cloud-metadata",
+                [
+                    new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+                    new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive)
+                ])
+            ]);
+
+        var redactedReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
+        var sensitiveReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+
+        var redactedAnchor = Assert.Single(redactedReport.Host.IdentityAnchors);
+        var sensitiveAnchor = Assert.Single(sensitiveReport.Host.IdentityAnchors);
+
+        Assert.Equal(Redaction.RedactedValue, redactedAnchor.Value);
+        Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task RunAsync_RedactsSiemensIdentityAnchorValues_WhenIncludeSensitiveIsFalse()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("siemens-ied-runtime",
+                [
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.outcome", "Success"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+                    new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "matched")
+                ])
+            ]);
+
+        var redactedReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: false);
+        var sensitiveReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+
+        var redactedAnchor = Assert.Single(redactedReport.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+        var sensitiveAnchor = Assert.Single(sensitiveReport.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+
+        Assert.Equal(Redaction.RedactedValue, redactedAnchor.Value);
+        Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReportProjection_LeavesIdentityVisible_ForMarkdownAndText_ButRedactsJsonByDefault()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("cloud-metadata",
+                [
+                    new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+                    new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive)
+                ])
+            ]);
+
+        var rawReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+        var humanReport = Redaction.RedactReport(rawReport, includeSensitive: false, redactIdentityAnchors: false);
+        var jsonReport = Redaction.RedactReport(rawReport, includeSensitive: false, redactIdentityAnchors: true);
+
+        var markdown = ReportRenderer.ToMarkdown(humanReport);
+        var text = ReportRenderer.ToText(humanReport);
+        var json = ReportRenderer.ToJson(jsonReport);
+
+        Assert.Contains("| Cloud Host ID | sha256:", markdown, StringComparison.Ordinal);
+        Assert.Contains("- Value: sha256:", markdown, StringComparison.Ordinal);
+        Assert.Contains("Cloud Host ID", text, StringComparison.Ordinal);
+        Assert.Contains("sha256:", text, StringComparison.Ordinal);
+
+        using var document = JsonDocument.Parse(json);
+        var hostAnchorValue = document.RootElement
+            .GetProperty("Host")
+            .GetProperty("IdentityAnchors")[0]
+            .GetProperty("Value")
+            .GetString();
+        var summaryHostIdentityValue = document.RootElement
+            .GetProperty("Summary")
+            .GetProperty("Identity")
+            .GetProperty("Sections")[0]
+            .GetProperty("Facts")[0]
+            .GetProperty("Value")
+            .GetString();
+
+        Assert.Equal(Redaction.RedactedValue, hostAnchorValue);
+        Assert.Equal(Redaction.RedactedValue, summaryHostIdentityValue);
     }
 
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe

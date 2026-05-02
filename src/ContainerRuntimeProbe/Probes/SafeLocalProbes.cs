@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Security.Cryptography;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Internal;
 using ContainerRuntimeProbe.Model;
@@ -12,7 +13,7 @@ internal static class ProbeIo
     /// <summary>Maximum number of bytes to read from a probe file. Prevents memory issues on large /proc files.</summary>
     private const int MaxReadBytes = 262_144; // 256 KB
 
-    public static async Task<(ProbeOutcome outcome, string? text, string? message)> ReadFileAsync(string path, TimeSpan timeout, CancellationToken ct)
+    public static async Task<(ProbeOutcome outcome, byte[]? bytes, string? message)> ReadFileBytesAsync(string path, TimeSpan timeout, CancellationToken ct)
     {
         try
         {
@@ -22,16 +23,22 @@ internal static class ProbeIo
             await using var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize: 4096, useAsync: true);
             var buffer = new byte[MaxReadBytes];
             var bytesRead = await fs.ReadAsync(buffer.AsMemory(0, MaxReadBytes), cts.Token).ConfigureAwait(false);
-            var text = Encoding.UTF8.GetString(buffer, 0, bytesRead);
+            var bytes = buffer[..bytesRead];
             // If we read exactly MaxReadBytes, file may have been truncated silently; signal this in the message
             var message = bytesRead == MaxReadBytes ? $"[truncated at {MaxReadBytes} bytes]" : null;
-            return (ProbeOutcome.Success, text, message);
+            return (ProbeOutcome.Success, bytes, message);
         }
         catch (UnauthorizedAccessException ex) { return (ProbeOutcome.AccessDenied, null, ex.Message); }
         catch (OperationCanceledException ex) { return (ProbeOutcome.Timeout, null, ex.Message); }
         catch (FileNotFoundException ex) { return (ProbeOutcome.Unavailable, null, ex.Message); }
         catch (DirectoryNotFoundException ex) { return (ProbeOutcome.Unavailable, null, ex.Message); }
         catch (Exception ex) { return (ProbeOutcome.Error, null, ex.Message); }
+    }
+
+    public static async Task<(ProbeOutcome outcome, string? text, string? message)> ReadFileAsync(string path, TimeSpan timeout, CancellationToken ct)
+    {
+        var (outcome, bytes, message) = await ReadFileBytesAsync(path, timeout, ct).ConfigureAwait(false);
+        return (outcome, bytes is null ? null : Encoding.UTF8.GetString(bytes), message);
     }
 }
 
@@ -118,6 +125,14 @@ internal sealed class UnixHostProbe : IProbe
         "/sys/class/dmi/id/modalias"
     ];
 
+    private static readonly string[] SensitiveDmiFiles =
+    [
+        "/sys/class/dmi/id/product_uuid",
+        "/sys/class/dmi/id/product_serial",
+        "/sys/class/dmi/id/board_serial",
+        "/sys/class/dmi/id/chassis_serial"
+    ];
+
     private static readonly string[] PublicDeviceTreeFiles =
     [
         "/proc/device-tree/model",
@@ -126,12 +141,23 @@ internal sealed class UnixHostProbe : IProbe
         "/sys/firmware/devicetree/base/compatible"
     ];
 
+    private static readonly string[] SensitiveDeviceTreeFiles =
+    [
+        "/proc/device-tree/serial-number",
+        "/sys/firmware/devicetree/base/serial-number"
+    ];
+
     private static readonly string[] PublicSocFiles =
     [
         "/sys/devices/soc0/machine",
         "/sys/devices/soc0/family",
         "/sys/devices/soc0/soc_id",
         "/sys/devices/soc0/revision"
+    ];
+
+    private static readonly string[] SensitiveSocFiles =
+    [
+        "/sys/devices/soc0/serial_number"
     ];
 
     private static readonly string[] VirtualizationFiles =
@@ -151,6 +177,14 @@ internal sealed class UnixHostProbe : IProbe
         "/dev/tpmrm0",
         "/dev/vtpmx"
     ];
+
+    private const string TpmClassDirectory = "/sys/class/tpm";
+
+    private static readonly (string RelativePath, string EvidenceKey)[] TpmPublicMaterialCandidates =
+    {
+        ("device/ek_cert", "device.tpm.ek_cert.sha256"),
+        ("device/pubek", "device.tpm.pubek.sha256")
+    };
 
     private static readonly string[] InterestingVirtualizationModules =
     [
@@ -175,19 +209,24 @@ internal sealed class UnixHostProbe : IProbe
 
     private const string VmbusDevicesDirectory = "/sys/bus/vmbus/devices";
 
+        private readonly Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, byte[]? bytes, string? message)>> _readFileBytesAsync;
     private static readonly string[] Files =
     [
         "/proc/1/cgroup", "/proc/self/cgroup",
         "/proc/self/mountinfo", "/proc/1/mountinfo",
         "/proc/net/route", "/etc/resolv.conf",
         "/etc/hostname",
+        "/etc/machine-id", "/var/lib/dbus/machine-id",
         "/etc/os-release", "/usr/lib/os-release",
         "/proc/version",
         .. BaseKernelSysctlFiles,
         "/proc/cpuinfo", "/sys/devices/system/cpu/online", "/sys/devices/system/cpu/possible", "/sys/devices/system/cpu/present",
         .. PublicDmiFiles,
+        .. SensitiveDmiFiles,
         .. PublicDeviceTreeFiles,
+        .. SensitiveDeviceTreeFiles,
         .. PublicSocFiles,
+        .. SensitiveSocFiles,
         .. VirtualizationFiles,
         "/proc/meminfo", "/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory.current", "/sys/fs/cgroup/memory/memory.limit_in_bytes",
         "/sys/fs/cgroup/memory/memory.usage_in_bytes", "/sys/fs/cgroup/cpu.max", "/sys/fs/cgroup/cpu/cpu.cfs_quota_us"
@@ -196,7 +235,7 @@ internal sealed class UnixHostProbe : IProbe
     private readonly Func<string, bool> _directoryExists;
     private readonly Func<string, bool> _pathExists;
 
-    public UnixHostProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists, File.Exists) { }
+    public UnixHostProbe() : this([], ProbeIo.ReadFileAsync, Directory.EnumerateFiles, Directory.EnumerateFileSystemEntries, Directory.Exists, File.Exists, ProbeIo.ReadFileBytesAsync) { }
 
     internal UnixHostProbe(
         IReadOnlyList<string> files,
@@ -204,10 +243,12 @@ internal sealed class UnixHostProbe : IProbe
         Func<string, IEnumerable<string>>? enumerateFiles = null,
         Func<string, IEnumerable<string>>? enumerateEntries = null,
         Func<string, bool>? directoryExists = null,
-        Func<string, bool>? pathExists = null)
+        Func<string, bool>? pathExists = null,
+        Func<string, TimeSpan, CancellationToken, Task<(ProbeOutcome outcome, byte[]? bytes, string? message)>>? readFileBytesAsync = null)
     {
         _files = files;
         _readFileAsync = readFileAsync;
+        _readFileBytesAsync = readFileBytesAsync ?? ProbeIo.ReadFileBytesAsync;
         _enumerateFiles = enumerateFiles ?? Directory.EnumerateFiles;
         _enumerateEntries = enumerateEntries ?? Directory.EnumerateFileSystemEntries;
         _directoryExists = directoryExists ?? Directory.Exists;
@@ -221,6 +262,7 @@ internal sealed class UnixHostProbe : IProbe
         var final = ProbeOutcome.Success;
         string? message = null;
         var osReleaseRead = false;
+        var machineIdRead = false;
         string? procVersion = null;
         string? kernelOsRelease = null;
         string? kernelOsType = null;
@@ -232,6 +274,7 @@ internal sealed class UnixHostProbe : IProbe
         {
             // Skip /usr/lib/os-release if /etc/os-release was successfully read
             if (file == "/usr/lib/os-release" && osReleaseRead) continue;
+            if (file == "/var/lib/dbus/machine-id" && machineIdRead) continue;
 
             var (outcome, text, msg) = await readTasks[file].ConfigureAwait(false);
             if (outcome != ProbeOutcome.Success)
@@ -248,7 +291,12 @@ internal sealed class UnixHostProbe : IProbe
             if (file == "/proc/1/cgroup" || file == "/proc/self/cgroup")
             {
                 foreach (var signal in Parsing.ParseCgroupSignals(text!))
+                {
                     evidence.Add(new EvidenceItem(Id, $"{file}:signal", signal));
+                    var (podUid, containerToken) = Parsing.ExtractKubernetesWorkloadIdentifiers(signal);
+                    AddSensitiveEvidenceIfPresent(evidence, "kubernetes.cgroup.pod_uid", podUid, context.IncludeSensitive);
+                    AddSensitiveEvidenceIfPresent(evidence, "kubernetes.cgroup.container_token", containerToken, context.IncludeSensitive);
+                }
             }
             else if (file.Contains("mountinfo", StringComparison.Ordinal))
             {
@@ -280,6 +328,15 @@ internal sealed class UnixHostProbe : IProbe
                 AddEvidenceIfPresent(evidence, "os.support_url", os.SupportUrl);
                 AddEvidenceIfPresent(evidence, "os.bug_report_url", os.BugReportUrl);
                 osReleaseRead = true;
+            }
+            else if (file is "/etc/machine-id" or "/var/lib/dbus/machine-id")
+            {
+                var value = text?.Trim();
+                if (!string.IsNullOrWhiteSpace(value))
+                {
+                    evidence.Add(new EvidenceItem(Id, "machine.id", context.IncludeSensitive ? value : "redacted", EvidenceSensitivity.Sensitive));
+                    machineIdRead = true;
+                }
             }
             else if (file == "/proc/version")
             {
@@ -347,12 +404,26 @@ internal sealed class UnixHostProbe : IProbe
             else if (file.StartsWith("/sys/class/dmi/id/", StringComparison.Ordinal))
             {
                 var key = file.Split('/').Last();
-                AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+                if (key is "product_uuid" or "product_serial" or "board_serial" or "chassis_serial")
+                {
+                    AddSensitiveEvidenceIfPresent(evidence, $"dmi.{key}", text, context.IncludeSensitive);
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"dmi.{key}", text?.Trim());
+                }
             }
             else if (file.StartsWith("/sys/devices/soc0/", StringComparison.Ordinal))
             {
                 var key = file.Split('/').Last();
-                AddEvidenceIfPresent(evidence, $"soc.{key}", text?.Trim());
+                if (key == "serial_number")
+                {
+                    AddSensitiveEvidenceIfPresent(evidence, $"soc.{key}", text, context.IncludeSensitive);
+                }
+                else
+                {
+                    AddEvidenceIfPresent(evidence, $"soc.{key}", text?.Trim());
+                }
             }
             else if (file == "/proc/modules")
             {
@@ -399,6 +470,10 @@ internal sealed class UnixHostProbe : IProbe
             else if (file is "/proc/device-tree/compatible" or "/sys/firmware/devicetree/base/compatible")
             {
                 AddEvidenceIfPresent(evidence, "device_tree.compatible", NormalizeDeviceTreeText(text));
+            }
+            else if (file is "/proc/device-tree/serial-number" or "/sys/firmware/devicetree/base/serial-number")
+            {
+                AddSensitiveEvidenceIfPresent(evidence, "device_tree.serial_number", NormalizeDeviceTreeText(text), context.IncludeSensitive);
             }
             else if (file == "/proc/meminfo")
             {
@@ -473,6 +548,8 @@ internal sealed class UnixHostProbe : IProbe
             }
         }
 
+        await AddVisibleTpmPublicMaterialEvidenceAsync(evidence, context).ConfigureAwait(false);
+
         var kernel = HostParsing.ParseKernel(procVersion, kernelOsRelease, kernelOsType, kernelVersion);
         AddEvidenceIfPresent(evidence, "kernel.architecture", HostParsing.NormalizeArchitectureRaw(RuntimeInformation.OSArchitecture));
         AddEvidenceIfPresent(evidence, "kernel.name", kernel.Name);
@@ -500,6 +577,29 @@ internal sealed class UnixHostProbe : IProbe
             evidence.Add(new EvidenceItem("proc-files", key, value.Trim()));
         }
     }
+
+    private static void AddSensitiveEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, bool includeSensitive)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            evidence.Add(new EvidenceItem("proc-files", key, includeSensitive ? value.Trim() : "redacted", EvidenceSensitivity.Sensitive));
+        }
+    }
+
+        private async Task AddVisibleTpmPublicMaterialEvidenceAsync(List<EvidenceItem> evidence, ProbeContext context)
+        {
+            foreach (var candidate in DiscoverTpmPublicMaterialFiles())
+            {
+                var (outcome, bytes, _) = await _readFileBytesAsync(candidate.Path, context.Timeout, context.CancellationToken).ConfigureAwait(false);
+                if (outcome != ProbeOutcome.Success || bytes is not { Length: > 0 })
+                {
+                    continue;
+                }
+
+                var digest = $"sha256:{Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant()}";
+                AddSensitiveEvidenceIfPresent(evidence, candidate.EvidenceKey, digest, context.IncludeSensitive);
+            }
+        }
 
     private IReadOnlyList<string> BuildDefaultFiles()
         => Files
@@ -569,6 +669,40 @@ internal sealed class UnixHostProbe : IProbe
             .Distinct(StringComparer.Ordinal)
             .OrderBy(path => path, StringComparer.Ordinal)
             .ToArray();
+    }
+
+    private IReadOnlyList<(string Path, string EvidenceKey)> DiscoverTpmPublicMaterialFiles()
+    {
+        var candidates = new List<(string Path, string EvidenceKey)>();
+
+        try
+        {
+            foreach (var entry in _enumerateEntries(TpmClassDirectory))
+            {
+                var name = Path.GetFileName(entry);
+                if (string.IsNullOrWhiteSpace(name) || !name.StartsWith("tpm", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var root = entry.TrimEnd('/');
+                foreach (var candidate in TpmPublicMaterialCandidates)
+                {
+                    candidates.Add(($"{root}/{candidate.RelativePath}", candidate.EvidenceKey));
+                }
+            }
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        catch (DirectoryNotFoundException)
+        {
+        }
+        catch (IOException)
+        {
+        }
+
+        return candidates;
     }
 
     private static string? SplitUeventValue(string line)

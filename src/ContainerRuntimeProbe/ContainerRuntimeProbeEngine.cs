@@ -98,11 +98,13 @@ public sealed class ContainerRuntimeProbeEngine
         var rawPlatformEvidence = PlatformEvidenceBuilder.Build(rawResults);
         var rawTrustedPlatforms = TrustedPlatformBuilder.Build(rawResults);
         var classification = Classifier.Classify(rawResults, rawPlatformEvidence, rawTrustedPlatforms);
-        var host = HostReportBuilder.Build(rawResults, classification, options.FingerprintMode);
+        var rawHost = HostReportBuilder.Build(rawResults, classification, options.FingerprintMode);
+        var host = Redaction.RedactHostReport(rawHost, includeSensitive);
         var platformEvidence = Redaction.RedactPlatformEvidence(rawPlatformEvidence, rawResults, includeSensitive);
         var trustedPlatforms = Redaction.RedactTrustedPlatforms(rawTrustedPlatforms, rawResults, includeSensitive);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
+        var report = new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
+        return report with { Summary = report.GetSummary() };
     }
 }

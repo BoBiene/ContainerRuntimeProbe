@@ -103,12 +103,33 @@ internal static class TestReportFactory
                         Confidence.Unknown,
                         []),
                     "Standard_D4s_v5"),
-                new HostFingerprint(
-                    "CRP-HOST-FP-v1",
-                    "sha256:0123456789abcdef",
-                    FingerprintStability.RuntimeApiBacked,
-                    10,
-                    2,
-                    [new HostFingerprintComponent("kernel.release", true, "6.17.0-1011-azure")],
-                    ["Fingerprint is diagnostic only and not a security identity."])));
+                [
+                    new DiagnosticFingerprint(
+                        DiagnosticFingerprintPurpose.EnvironmentCorrelation,
+                        "CRP-HOST-FP-v1",
+                        "sha256:0123456789abcdef",
+                        FingerprintStability.RuntimeApiBacked,
+                        DiagnosticFingerprintStabilityLevel.UpdateSensitive,
+                        DiagnosticFingerprintUniquenessLevel.Medium,
+                        DiagnosticFingerprintCorroborationLevel.CrossSource,
+                        10,
+                        2,
+                        [DiagnosticFingerprintSourceClass.KernelSignal, DiagnosticFingerprintSourceClass.RuntimeApi],
+                        [new DiagnosticFingerprintComponent("kernel.release", true, "6.17.0-1011-azure")],
+                        ["Fingerprint is diagnostic only and not a security identity."],
+                        ["Includes kernel and runtime signals for environment correlation."])
+                ],
+                    [
+                        new IdentityAnchor(
+                        IdentityAnchorKind.CloudInstanceIdentity,
+                        "CRP-CLOUD-INSTANCE-v1",
+                        "<redacted>",
+                        IdentityAnchorScope.Host,
+                        BindingSuitability.LicenseBinding,
+                        IdentityAnchorStrength.Strong,
+                        IdentityAnchorSensitivity.Sensitive,
+                        ["cloud-metadata:aws.instance_id"],
+                        [],
+                        ["Digest derived from observed aws instance identity metadata."])
+                    ]));
 }

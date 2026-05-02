@@ -3,6 +3,12 @@
 `ContainerRuntimeReport` fields:
 - `GeneratedAt`, `Duration`
 - `ProbeToolInfo` with semantic `Version` and optional short `GitCommit`
+- `Summary`
+  - top-level structured summary composed of `Environment` and `Identity`
+  - `Environment.Sections[]` uses `EnvironmentSummarySection(Kind, Title, Facts)`
+  - `Identity.Sections[]` uses `IdentitySummarySection(Kind, Title, Facts)`
+  - stronger identity facts may appear together with weaker fallback facts for the same scope when both are visible
+  - each `SummaryFact` carries `Label`, `Value`, `Scope`, optional `Level`, `Confidence`, optional `SourceKind`, `Usage`, and optional `EvidenceKeys[]`
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
 - `Classification`
@@ -36,6 +42,20 @@
   - raw `/etc/os-release` identifiers (`Id`, `IdLike`, `Name`, `PrettyName`, `Version`, `VersionId`, `VersionCodename`, `BuildId`, `Variant`, `VariantId`)
   - `Architecture`, `Confidence`, `EvidenceReferences`
 - `VisibleKernel`
+  - `IdentityAnchors`
+    - explicit digest-based identity anchors separate from diagnostic fingerprints
+    - current built-in kinds are `CloudInstanceIdentity`, `CloudEnvironmentIdentity`, `KubernetesNodeIdentity`, `KubernetesEnvironmentIdentity`, `DeploymentEnvironmentIdentity`, `VendorRuntimeIdentity`, `HypervisorIdentity`, `TpmPublicKeyDigest`, `MachineIdDigest`, `HardwareIdentity`, `HostProfileIdentity`, and `ContainerRuntimeIdentity`
+    - the current `VendorRuntimeIdentity` path is limited to Siemens IED certificate-chain evidence with matched local TLS binding
+    - the current `CloudEnvironmentIdentity` path is limited to visible provider-boundary metadata such as AWS account IDs, Azure subscription IDs, GCP project IDs, or OCI compartment IDs
+    - the current `HypervisorIdentity` path is limited to guest-visible VM UUID evidence such as `dmi.product_uuid` when the runtime is already classified as virtualized
+    - the current `TpmPublicKeyDigest` path is limited to digests over visible TPM public material such as Linux `ek_cert` or `pubek` artifacts when they are readable from the current process environment
+    - the current `KubernetesEnvironmentIdentity` path is limited to the visible service-account CA bundle digest and intentionally works without Pod or Node RBAC
+    - the current `DeploymentEnvironmentIdentity` path is limited to visible Compose project, Docker stack namespace, or Portainer deployment labels from runtime inspect metadata
+    - the current `MachineIdDigest` path is limited to local Windows `MachineGuid` or Linux `machine-id` values and is intentionally classified as a conservative host-correlation anchor outside containerized environments
+    - the current `HardwareIdentity` path is limited to explicit host-visible hardware identifiers such as SMBIOS UUIDs or serials, device-tree or SoC serials, and CPU serials when they are directly visible
+    - the current `HostProfileIdentity` path is limited to coarse host profile signals such as visible kernel, CPU, memory bucket, DMI or device-tree product families, and virtualization/modalias hints, and remains a weak host-correlation fallback even when stronger host anchors are also visible
+    - the current `ContainerRuntimeIdentity` path is limited to explicit runtime inspect container IDs, Kubernetes pod/container workload tokens, and the namespace-tuple fallback, and weaker workload fallbacks remain visible beside stronger runtime-scoped IDs
+    - default safe rendering keeps the anchor metadata but redacts the sensitive anchor value unless sensitive output is explicitly enabled
   - `Name`, `Release`, `Version`, normalized `Architecture`, `Flavor`, `Compiler`, `Confidence`, `EvidenceReferences`
 - `Virtualization`
   - normalized `Kind`, `PlatformVendor`, `Confidence`, `EvidenceReferences`
@@ -45,10 +65,17 @@
   - trusted host/node metadata (`Family`, `Name`, `Version`, `KernelVersion`, `Architecture`, `Source`, `Confidence`, `EvidenceReferences`)
 - `Hardware`
   - normalized host architecture, CPU summary, memory summary, structured public DMI fields, structured public device-tree fields, and safe cloud machine type
-- `Fingerprint`
-  - `Algorithm = CRP-HOST-FP-v1`
-  - `Value = sha256:<lowercase hex>`
-  - `Stability`, `IncludedSignalCount`, `ExcludedSensitiveSignalCount`, `Components[]`, `Warnings[]`
+- `DiagnosticFingerprints[]`
+  - diagnostic-only fingerprints for environment correlation and profiling
+  - current first built-in entry continues to use `Algorithm = CRP-HOST-FP-v1`
+  - each entry carries `Purpose`, `Algorithm`, `Value`, legacy `Stability`, `StabilityLevel`, `UniquenessLevel`, `CorroborationLevel`, `SourceClasses[]`, `IncludedSignalCount`, `ExcludedSensitiveSignalCount`, `Components[]`, `Warnings[]`, and `Reasons[]`
+- `IdentityAnchors[]`
+  - explicit read-only anchor candidates for stronger host or workload binding scenarios
+  - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
+  - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, guest-visible hypervisor VM UUID digests, TPM public-material digests, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
+  - weaker fallback anchors such as host-profile, namespace-tuple, or node-provider-ID candidates remain present even when a stronger same-scope identity is also visible
+  - `Value` is a digest, not the raw observed instance ID or node ID
+  - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 
 ## Interpretation rules
 - Container image OS describes the filesystem inside the container image.
@@ -57,7 +84,10 @@
 - `UnderlyingHostOs.Version` remains null for WSL2 because the Windows version is not derivable from the WSL2 kernel.
 - Runtime-reported host OS is the highest-confidence host/node view when Docker, Podman, Kubernetes NodeInfo, or cloud metadata is available.
 - Hardware is visibility-limited; cgroup limits may differ from physical host capacity.
-- Fingerprints are diagnostic correlation helpers only and must not be treated as host identity.
+- Diagnostic fingerprints are correlation helpers only and must not be treated as host identity.
+- Identity anchors are modeled separately because some consumers may use them for correlation or license binding, but they remain read-only observed values rather than provisioned platform identities.
+- Default safe reports redact sensitive identity-anchor values even though the anchor metadata remains visible.
+- Standard Markdown and text reports render a structured `Summary` section first, split into neutral `Environment` facts and scope-oriented `Identity` facts.
 - `PlatformEvidence` answers: "What does the observed platform look like?"
 - `TrustedPlatforms` answers: "Which explicit local platform claims are strong enough to consume programmatically?"
 - For the current Siemens IED flow, `TrustedPlatforms[].VerificationLevel` is monotonic: `1` artifact present, `2` artifact valid and plausible, `3` local endpoint reachable, `4` TLS binding matched.
@@ -74,6 +104,100 @@
   "ProbeToolInfo": {
     "Version": "1.2.3",
     "GitCommit": "a1b2c3d"
+  },
+  "Summary": {
+    "Environment": {
+      "Sections": [
+        {
+          "Kind": "Runtime",
+          "Title": "Runtime",
+          "Facts": [
+            {
+              "Label": "Mode",
+              "Value": "Containerized",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": []
+            },
+            {
+              "Label": "Runtime",
+              "Value": "Docker",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": []
+            }
+          ]
+        },
+        {
+          "Kind": "Host",
+          "Title": "Host",
+          "Facts": [
+            {
+              "Label": "Host OS",
+              "Value": "Ubuntu 24.04.4 LTS",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "RuntimeReportedHostOsInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": ["runtime-api:docker.info.operating_system"]
+            },
+            {
+              "Label": "Hardware",
+              "Value": "Microsoft Corporation Virtual Machine",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "High",
+              "SourceKind": "HostDmiInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": ["proc-files:dmi.sys_vendor", "proc-files:dmi.product_name"]
+            }
+          ]
+        }
+      ]
+    },
+    "Identity": {
+      "Sections": [
+        {
+          "Kind": "DeploymentIdentity",
+          "Title": "Deployment Identity",
+          "Facts": [
+            {
+              "Label": "Deployment Fingerprint",
+              "Value": "sha256:...",
+              "Scope": "Deployment",
+              "Level": 2,
+              "Confidence": "Medium",
+              "SourceKind": "CRP-HOST-FP-v1",
+              "Usage": "Correlation",
+              "EvidenceKeys": ["kernel.release"]
+            }
+          ]
+        },
+        {
+          "Kind": "HostIdentity",
+          "Title": "Host Identity",
+          "Facts": [
+            {
+              "Label": "Cloud Host ID",
+              "Value": "sha256:...",
+              "Scope": "Host",
+              "Level": 3,
+              "Confidence": "High",
+              "SourceKind": "CloudInstanceIdentity",
+              "Usage": "BindingCandidate",
+              "EvidenceKeys": ["cloud.instance.id"]
+            }
+          ]
+        }
+      ]
+    }
   },
   "Classification": {
     "IsContainerized": { "Value": "True", "Confidence": "High", "Reasons": [] }
@@ -177,19 +301,45 @@
       },
       "CloudMachineType": "Standard_D4s_v5"
     },
-    "Fingerprint": {
-      "Algorithm": "CRP-HOST-FP-v1",
-      "Value": "sha256:...",
-      "Stability": "RuntimeApiBacked",
-      "IncludedSignalCount": 12,
-      "ExcludedSensitiveSignalCount": 2,
-      "Components": [
-        { "Name": "kernel.release", "Included": true, "RawValueRedacted": "6.17.0-1011-azure" }
-      ],
-      "Warnings": [
-        "Fingerprint is diagnostic only and not a security identity."
-      ]
-    }
+    "DiagnosticFingerprints": [
+      {
+        "Purpose": "EnvironmentCorrelation",
+        "Algorithm": "CRP-HOST-FP-v1",
+        "Value": "sha256:...",
+        "Stability": "RuntimeApiBacked",
+        "StabilityLevel": "UpdateSensitive",
+        "UniquenessLevel": "Medium",
+        "CorroborationLevel": "CrossSource",
+        "SourceClasses": ["KernelSignal", "RuntimeApi"],
+        "IncludedSignalCount": 12,
+        "ExcludedSensitiveSignalCount": 2,
+        "Components": [
+          { "Name": "kernel.release", "Included": true, "RawValueRedacted": "6.17.0-1011-azure" }
+        ],
+        "Warnings": [
+          "Fingerprint is diagnostic only and not a security identity."
+        ],
+        "Reasons": [
+          "Includes kernel and runtime signals for environment correlation."
+        ]
+      }
+    ],
+    "IdentityAnchors": [
+      {
+        "Kind": "CloudInstanceIdentity",
+        "Algorithm": "CRP-CLOUD-INSTANCE-v1",
+        "Value": "sha256:...",
+        "Scope": "Host",
+        "BindingSuitability": "LicenseBinding",
+        "Strength": "Strong",
+        "Sensitivity": "Sensitive",
+        "EvidenceReferences": ["cloud.instance.id"],
+        "Warnings": [],
+        "Reasons": [
+          "Digest derived from observed cloud instance identity metadata."
+        ]
+      }
+    ]
   }
 }
 ```

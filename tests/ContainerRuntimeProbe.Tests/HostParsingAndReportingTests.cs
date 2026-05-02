@@ -189,7 +189,7 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "kernel.release", "6.17.0-1011-azure")
         ]);
 
-        Assert.Equal(first.Host.Fingerprint?.Value, second.Host.Fingerprint?.Value);
+        Assert.Equal(first.Host.DiagnosticFingerprints.FirstOrDefault()?.Value, second.Host.DiagnosticFingerprints.FirstOrDefault()?.Value);
     }
 
     [Fact]
@@ -211,9 +211,12 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("environment", "HOSTNAME", "sensitive-hostname")
         ]);
 
-        Assert.NotEqual(baseline.Host.Fingerprint?.Value, changed.Host.Fingerprint?.Value);
-        Assert.Contains(baseline.Host.Fingerprint!.Components, component => component.Name == "hostname" && !component.Included);
-        Assert.DoesNotContain("sensitive-hostname", string.Join('|', baseline.Host.Fingerprint.Components.Select(component => component.RawValueRedacted)));
+        var baselineFingerprint = Assert.Single(baseline.Host.DiagnosticFingerprints);
+        var changedFingerprint = Assert.Single(changed.Host.DiagnosticFingerprints);
+
+        Assert.NotEqual(baselineFingerprint.Value, changedFingerprint.Value);
+        Assert.Contains(baselineFingerprint.Components, component => component.Name == "hostname" && !component.Included);
+        Assert.DoesNotContain("sensitive-hostname", string.Join('|', baselineFingerprint.Components.Select(component => component.RawValueRedacted)));
     }
 
     [Fact]
@@ -227,8 +230,449 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "kernel.hostname", "redacted", EvidenceSensitivity.Sensitive)
         ]);
 
-        Assert.Equal(1, report.Host.Fingerprint!.ExcludedSensitiveSignalCount);
-        Assert.Contains(report.Host.Fingerprint.Components, component => component.Name == "hostname" && !component.Included);
+        var fingerprint = Assert.Single(report.Host.DiagnosticFingerprints);
+
+        Assert.Equal(1, fingerprint.ExcludedSensitiveSignalCount);
+        Assert.Contains(fingerprint.Components, component => component.Name == "hostname" && !component.Included);
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsCloudAndKubernetesDigests_FromExplicitStableSources()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+            new EvidenceItem("kubernetes", "kubernetes.node.name", "worker-a", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.uid", "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.provider_id", "azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Equal(3, report.Host.IdentityAnchors.Count);
+
+        var cloudAnchor = Assert.Single(report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.CloudInstanceIdentity));
+        Assert.Equal("CRP-CLOUD-INSTANCE-v1", cloudAnchor.Algorithm);
+        Assert.Equal(IdentityAnchorStrength.Strong, cloudAnchor.Strength);
+        Assert.Equal(BindingSuitability.LicenseBinding, cloudAnchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, cloudAnchor.Sensitivity);
+        Assert.StartsWith("sha256:", cloudAnchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("i-0abc123def4567890", cloudAnchor.Value, StringComparison.Ordinal);
+
+        var kubernetesAnchors = report.Host.IdentityAnchors.Where(anchor => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity).ToArray();
+        var kubernetesAnchor = Assert.Single(kubernetesAnchors.Where(anchor => anchor.Strength == IdentityAnchorStrength.Strong));
+        Assert.Contains(kubernetesAnchors, anchor => anchor.Strength == IdentityAnchorStrength.Medium);
+        Assert.Equal(BindingSuitability.LicenseBinding, kubernetesAnchor.BindingSuitability);
+        Assert.StartsWith("sha256:", kubernetesAnchor.Value, StringComparison.Ordinal);
+        Assert.Contains(kubernetesAnchor.EvidenceReferences, reference => reference == "kubernetes:kubernetes.node.uid");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsSiemensIedDigest_FromMatchedTlsBindingAndDocumentedChain()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.subject", "CN=edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.issuer", "CN=Siemens Local Root"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "matched")
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.VendorRuntimeIdentity));
+
+        Assert.Equal("CRP-SIEMENS-IED-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.LicenseBinding, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Strong, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("expected-chain-hash", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "siemens-ied-runtime:trust.ied.certsips.cert_chain_sha256");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("matched local TLS binding", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildSiemensIedAnchor_WithoutMatchedTlsBinding()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.service_name", "edge-iot-core.proxy-redirect"),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.certsips.cert_chain_sha256", "expected-chain-hash", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("siemens-ied-runtime", "trust.ied.endpoint.tls.binding", "mismatch")
+        ]);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity);
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsWindowsMachineIdDigest_AsConservativeHostCorrelationAnchor()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "windows.machine_guid", "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "windows.product_name", "Windows 11 Pro"),
+            new EvidenceItem("proc-files", "kernel.release", "10.0.26200")
+        ], ContainerizationKind.@False);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.MachineIdDigest));
+
+        Assert.Equal("CRP-WINDOWS-MACHINE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:windows.machine_guid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("installation-stable", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsLinuxMachineIdDigest_AsConservativeHostCorrelationAnchor()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "machine.id", "87c4bc1848a84471997203ee530d2fda", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "os.id", "debian"),
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic")
+        ], ContainerizationKind.@False);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.MachineIdDigest && item.Algorithm == "CRP-LINUX-MACHINE-ID-v1"));
+
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("87c4bc1848a84471997203ee530d2fda", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:machine.id");
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildMachineIdDigest_ForContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "machine.id", "87c4bc1848a84471997203ee530d2fda", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "windows.machine_guid", "9f8b2b2f-6d45-4a28-90ea-3c3a2f06d111", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.MachineIdDigest);
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsHardwareIdentity_FromExplicitDmiIdentifiers_InContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "dmi.product_serial", "SN-123456", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HardwareIdentity));
+
+        Assert.Equal("CRP-HARDWARE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_uuid");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_serial");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsHypervisorIdentity_FromVirtualizedGuestUuid()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "QEMU"),
+            new EvidenceItem("proc-files", "dmi.product_name", "Standard PC (Q35 + ICH9, 2009)"),
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HypervisorIdentity));
+
+        Assert.Equal("CRP-HYPERVISOR-INSTANCE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Hypervisor, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_uuid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("virtual guest or substrate instance", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildHypervisorIdentity_WithoutVirtualizationSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HypervisorIdentity);
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsHardwareIdentity_FromCpuAndSocSerialSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.serial", "ABC123XYZ", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "soc.serial_number", "SOC-0001", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HardwareIdentity));
+
+        Assert.Equal("CRP-HARDWARE-ID-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("ABC123XYZ", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:cpu.serial");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:soc.serial_number");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsKubernetesEnvironmentIdentity_FromServiceAccountCaDigest()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "serviceaccount.ca.sha256", "sha256:9a0ef8f0e6fa0f6f3eb9c3d7cc6ed1111111111111111111111111111111111"),
+            new EvidenceItem("kubernetes", "env.KUBERNETES_SERVICE_HOST", "10.96.0.1"),
+            new EvidenceItem("kubernetes", "api.version.outcome", ProbeOutcome.Success.ToString())
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.KubernetesEnvironmentIdentity));
+
+        Assert.Equal("CRP-KUBERNETES-CLUSTER-CA-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("9a0ef8f0e6fa0f6f3eb9c3d7cc6ed1111111111111111111111111111111111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "kubernetes:serviceaccount.ca.sha256");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("without requiring RBAC", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsCloudEnvironmentIdentity_FromProviderBoundaryMetadata()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("cloud-metadata", "aws.account_id", "123456789012", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+            new EvidenceItem("cloud-metadata", "cloud.region", "eu-central-1")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.CloudEnvironmentIdentity));
+
+        Assert.Equal("CRP-CLOUD-ENVIRONMENT-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("123456789012", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "cloud-metadata:aws.account_id");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("aws accounts", StringComparison.Ordinal));
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("aws environment metadata", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsDeploymentEnvironmentIdentity_FromComposeAndPortainerLabels()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "compose.label.com.docker.compose.project", "edge-stack"),
+            new EvidenceItem("runtime-api", "compose.label.com.docker.stack.namespace", "edge-stack-swarm"),
+            new EvidenceItem("runtime-api", "compose.label.io.portainer.stack.name", "portainer-edge")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.DeploymentEnvironmentIdentity));
+
+        Assert.Equal("CRP-DEPLOYMENT-METADATA-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.ApplicationHost, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("edge-stack", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "runtime-api:compose.label.com.docker.compose.project");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("Compose or Portainer", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsKubernetesWorkloadIdentity_FromPodUidAndCgroupToken_WhenInspectIdUnavailable()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "kubernetes.pod.uid", "550e8400-e29b-41d4-a716-446655440000", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "kubernetes.cgroup.container_token", "0123456789abcdef", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity).ToArray();
+        var anchor = Assert.Single(anchors.Where(item => item.Strength == IdentityAnchorStrength.Medium));
+        Assert.Contains(anchors, item => item.Strength == IdentityAnchorStrength.Weak);
+
+        Assert.Equal("CRP-KUBERNETES-WORKLOAD-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("0123456789abcdef", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "kubernetes:kubernetes.pod.uid");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:kubernetes.cgroup.container_token");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("runtime-api", "container.inspect.outcome", ProbeOutcome.Success.ToString())
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+
+        Assert.Equal("CRP-CONTAINER-INSTANCE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "runtime-api:container.id");
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsWeakContainerRuntimeIdentity_FromNamespaceTuple_WhenInspectIdIsUnavailable()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532964]"),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532961]"),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026532890]")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+
+        Assert.Equal("CRP-CONTAINER-NS-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Weak, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("4026532964", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:ns.pid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("workload-instance scoped", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildContainerRuntimeIdentity_ForNonContainerizedEnvironment()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@False);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.ContainerRuntimeIdentity);
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotPromoteWeakGenericSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "device.tpm.path", "/dev/tpm0"),
+            new EvidenceItem("environment", "HOSTNAME", "edge-host", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "kernel.hostname", "edge-host", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.Empty(report.Host.IdentityAnchors);
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsTpmPublicKeyDigest_FromVisiblePublicMaterial()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "device.tpm.path", "/dev/tpm0"),
+            new EvidenceItem("proc-files", "device.tpm.pubek.sha256", "sha256:abcdef0123456789", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.TpmPublicKeyDigest));
+
+        Assert.Equal("CRP-TPM-PUBLIC-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.ExternalAttestation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Strong, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.NotEqual("sha256:abcdef0123456789", anchor.Value);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:device.tpm.pubek.sha256");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("does not by itself prove", StringComparison.Ordinal));
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("read-only TPM public material", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_BuildsWeakHostProfileIdentity_WhenOnlyCoarseHostProfileSignalsAreVisible()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "platform.modalias", "acpi:VMBUS:00"),
+            new EvidenceItem("proc-files", "bus.vmbus.present", "true")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HostProfileIdentity));
+
+        Assert.Equal("CRP-HOST-PROFILE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Host, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Weak, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:kernel.release");
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:platform.modalias");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("weak correlation", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_StacksWeakHostProfileIdentity_WhenExplicitHostIdentityExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic"),
+            new EvidenceItem("proc-files", "cpu.vendor", "GenuineIntel"),
+            new EvidenceItem("proc-files", "cpu.model_name", "Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz"),
+            new EvidenceItem("proc-files", "memory.mem_total_bytes", "17179869184"),
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HardwareIdentity);
+        Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HostProfileIdentity && anchor.Strength == IdentityAnchorStrength.Weak);
+    }
+
+    [Fact]
+    public void IdentityAnchors_StacksNamespaceFallback_WhenRuntimeInspectIdentityExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532964]", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532954]", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026533104]", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity).ToArray();
+
+        Assert.Contains(anchors, anchor => anchor.Algorithm == "CRP-CONTAINER-INSTANCE-v1" && anchor.Strength == IdentityAnchorStrength.Medium);
+        Assert.Contains(anchors, anchor => anchor.Algorithm == "CRP-CONTAINER-NS-v1" && anchor.Strength == IdentityAnchorStrength.Weak);
+    }
+
+    [Fact]
+    public void IdentityAnchors_StacksKubernetesNodeProviderId_WhenNodeUidExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "kubernetes.node.uid", "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.provider_id", "azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.KubernetesNodeIdentity).ToArray();
+
+        Assert.Contains(anchors, anchor => anchor.Strength == IdentityAnchorStrength.Strong);
+        Assert.Contains(anchors, anchor => anchor.Strength == IdentityAnchorStrength.Medium);
     }
 
     [Fact]
@@ -364,8 +808,12 @@ public sealed class HostParsingAndReportingTests
         var json = ReportRenderer.ToJson(report);
         var text = ReportRenderer.ToText(report);
 
-        Assert.Contains("## Key Findings", markdown);
-        Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
+        Assert.Contains("## Summary", markdown);
+        Assert.Contains("### Environment", markdown);
+        Assert.Contains("### Identity", markdown);
+        Assert.Contains("#### Host", markdown);
+        Assert.Contains("| Host OS | Ubuntu 24.04 |", markdown);
+        Assert.Contains("| Cloud Host ID | <redacted> | L3 | BindingCandidate |", markdown);
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("## Probe Tool Information", markdown);
         Assert.Contains("- Git Commit: abcdef1", markdown);
@@ -373,6 +821,8 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("- Platform Vendor: Microsoft Hyper-V", markdown);
         Assert.Contains("### Platform / DMI", markdown);
         Assert.Contains("### Device Tree", markdown);
+        Assert.Contains("### Identity Anchors", markdown);
+        Assert.Contains("- Kind: CloudInstanceIdentity", markdown);
         Assert.Contains("- System Vendor: Microsoft Corporation", markdown);
         Assert.Contains("\"Host\":", json, StringComparison.Ordinal);
         Assert.Contains("\"ProbeToolInfo\":", json, StringComparison.Ordinal);
@@ -380,16 +830,22 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("\"Virtualization\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
         Assert.Contains("\"DeviceTree\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"IdentityAnchors\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Summary\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
         Assert.Contains("HardwareVendor", text);
         Assert.Contains("Architecture", text);
         Assert.Contains("DeviceTreeModel", text);
+        Assert.Contains("IdentityAnchors", text);
+        Assert.Contains("Environment", text);
+        Assert.Contains("Identity", text);
         Assert.Contains("abcdef1", text);
-        Assert.Contains("Runtime-reported host OS: Ubuntu 24.04 (High).", text);
-        Assert.Matches(@"HostFingerprint\s+:\s+sha256:", text);
+        Assert.Contains("Host OS", text);
+        Assert.Contains("Cloud Host ID", text);
+        Assert.Matches(@"DiagnosticFingerprint\s+:\s+sha256:", text);
     }
 
-    private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence)
+    private static ContainerRuntimeReport BuildHostReport(IReadOnlyList<EvidenceItem> evidence, ContainerizationKind containerizationKind = ContainerizationKind.@True)
     {
         var report = new ContainerRuntimeReport(
             DateTimeOffset.UtcNow,
@@ -399,11 +855,13 @@ public sealed class HostParsingAndReportingTests
                 new ProbeResult("proc-files", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "proc-files").ToArray()),
                 new ProbeResult("runtime-api", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "runtime-api").ToArray()),
                 new ProbeResult("environment", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "environment").ToArray()),
-                new ProbeResult("cloud-metadata", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "cloud-metadata").ToArray())
+                new ProbeResult("cloud-metadata", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "cloud-metadata").ToArray()),
+                new ProbeResult("kubernetes", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "kubernetes").ToArray()),
+                new ProbeResult("siemens-ied-runtime", ProbeOutcome.Success, evidence.Where(item => item.ProbeId == "siemens-ied-runtime").ToArray())
             ],
             [],
             new ReportClassification(
-                new(ContainerizationKind.@True, Confidence.High, []),
+                new(containerizationKind, Confidence.High, []),
                 new(ContainerRuntimeKind.Docker, Confidence.High, []),
                 new(VirtualizationClassificationKind.None, Confidence.Medium, []),
                 new(new(OperatingSystemFamily.Linux, Confidence.High, []), new(HostTypeKind.StandardLinux, Confidence.High, [])),

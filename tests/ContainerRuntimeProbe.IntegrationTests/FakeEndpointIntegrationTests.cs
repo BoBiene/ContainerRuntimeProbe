@@ -143,9 +143,17 @@ public sealed class FakeEndpointIntegrationTests
 
             Assert.True(stopwatch.Elapsed < TimeSpan.FromMilliseconds(1200), $"Expected concurrent fan-out, got {stopwatch.Elapsed}.");
             Assert.Contains(result.Evidence, e => e.Key == "aws.imds.identity.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "aws.instance_id" && e.Value == "i-0abc123def4567890");
+            Assert.Contains(result.Evidence, e => e.Key == "aws.account_id" && e.Value == "123456789012");
             Assert.Contains(result.Evidence, e => e.Key == "azure.imds.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "azure.vm_id" && e.Value == "5d77f1f6-4e57-4d8c-9f9e-9fd8e67f21d2");
+            Assert.Contains(result.Evidence, e => e.Key == "azure.subscription_id" && e.Value == "00000000-1111-2222-3333-444444444444");
             Assert.Contains(result.Evidence, e => e.Key == "gcp.metadata.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "gcp.instance_id" && e.Value == "9876543210123456789");
+            Assert.Contains(result.Evidence, e => e.Key == "gcp.project_id" && e.Value == "123456");
             Assert.Contains(result.Evidence, e => e.Key == "oci.metadata.outcome" && e.Value == "Success");
+            Assert.Contains(result.Evidence, e => e.Key == "oci.instance_id" && e.Value == "ocid1.instance.oc1.eu-frankfurt-1.exampleuniqueid");
+            Assert.Contains(result.Evidence, e => e.Key == "oci.compartment_id" && e.Value == "ocid1.compartment.oc1..exampleuniqueid");
         }
         finally
         {
@@ -162,6 +170,7 @@ public sealed class FakeEndpointIntegrationTests
     {
         const string json = """
             {
+                            "Id": "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111",
               "Config": {
                 "Labels": {
                   "com.docker.compose.project": "myproject",
@@ -176,6 +185,7 @@ public sealed class FakeEndpointIntegrationTests
 
         var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
 
+        Assert.Contains(items, e => e.Key == "container.id" && e.Value == "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111" && e.Sensitivity == EvidenceSensitivity.Sensitive);
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.project" && e.Value == "myproject");
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.service" && e.Value == "web");
         Assert.Contains(items, e => e.Key == "compose.label.com.docker.compose.version" && e.Value == "2.24.0");
@@ -193,11 +203,13 @@ public sealed class FakeEndpointIntegrationTests
     }
 
     [Fact]
-    public void ComposeLabels_ExtractFromInspectJson_NoConfigSection_ReturnsEmpty()
+    public void ComposeLabels_ExtractFromInspectJson_NoConfigSection_ReturnsContainerIdOnly()
     {
         const string json = """{"Id":"abc123"}""";
         var items = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToList();
-        Assert.Empty(items);
+        var item = Assert.Single(items);
+        Assert.Equal("container.id", item.Key);
+        Assert.Equal("abc123", item.Value);
     }
 
     [Fact]
@@ -227,8 +239,10 @@ public sealed class FakeEndpointIntegrationTests
         Directory.CreateDirectory(tmpDir);
         var tokenFile = Path.Combine(tmpDir, "token");
         var nsFile = Path.Combine(tmpDir, "namespace");
+        var caFile = Path.Combine(tmpDir, "ca.crt");
         await File.WriteAllTextAsync(tokenFile, "fake-bearer-token");
         await File.WriteAllTextAsync(nsFile, "test-namespace");
+        await File.WriteAllTextAsync(caFile, "-----BEGIN CERTIFICATE-----\nZmFrZS1jbHVzdGVyLWNh\n-----END CERTIFICATE-----\n");
 
         // Start a fake HTTP server that returns a synthetic /version response
         using var listener = new HttpListener();
@@ -280,7 +294,8 @@ public sealed class FakeEndpointIntegrationTests
             var probe = new KubernetesProbe(
                 tokenPaths: [tokenFile],
                 namespacePaths: [nsFile],
-                serviceHostOverride: "127.0.0.1");
+                serviceHostOverride: "127.0.0.1",
+                caPaths: [caFile]);
 
             var probeCtx = new ProbeContext(
                 Timeout: TimeSpan.FromSeconds(5),
@@ -298,6 +313,7 @@ public sealed class FakeEndpointIntegrationTests
             // ServiceAccount files found
             Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.token" && e.Value == "present");
             Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.namespace" && e.Value == "test-namespace");
+            Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.ca.sha256" && e.Value!.StartsWith("sha256:", StringComparison.Ordinal));
 
             // /version succeeded
             Assert.Contains(result.Evidence, e => e.Key == "api.version.outcome" && e.Value == "Success");
@@ -382,6 +398,110 @@ public sealed class FakeEndpointIntegrationTests
         }
         finally
         {
+            cts.Cancel();
+            listener.Stop();
+            await server;
+            Directory.Delete(tmpDir, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task KubernetesProbe_FakeServer_EmitsStableNodeIdentityEvidence()
+    {
+        var tmpDir = Path.Combine(Path.GetTempPath(), Path.GetRandomFileName());
+        Directory.CreateDirectory(tmpDir);
+        var tokenFile = Path.Combine(tmpDir, "token");
+        var nsFile = Path.Combine(tmpDir, "namespace");
+        await File.WriteAllTextAsync(tokenFile, "fake-bearer-token");
+        await File.WriteAllTextAsync(nsFile, "test-namespace");
+
+        using var listener = new HttpListener();
+        var port = GetFreePort();
+        listener.Prefixes.Add($"http://127.0.0.1:{port}/");
+        listener.Start();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var previousHostName = Environment.GetEnvironmentVariable("HOSTNAME");
+        Environment.SetEnvironmentVariable("HOSTNAME", "test-pod");
+
+        var server = Task.Run(async () =>
+        {
+            while (!cts.IsCancellationRequested)
+            {
+                HttpListenerContext ctx;
+                try { ctx = await listener.GetContextAsync(); }
+                catch (ObjectDisposedException) { break; }
+                catch (HttpListenerException) { break; }
+
+                var path = ctx.Request.Url?.AbsolutePath ?? string.Empty;
+                int statusCode;
+                string body;
+
+                if (path == "/version")
+                {
+                    statusCode = 200;
+                    body = """{"major":"1","minor":"28","gitVersion":"v1.28.0"}""";
+                }
+                else if (path == "/api/v1/namespaces/test-namespace/pods/test-pod")
+                {
+                    statusCode = 200;
+                    body = """
+                        {"metadata":{"uid":"0d2f65de-7d7d-4f0d-93f1-6f85cc4ab111"},"spec":{"nodeName":"worker-a"}}
+                        """;
+                }
+                else if (path == "/api/v1/nodes/worker-a")
+                {
+                    statusCode = 200;
+                    body = """
+                        {
+                          "metadata":{"uid":"8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111"},
+                          "spec":{"providerID":"azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a"},
+                          "status":{"nodeInfo":{"osImage":"Ubuntu 24.04.4 LTS","kernelVersion":"6.6.10-generic","operatingSystem":"linux","architecture":"amd64","containerRuntimeVersion":"containerd://2.0.1","kubeletVersion":"v1.31.1"}}
+                        }
+                        """;
+                }
+                else
+                {
+                    statusCode = 404;
+                    body = "{}";
+                }
+
+                ctx.Response.StatusCode = statusCode;
+                ctx.Response.ContentType = "application/json";
+                var bytes = Encoding.UTF8.GetBytes(body);
+                await ctx.Response.OutputStream.WriteAsync(bytes, cts.Token);
+                ctx.Response.Close();
+            }
+        });
+
+        try
+        {
+            var probe = new KubernetesProbe(
+                tokenPaths: [tokenFile],
+                namespacePaths: [nsFile],
+                serviceHostOverride: "127.0.0.1");
+
+            var probeCtx = new ProbeContext(
+                Timeout: TimeSpan.FromSeconds(5),
+                IncludeSensitive: false,
+                EnabledProbes: null,
+                KubernetesApiBase: new Uri($"http://127.0.0.1:{port}"),
+                AwsImdsBase: null,
+                AzureImdsBase: null,
+                GcpMetadataBase: null,
+                OciMetadataBase: null,
+                CancellationToken: CancellationToken.None);
+
+            var result = await probe.ExecuteAsync(probeCtx);
+
+            Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.name" && e.Value == "worker-a");
+            Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.uid" && e.Value == "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111");
+            Assert.Contains(result.Evidence, e => e.Key == "kubernetes.node.provider_id" && e.Value!.Contains("aks-worker-a", StringComparison.Ordinal));
+            Assert.Contains(result.Evidence, e => e.Key == "kubernetes.pod.uid" && e.Value == "0d2f65de-7d7d-4f0d-93f1-6f85cc4ab111");
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("HOSTNAME", previousHostName);
             cts.Cancel();
             listener.Stop();
             await server;
@@ -500,20 +620,21 @@ public sealed class FakeEndpointIntegrationTests
         {
             "/latest/api/token" when string.Equals(request.HttpMethod, "PUT", StringComparison.OrdinalIgnoreCase) => "fake-token",
             "/latest/dynamic/instance-identity/document" => """
-                {"instanceType":"c7g.large","region":"eu-central-1","availabilityZone":"eu-central-1a","architecture":"arm64"}
+                {"instanceId":"i-0abc123def4567890","accountId":"123456789012","instanceType":"c7g.large","region":"eu-central-1","availabilityZone":"eu-central-1a","architecture":"arm64"}
                 """,
             "/metadata/instance" => """
-                {"compute":{"vmSize":"Standard_D4s_v5","location":"westeurope","zone":"2","osType":"Linux"}}
+                {"compute":{"vmId":"5d77f1f6-4e57-4d8c-9f9e-9fd8e67f21d2","subscriptionId":"00000000-1111-2222-3333-444444444444","vmSize":"Standard_D4s_v5","location":"westeurope","zone":"2","osType":"Linux"}}
                 """,
+            "/computeMetadata/v1/instance/id" => "9876543210123456789",
             "/computeMetadata/v1/instance/machine-type" => "projects/123456/machineTypes/e2-standard-4",
             "/computeMetadata/v1/instance/zone" => "projects/123456/zones/europe-west3-b",
             "/opc/v2/instance/" => """
-                {"shape":"VM.Standard.E4.Flex","region":"eu-frankfurt-1","availabilityDomain":"Uocm:EU-FRANKFURT-1-AD-1"}
+                {"id":"ocid1.instance.oc1.eu-frankfurt-1.exampleuniqueid","compartmentId":"ocid1.compartment.oc1..exampleuniqueid","shape":"VM.Standard.E4.Flex","region":"eu-frankfurt-1","availabilityDomain":"Uocm:EU-FRANKFURT-1-AD-1"}
                 """,
             _ => "{}"
         };
 
-        if (path is not "/latest/api/token" and not "/latest/dynamic/instance-identity/document" and not "/metadata/instance" and not "/computeMetadata/v1/instance/machine-type" and not "/computeMetadata/v1/instance/zone" and not "/opc/v2/instance/")
+        if (path is not "/latest/api/token" and not "/latest/dynamic/instance-identity/document" and not "/metadata/instance" and not "/computeMetadata/v1/instance/id" and not "/computeMetadata/v1/instance/machine-type" and not "/computeMetadata/v1/instance/zone" and not "/opc/v2/instance/")
         {
             statusCode = 404;
         }

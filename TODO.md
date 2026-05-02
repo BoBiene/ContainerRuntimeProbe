@@ -1,53 +1,70 @@
 # TODO
 
-## Critical
+## Active Identity Candidate Rollout (2026-05-02)
 
-All critical issues resolved. ✅
+Statusbasis: [docs/identity-matrix.md](docs/identity-matrix.md) beschreibt den aktuellen Ist-Stand, die Candidate-Quellen und die Ziel-Level fuer `Host`, `Container`, `Environment` und spaeter optional `Hypervisor`.
 
-## High
+Arbeitsregeln fuer diese Runde:
 
-All high priority issues resolved. ✅
+- kleine, nachvollziehbare Schritte
+- pro erledigtem TODO genau ein Commit
+- nach jedem fachlichen Schritt Build und passende Tests
+- keine grossen Umbauten ohne direkten Bezug zum aktuellen TODO
 
-## Medium
+### Ready In Worktree
 
-- [x] **Host OS / Node reporting** — **DONE**
-  - Added structured `Host` output with `ContainerImageOs`, `VisibleKernel`, `RuntimeReportedHostOs`, `Hardware`, and `Fingerprint`.
-  - Added distro, architecture, kernel flavor, runtime host source, and fingerprint stability normalization.
-  - Added safe host enrichment from Docker `/info`, Podman `/libpod/info`, Kubernetes `status.nodeInfo`, and cloud metadata.
-  - Added privacy-aware `CRP-HOST-FP-v1` host fingerprinting with deterministic hashing and excluded sensitive signals.
+- [x] **34. Format-aware identity projection defaults abschliessen**
+  - JSON redigiert Identity-Anchor-Werte standardmaessig, Markdown und Text lassen sie standardmaessig sichtbar, sofern kein Override gesetzt ist.
+- [x] **35. Workload- und Environment-L1-Semantik fuer Containerfaelle abschliessen**
+  - Containerisierte Faelle bekommen eine schwache `Container ID` aus Namespace-Tupeln und eine schwache `Deployment ID` bzw. `Environment ID` aus der Summary-Korrelation.
+- [x] **36. Windows host evidence parity abschliessen**
+  - Windows sammelt konservativ CPU-Familie/Modell/Stepping, sichtbaren Speicher, Chassis-Vendor und den robusteren `MachineGuid`-Pfad.
+- [x] **37. Identity matrix und aktive Candidate-Planung dokumentieren**
+  - Die Matrix ist als Referenzdoku verlinkt und das TODO-Backlog wird daraus in konkrete Implementierungsschritte ueberfuehrt.
 
-## Verified Done
+### Planned Implementation Steps
 
-- [x] Build succeeds with 0 warnings/errors (`dotnet build -c Release`)
-- [x] Test suite covers host parsing, normalization, fingerprinting, renderers, and fake runtime metadata mapping
-- [x] CLI tool produces host reporting for `--format json/markdown/text`
-- [x] Docs updated for host reporting, fingerprint privacy, and examples
+- [x] **38. Linux host unique-ID evidence sammeln**
+  - `proc-files` sammelt zusaetzlich hostgebundene, read-only Quellen wie SMBIOS-UUIDs/Serien und ARM-/SoC-Serienwerte, soweit sie sichtbar sind.
+- [x] **39. Host-Anchor aus expliziten Hardware-IDs einfuehren**
+  - Sichtbare SMBIOS-, CPU- oder SoC-Identifier werden mit klaren Staerke- und Container-Grenzen in konservative Host-Anchors umgesetzt.
+- [x] **40. Schwachen universellen Host-L1-Fallback einfuehren**
+  - Wenn keine explizite Host-ID sichtbar ist, wird ein rein korrelationsgeeigneter Host-Profil-Digest als `L1` abgebildet.
+- [x] **41. Kubernetes Environment-L2 ohne RBAC einfuehren**
+  - Ein Cluster-/Environment-Digest wird aus bereits sichtbarem Service-Account-CA- oder API-Zertifikatsmaterial abgeleitet, ohne neue Rechte zu erwarten.
+- [x] **42. Compose- und Portainer-Deployment-Identity erweitern**
+  - Sichtbare Compose-/Portainer-Metadaten aus Socket-Inspect werden als staerkerer Deployment-/Environment-Kandidat genutzt.
+- [x] **43. Kubernetes workload candidate sources erweitern**
+  - Sichtbare Pod-/Container-Korrelation aus CGroup- oder Mount-Signalen wird ausgewertet, wenn kein Runtime-Inspect moeglich ist.
+- [x] **44. Cloud Environment-L2 einfuehren**
+  - Mandanten-, Projekt- oder Subscription-nahe Cloud-Metadaten werden als Environment-Kandidaten modelliert, wenn sie sichtbar und sicher nutzbar sind.
+- [x] **45. TPM public-material identity path einfuehren**
+  - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.
+- [x] **46. Hypervisor identity path einfuehren**
+  - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
+- [x] **47. Identities "Stacked" ausgeben
+  - Bei L2 auch die L1 Idenentity mit ausgeben im report (Bei L3 entsprechend L2&L1 und so weiter)
+- [x] **48. Abschlussvalidierung, Doku und Nachlauf**
+  - Jede neue Quelle braucht passende Tests, Renderer-/Summary-Abdeckung, Doku-Updates und eine Abschlusspruefung der offenen Risiken.
 
-## Review Follow-Up (2026-04-29)
+## Archived Completed Rollouts
 
-### Critical
+- [x] **01-17. Fingerprint / Identity Anchor Rollout**
+  - Contract-Split, Anchor-/Fingerprint-Trennung, Privacy-Defaults, Doku und Testmatrix sind abgeschlossen.
+- [x] **18-22. Identity Anchor Expansion**
+  - Siemens-Runtime, Windows-Maschinen-ID, Linux-`machine-id`, Container-Anchor-Regeln und Validierung sind abgeschlossen.
+- [x] **23-33. Neutral Summary Report Model**
+  - Summary-Modelle, Scope-Trennung, Renderer-Integration, Doku und Abschlussvalidierung sind abgeschlossen.
+- [x] **Review Follow-Up backlog**
+  - Kritische und mittlere Review-Punkte sowie der dokumentierte Nice-to-have-Nachlauf wurden abgearbeitet, soweit nicht unten explizit verschoben.
 
-- [x] **1. Parallel probe execution** — `ContainerRuntimeProbeEngine.RunAsync` now runs the selected probe set concurrently while preserving report order.
-- [x] **2. Shared IMDS client/pooling** — `CloudMetadataProbe` now reuses one client per normalized base URI and fans out provider metadata requests concurrently.
-- [x] **3. Kubernetes TLS mode** — default remains compatibility-first so in-cluster probing just works, but the report now emits `KUBERNETES_TLS_VALIDATION_SKIPPED` and the CLI/library can switch to strict TLS validation.
+## Deferred Or External
 
-### Medium
-
-- [x] **4. Public probe-context overrides** — `ProbeExecutionOptions` now exposes Kubernetes and metadata endpoint overrides on the public engine API.
-- [x] **5. AppArmor vs SELinux parsing** — `SecuritySandboxProbe` now validates SELinux context shape explicitly and records `/sys/fs/selinux/enforce` evidence separately.
-- [x] **6. Stronger OnPrem classification** — on-prem scoring now leans on corporate DNS, host-type corroboration, and visible default routes instead of giving cloud-metadata probe presence two free points.
-- [x] **7. Runtime harness coverage** — `docker-harness.yml` now fans out across default Docker, `--privileged`, `--network host`, and rootless Podman runs.
-- [x] **8. Parallel `/proc` reads** — `ProcFilesProbe` now starts the proc/sys file reads concurrently while preserving stable processing order.
-
-### Nice To Have
-
-- [x] **9. Shared JSON helper** — the duplicate `GetString(JsonElement, string)` logic now lives in a shared internal `JsonHelper`.
-- [x] **10. Cross-OS unit-test matrix** — `ci.yml` now runs the main build-and-test job on Ubuntu, Windows, and macOS.
-- [x] **11. TODO backlog refreshed** — this file now tracks the current review backlog instead of reporting `None known`.
-- [x] **12. Stronger smoke/integration fixtures** — `SmokeIntegrationTests` now exercises real sample-report fixtures for proc, mountinfo, os-release, and WSL2-specific signals.
-
-### Carry-Over
-
-- [ ] **`SampleRegressionTests` pre-existing failure** — `docs/samples/examples/*.sample.json` files are missing from the repository. This failure predates the current review work.
-- [ ] **Git history cleanup** — the early commits `Vendor curated os-release fixtures` and `Use license-safe detection map fixtures` on `feat/static-detection-map` contain GPL data in history. Consider `git rebase -i` squash/drop before merging to `main` if history cleanliness matters.
-- [ ] **Override-Loader (stretch)** — `DetectionMaps.LoadOverrides(string? path)` + `--detection-map` CLI flag for user-supplied custom maps at runtime.
+- [ ] **SampleRegressionTests fixture gap**
+  - `docs/samples/examples/*.sample.json` fehlen weiterhin im Repository; der Volltestlauf ueberspringt die Probe deshalb weiterhin.
+- [ ] **Bottlerocket distro fixture gap**
+  - Das Fixture `bottlerocket/1.19.4` fehlt weiterhin; der zugehoerige Distro-Family-Test bleibt deshalb uebersprungen.
+- [ ] **Git history cleanup**
+  - Fruehe Commits auf dem Alt-Branch mit GPL-Daten sollten vor einem Merge nach `main` separat bereinigt werden, falls die Historie sauber bleiben soll.
+- [ ] **Override-Loader stretch**
+  - `DetectionMaps.LoadOverrides(string? path)` plus `--detection-map` bleibt ausserhalb dieses Candidate-Rollouts.

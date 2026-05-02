@@ -17,7 +17,7 @@ static async Task<int> MainAsync(string[] args)
         _ => "text"
     };
     var sampleFormat = "compact";
-    var includeSensitive = false;
+    bool? includeSensitiveOverride = null;
     var timeout = TimeSpan.FromSeconds(2);
     var output = string.Empty;
     var fullReport = string.Empty;
@@ -71,7 +71,7 @@ static async Task<int> MainAsync(string[] args)
                 case "--sample-only": sampleOnly = true; break;
                 case "--full-report": fullReport = GetRequiredValue(args, ref i, "--full-report"); break;
                 case "--report-input": reportInput = GetRequiredValue(args, ref i, "--report-input"); break;
-                case "--include-sensitive": includeSensitive = bool.Parse(GetRequiredValue(args, ref i, "--include-sensitive")); break;
+                case "--include-sensitive": includeSensitiveOverride = bool.Parse(GetRequiredValue(args, ref i, "--include-sensitive")); break;
                 case "--timeout": timeout = TimeSpan.Parse(GetRequiredValue(args, ref i, "--timeout")); break;
                 case "--probe": probes = GetRequiredValue(args, ref i, "--probe").Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase); break;
                 case "--output": output = GetRequiredValue(args, ref i, "--output"); break;
@@ -113,9 +113,10 @@ static async Task<int> MainAsync(string[] args)
         }
         else
         {
+            var engineIncludeSensitive = !string.Equals(command, "sample", StringComparison.OrdinalIgnoreCase);
             report = await engine.RunAsync(
                 timeout,
-                includeSensitive,
+                engineIncludeSensitive,
                 new ProbeExecutionOptions
                 {
                     EnabledProbes = probes,
@@ -126,7 +127,8 @@ static async Task<int> MainAsync(string[] args)
 
         if (!string.IsNullOrWhiteSpace(fullReport))
         {
-            await File.WriteAllTextAsync(fullReport, ReportRenderer.ToJson(report)).ConfigureAwait(false);
+            var fullReportProjection = ProjectReportForFormat(report, "json", includeSensitiveOverride);
+            await File.WriteAllTextAsync(fullReport, ReportRenderer.ToJson(fullReportProjection)).ConfigureAwait(false);
         }
 
         string? rendered;
@@ -142,7 +144,7 @@ static async Task<int> MainAsync(string[] args)
                     BodyFormat: bodyFormat,
                     IssueTemplate: issueTemplate,
                     MaxUrlLength: maxUrlLength,
-                    IncludeSensitive: includeSensitive));
+                    IncludeSensitive: includeSensitiveOverride ?? false));
 
             rendered = urlOnly
                 ? artifacts.PrefillUrl
@@ -166,11 +168,12 @@ static async Task<int> MainAsync(string[] args)
         }
         else
         {
+            var projectedReport = ProjectReportForFormat(report, reportFormat, includeSensitiveOverride);
             rendered = reportFormat.ToLowerInvariant() switch
             {
-                "json" => ReportRenderer.ToJson(report),
-                "markdown" => ReportRenderer.ToMarkdown(report),
-                "text" => ReportRenderer.ToText(report),
+                "json" => ReportRenderer.ToJson(projectedReport),
+                "markdown" => ReportRenderer.ToMarkdown(projectedReport),
+                "text" => ReportRenderer.ToText(projectedReport),
                 _ => null
             };
 
@@ -245,7 +248,9 @@ static bool IsCommandToken(string arg)
 static ContainerRuntimeReport NormalizeImportedReport(ContainerRuntimeReport report)
 {
     var classification = Classifier.Classify(report.Probes);
-    var importedFingerprintMode = report.Host?.Fingerprint is null ? FingerprintMode.None : FingerprintMode.Safe;
+    var importedFingerprintMode = report.Host is { DiagnosticFingerprints.Count: > 0 }
+        ? FingerprintMode.Safe
+        : FingerprintMode.None;
     var host = HostReportBuilder.Build(report.Probes, classification, importedFingerprintMode);
     var platformEvidence = PlatformEvidenceBuilder.Build(report.Probes);
     var trustedPlatforms = TrustedPlatformBuilder.Build(report.Probes);
@@ -254,8 +259,22 @@ static ContainerRuntimeReport NormalizeImportedReport(ContainerRuntimeReport rep
         Classification = classification,
         Host = host,
         PlatformEvidence = platformEvidence,
-        TrustedPlatforms = trustedPlatforms
+        TrustedPlatforms = trustedPlatforms,
+        Summary = null
     };
+}
+
+static ContainerRuntimeReport ProjectReportForFormat(ContainerRuntimeReport report, string format, bool? includeSensitiveOverride)
+{
+    if (includeSensitiveOverride is true)
+    {
+        return Redaction.RedactReport(report, includeSensitive: true);
+    }
+
+    var redactIdentityAnchors = includeSensitiveOverride is false
+        || string.Equals(format, "json", StringComparison.OrdinalIgnoreCase);
+
+    return Redaction.RedactReport(report, includeSensitive: false, redactIdentityAnchors: redactIdentityAnchors);
 }
 
 static void PrintHelp()

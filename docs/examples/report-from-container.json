@@ -2,6 +2,91 @@
   "GeneratedAt": "2026-04-28T14:46:59.1362784+00:00",
   "Duration": "00:00:06.0972349",
   "ProbeToolInfo": null,
+  "Summary": {
+    "Environment": {
+      "Sections": [
+        {
+          "Kind": "Runtime",
+          "Title": "Runtime",
+          "Facts": [
+            {
+              "Label": "Mode",
+              "Value": "Containerized",
+              "Scope": "Runtime",
+              "Level": null,
+              "Confidence": "Low",
+              "SourceKind": "ReportClassification",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "marker-files:/.dockerenv",
+                "proc-files:/proc/self/mountinfo:signal"
+              ]
+            }
+          ]
+        },
+        {
+          "Kind": "Host",
+          "Title": "Host",
+          "Facts": [
+            {
+              "Label": "Host OS",
+              "Value": "Linux 6.17.0-1010-azure",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "Medium",
+              "SourceKind": "VisibleKernelInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": [
+                "proc-files:kernel.release"
+              ]
+            },
+            {
+              "Label": "CPU",
+              "Value": "AMD EPYC 9V74 80-Core Processor",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "Unknown",
+              "SourceKind": "HostCpuInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": null
+            },
+            {
+              "Label": "Memory",
+              "Value": "7.75 GB",
+              "Scope": "Host",
+              "Level": null,
+              "Confidence": "Unknown",
+              "SourceKind": "HostMemoryInfo",
+              "Usage": "Informational",
+              "EvidenceKeys": null
+            }
+          ]
+        }
+      ]
+    },
+    "Identity": {
+      "Sections": [
+        {
+          "Kind": "DeploymentIdentity",
+          "Title": "Deployment Identity",
+          "Facts": [
+            {
+              "Label": "Deployment Fingerprint",
+              "Value": "sha256:6813124e32d17aa8a06b66e1a8417b2ae389c100c021906b7a3ff48a2b62a5a3",
+              "Scope": "Deployment",
+              "Level": 2,
+              "Confidence": "Medium",
+              "SourceKind": "CRP-HOST-FP-v1",
+              "Usage": "Correlation",
+              "EvidenceKeys": [
+                "kernel.release"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
   "Probes": [
     {
       "ProbeId": "marker-files",

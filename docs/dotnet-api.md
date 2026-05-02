@@ -25,24 +25,32 @@ The engine:
 - runs the configured probes concurrently
 - normalizes the collected evidence into a single `ContainerRuntimeReport`
 - applies central redaction when `includeSensitive` is `false`
-- builds higher-level summaries such as `Classification`, `Host`, `PlatformEvidence`, and `TrustedPlatforms`
+- builds higher-level summaries such as `Summary`, `Classification`, `Host`, `PlatformEvidence`, and `TrustedPlatforms`
+- separates diagnostic host fingerprints from future bindable identity anchors
 
 You can also pass explicit `ProbeExecutionOptions` when you want to narrow the probe set or override cloud and Kubernetes endpoints for testing.
 
-When you want the most relevant findings as a structured API instead of renderer-specific text, call `report.GetRelevantFindings()`:
+When you want the top-level structured summary instead of renderer-specific text, read `report.Summary` or derive it on demand via `report.GetSummary()`:
 
 ```csharp
 using ContainerRuntimeProbe;
 
-var findings = report.GetRelevantFindings();
+var summary = report.Summary ?? report.GetSummary();
 
-foreach (var finding in findings)
+foreach (var section in summary.Environment.Sections)
 {
-  Console.WriteLine($"[{finding.Kind}] {finding.Summary}");
+  Console.WriteLine($"[{section.Kind}] {section.Title}");
 }
 ```
 
-Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human-readable `Summary`, `Confidence`, and referenced evidence keys. Trusted-platform findings also expose `VerificationLevel`, while heuristic platform findings expose `Score`.
+`ReportSummary` is intentionally split into two neutral views:
+
+- `Environment`
+  - compact runtime, execution-context, host, platform, and trust facts for the observed system
+- `Identity`
+  - scope-oriented workload, deployment, node/platform, and host identity candidates with `Level` and `Usage`
+
+If you only need one side, you can also call `report.GetEnvironmentSummary()` or `report.GetIdentitySummary()` directly.
 
 ## ContainerRuntimeReport
 
@@ -54,10 +62,12 @@ Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human
   - raw probe outcomes and normalized evidence after redaction
 - `SecurityWarnings`
   - report-level warnings such as a visible Docker socket or relaxed Kubernetes TLS mode
+- `Summary`
+  - structured top-level summary composed of `Environment` and `Identity`
 - `Classification`
   - weighted conclusions about containerization, runtime, orchestrator, cloud, host, virtualization, and platform vendor
 - `Host`
-  - normalized host-visible operating system, kernel, hardware, and fingerprint summaries
+  - normalized host-visible operating system, kernel, hardware, diagnostic fingerprint, and identity-anchor summaries
 - `PlatformEvidence`
   - heuristic platform hypotheses that answer: what does the observed environment look like?
 - `TrustedPlatforms`
@@ -70,6 +80,22 @@ Each `ReportFinding` carries a stable `Kind`, a `Key`, optional `Value`, a human
 When `includeSensitive` is `false`, the returned `Probes`, `PlatformEvidence`, and `TrustedPlatforms` reflect the redacted view. Some probes also redact values based on probe context before results reach the engine, so unredacted values may not always be available internally in that mode.
 
 That means consumers can safely serialize and forward the returned report without accidentally depending on hidden internal raw values.
+
+## DiagnosticFingerprints and IdentityAnchors
+
+`Host` now separates two different concerns:
+
+- `DiagnosticFingerprints`
+  - read-only diagnostic correlation fingerprints
+  - expected to support statistics, environment correlation, and runtime profiling
+  - may remain update-sensitive on purpose
+- `IdentityAnchors`
+  - explicit read-only anchor candidates for stronger workload or host binding scenarios
+  - intentionally kept separate from diagnostic fingerprints so diagnostics do not silently become license-binding identifiers
+  - current implementation derives digested anchors from explicit cloud instance IDs, provider-boundary cloud environment IDs, Kubernetes node identities, Kubernetes service-account CA digests, Compose or Portainer deployment metadata, Siemens IED certificate-chain evidence with matched local TLS binding, guest-visible hypervisor VM UUIDs, visible TPM public material digests, host-only `MachineIdDigest` correlation anchors from local Windows `MachineGuid` or Linux `machine-id` values outside containerized environments, explicit hardware identifiers, weak `HostProfileIdentity` fallbacks, and workload-scoped `ContainerRuntimeIdentity` anchors from runtime inspect IDs, Kubernetes workload tokens, or namespace tuples in containerized environments
+  - weaker fallback anchors remain present alongside stronger same-scope anchors so consumers can see the full visible L3/L2/L1 stack
+  - anchor values remain redacted in the default safe report even though the anchor metadata stays visible
+  - environments without strong anchor sources can legitimately return an empty list
 
 ## TrustedPlatforms semantics
 

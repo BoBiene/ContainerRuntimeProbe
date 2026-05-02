@@ -57,7 +57,13 @@ internal static class ComposeLabels
         "com.docker.compose.version",
         "com.docker.compose.container-number",
         "com.docker.compose.project.working_dir",
-        "com.docker.compose.project.config_files"
+        "com.docker.compose.project.config_files",
+        "com.docker.stack.namespace"
+    ];
+
+    internal static readonly string[] KnownLabelPrefixes =
+    [
+        "io.portainer."
     ];
 
     /// <summary>
@@ -72,6 +78,15 @@ internal static class ComposeLabels
 
         using (doc)
         {
+            if (doc.RootElement.TryGetProperty("Id", out var containerIdElement))
+            {
+                var containerId = containerIdElement.GetString();
+                if (!string.IsNullOrWhiteSpace(containerId))
+                {
+                    yield return new EvidenceItem(probeId, "container.id", containerId.Trim(), EvidenceSensitivity.Sensitive);
+                }
+            }
+
             if (!doc.RootElement.TryGetProperty("Config", out var config)) yield break;
             if (!config.TryGetProperty("Labels", out var labels)) yield break;
             if (labels.ValueKind != JsonValueKind.Object) yield break;
@@ -79,7 +94,12 @@ internal static class ComposeLabels
             foreach (var prop in labels.EnumerateObject())
             {
                 // Only emit the well-known Compose labels to keep output bounded
-                if (Array.IndexOf(KnownLabels, prop.Name) < 0) continue;
+                if (Array.IndexOf(KnownLabels, prop.Name) < 0
+                    && !KnownLabelPrefixes.Any(prefix => prop.Name.StartsWith(prefix, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
                 var rawValue = prop.Value.GetString() ?? string.Empty;
                 // Truncate path values (working_dir, config_files) to avoid excessively long output
                 var value = rawValue.Length > 256 ? rawValue[..256] : rawValue;
@@ -298,21 +318,25 @@ internal sealed class KubernetesProbe : IProbe
 
     private readonly IReadOnlyList<string> _tokenPaths;
     private readonly IReadOnlyList<string> _namespacePaths;
+    private readonly IReadOnlyList<string> _caPaths;
     private readonly string? _serviceHostOverride;
 
     private static readonly string[] DefaultTokenPaths =
         ["/run/secrets/kubernetes.io/serviceaccount/token", "/var/run/secrets/kubernetes.io/serviceaccount/token"];
     private static readonly string[] DefaultNamespacePaths =
         ["/run/secrets/kubernetes.io/serviceaccount/namespace", "/var/run/secrets/kubernetes.io/serviceaccount/namespace"];
+    private static readonly string[] DefaultCaPaths =
+        ["/run/secrets/kubernetes.io/serviceaccount/ca.crt", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"];
 
     /// <summary>Production constructor using standard Kubernetes service-account mount paths.</summary>
-    public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null) { }
+    public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null, DefaultCaPaths) { }
 
     /// <summary>Test constructor allowing injection of custom paths and a service-host override.</summary>
-    internal KubernetesProbe(IReadOnlyList<string> tokenPaths, IReadOnlyList<string> namespacePaths, string? serviceHostOverride)
+    internal KubernetesProbe(IReadOnlyList<string> tokenPaths, IReadOnlyList<string> namespacePaths, string? serviceHostOverride, IReadOnlyList<string>? caPaths = null)
     {
         _tokenPaths = tokenPaths;
         _namespacePaths = namespacePaths;
+        _caPaths = caPaths ?? DefaultCaPaths;
         _serviceHostOverride = serviceHostOverride;
     }
 
@@ -326,8 +350,17 @@ internal sealed class KubernetesProbe : IProbe
 
         var tokenPath = _tokenPaths.FirstOrDefault(File.Exists);
         var nsPath = _namespacePaths.FirstOrDefault(File.Exists);
+        var caPath = _caPaths.FirstOrDefault(File.Exists);
         if (tokenPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.token", "present", EvidenceSensitivity.Sensitive));
         if (nsPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.namespace", (await File.ReadAllTextAsync(nsPath, context.CancellationToken).ConfigureAwait(false)).Trim()));
+        if (caPath is not null)
+        {
+            var caBundle = (await File.ReadAllTextAsync(caPath, context.CancellationToken).ConfigureAwait(false)).Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+            if (!string.IsNullOrWhiteSpace(caBundle))
+            {
+                evidence.Add(new EvidenceItem(Id, "serviceaccount.ca.sha256", $"sha256:{HostParsing.ComputeSha256Hex(caBundle)}"));
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(host) || tokenPath is null)
         {
@@ -361,6 +394,7 @@ internal sealed class KubernetesProbe : IProbe
             if (podResult.status.HasValue) evidence.Add(new EvidenceItem(Id, "api.pod.status", podResult.status.Value.ToString()));
             if (podResult.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(podResult.body))
             {
+                AddPodIdentityEvidence(evidence, podResult.body!);
                 await ProbeNodeInfoAsync(client, evidence, podResult.body!, context.CancellationToken).ConfigureAwait(false);
             }
         }
@@ -378,6 +412,15 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         return handler;
+    }
+
+    private void AddPodIdentityEvidence(List<EvidenceItem> evidence, string podJson)
+    {
+        using var podDoc = JsonDocument.Parse(podJson);
+        if (podDoc.RootElement.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.pod.uid", JsonHelper.GetString(metadata, "uid"), EvidenceSensitivity.Sensitive);
+        }
     }
 
     private async Task ProbeNodeInfoAsync(HttpClient client, List<EvidenceItem> evidence, string podJson, CancellationToken ct)
@@ -406,6 +449,17 @@ internal sealed class KubernetesProbe : IProbe
         }
 
         using var nodeDoc = JsonDocument.Parse(nodeResult.body);
+        if (nodeDoc.RootElement.TryGetProperty("metadata", out var metadata) && metadata.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.node.name", nodeName, EvidenceSensitivity.Sensitive);
+            AddEvidenceIfPresent(evidence, "kubernetes.node.uid", JsonHelper.GetString(metadata, "uid"), EvidenceSensitivity.Sensitive);
+        }
+
+        if (nodeDoc.RootElement.TryGetProperty("spec", out var nodeSpec) && nodeSpec.ValueKind == JsonValueKind.Object)
+        {
+            AddEvidenceIfPresent(evidence, "kubernetes.node.provider_id", JsonHelper.GetString(nodeSpec, "providerID"), EvidenceSensitivity.Sensitive);
+        }
+
         if (!nodeDoc.RootElement.TryGetProperty("status", out var status) ||
             status.ValueKind != JsonValueKind.Object ||
             !status.TryGetProperty("nodeInfo", out var nodeInfo) ||
@@ -422,11 +476,11 @@ internal sealed class KubernetesProbe : IProbe
         AddEvidenceIfPresent(evidence, "kubernetes.nodeInfo.kubeletVersion", JsonHelper.GetString(nodeInfo, "kubeletVersion"));
     }
 
-    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+            evidence.Add(new EvidenceItem(Id, key, value.Trim(), sensitivity));
         }
     }
 }
@@ -588,13 +642,24 @@ internal sealed class CloudMetadataProbe : IProbe
         var evidence = new List<EvidenceItem>();
         var headers = new Dictionary<string, string> { ["Metadata-Flavor"] = "Google" };
         var machineTypeTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/machine-type", headers, cancellationToken);
+        var instanceIdTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/id", headers, cancellationToken);
         var zoneTask = HttpProbe.GetAsync(gcpClient, "/computeMetadata/v1/instance/zone", headers, cancellationToken);
 
         var machineType = await machineTypeTask.ConfigureAwait(false);
         evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
         if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
         {
-            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+            var machineTypeValue = machineType.body!.Trim();
+            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineTypeValue.Split('/').LastOrDefault());
+            AddEvidenceIfPresent(evidence, "gcp.project_id", TryExtractGcpProjectId(machineTypeValue), EvidenceSensitivity.Sensitive);
+            evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
+        }
+
+        var instanceId = await instanceIdTask.ConfigureAwait(false);
+        evidence.Add(new EvidenceItem(Id, "gcp.metadata.instance_id.outcome", instanceId.outcome.ToString()));
+        if (instanceId.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(instanceId.body))
+        {
+            AddEvidenceIfPresent(evidence, "gcp.instance_id", instanceId.body!.Trim(), EvidenceSensitivity.Sensitive);
             evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
         }
 
@@ -602,7 +667,9 @@ internal sealed class CloudMetadataProbe : IProbe
         evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
         if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
         {
-            var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
+            var zonePath = zone.body!.Trim();
+            AddEvidenceIfPresent(evidence, "gcp.project_id", TryExtractGcpProjectId(zonePath), EvidenceSensitivity.Sensitive);
+            var zoneValue = zonePath.Split('/').LastOrDefault() ?? zonePath;
             AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
             var lastDash = zoneValue.LastIndexOf('-');
             AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
@@ -636,6 +703,8 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "aws.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "aws.account_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.architecture", parsed.RawArchitecture);
@@ -651,6 +720,8 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "azure.vm_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "azure.subscription_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.os_type", parsed.OsType);
@@ -666,16 +737,34 @@ internal sealed class CloudMetadataProbe : IProbe
         }
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
+        AddEvidenceIfPresent(evidence, "oci.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "oci.compartment_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
     }
 
-    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value)
+    private static string? TryExtractGcpProjectId(string metadataPath)
+    {
+        if (string.IsNullOrWhiteSpace(metadataPath))
+        {
+            return null;
+        }
+
+        var segments = metadataPath.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length >= 2 && string.Equals(segments[0], "projects", StringComparison.OrdinalIgnoreCase))
+        {
+            return segments[1];
+        }
+
+        return null;
+    }
+
+    private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)
     {
         if (!string.IsNullOrWhiteSpace(value))
         {
-            evidence.Add(new EvidenceItem(Id, key, value.Trim()));
+            evidence.Add(new EvidenceItem(Id, key, value.Trim(), sensitivity));
         }
     }
 }

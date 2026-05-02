@@ -13,6 +13,9 @@ public enum ReportFindingKind
     /// <summary>A heuristic platform evidence summary.</summary>
     PlatformEvidence,
 
+    /// <summary>An observed identity anchor summary.</summary>
+    IdentityAnchor,
+
     /// <summary>A containerization and runtime finding.</summary>
     Containerization,
 
@@ -65,6 +68,7 @@ public static class ContainerRuntimeReportExtensions
         var findings = new List<ReportFinding>();
         findings.AddRange(BuildTrustedPlatformFindings(report));
         findings.AddRange(BuildPlatformEvidenceFindings(report));
+        findings.AddRange(BuildIdentityAnchorFindings(report));
         AddContainerizationFinding(findings, report);
         AddEnvironmentFinding(findings, report);
         AddOrchestratorFinding(findings, report);
@@ -115,6 +119,27 @@ public static class ContainerRuntimeReportExtensions
             {
                 Score = summary.Score,
                 Method = summary.EvidenceLevel.ToString()
+            })
+            .ToArray();
+    }
+
+    private static IReadOnlyList<ReportFinding> BuildIdentityAnchorFindings(ContainerRuntimeReport report)
+    {
+        var anchors = report.Host.IdentityAnchors
+            .Where(anchor => anchor.Kind != IdentityAnchorKind.Unknown)
+            .OrderByDescending(anchor => anchor.Strength)
+            .ThenBy(anchor => anchor.Kind)
+            .ToArray();
+
+        return anchors.Select(anchor => new ReportFinding(
+                ReportFindingKind.IdentityAnchor,
+                anchor.Kind.ToString(),
+                anchor.Scope.ToString(),
+                MapIdentityAnchorConfidence(anchor.Strength),
+                $"Identity anchor available: {anchor.Kind} ({anchor.Scope}, {anchor.BindingSuitability}, {anchor.Strength}).",
+                anchor.EvidenceReferences)
+            {
+                Method = anchor.Algorithm
             })
             .ToArray();
     }
@@ -254,6 +279,15 @@ public static class ContainerRuntimeReportExtensions
 
     private static Confidence MaxConfidence(IEnumerable<Confidence> values)
         => values.DefaultIfEmpty(Confidence.Unknown).Max();
+
+    private static Confidence MapIdentityAnchorConfidence(IdentityAnchorStrength strength)
+        => strength switch
+        {
+            IdentityAnchorStrength.Strong => Confidence.High,
+            IdentityAnchorStrength.Medium => Confidence.Medium,
+            IdentityAnchorStrength.Weak => Confidence.Low,
+            _ => Confidence.Unknown
+        };
 
     private static string FormatHostOs(string? name, string? version)
     {

@@ -81,6 +81,57 @@ internal static class Redaction
             .ToArray();
     }
 
+    public static ContainerRuntimeReport RedactReport(
+        ContainerRuntimeReport report,
+        bool includeSensitive,
+        bool redactIdentityAnchors = true)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        if (includeSensitive)
+        {
+            var visibleReport = report with { Summary = null };
+            return visibleReport with { Summary = visibleReport.GetSummary() };
+        }
+
+        var probes = report.Probes.Select(result => RedactProbeResult(result, includeSensitive)).ToArray();
+        var host = RedactHostReport(report.Host, includeSensitive, redactIdentityAnchors);
+        var platformEvidence = report.PlatformEvidence is null
+            ? null
+            : RedactPlatformEvidence(report.PlatformEvidence, report.Probes, includeSensitive);
+        var trustedPlatforms = report.TrustedPlatforms is null
+            ? null
+            : RedactTrustedPlatforms(report.TrustedPlatforms, report.Probes, includeSensitive);
+
+        var redactedReport = report with
+        {
+            Probes = probes,
+            Host = host,
+            PlatformEvidence = platformEvidence,
+            TrustedPlatforms = trustedPlatforms,
+            Summary = null
+        };
+
+        return redactedReport with { Summary = redactedReport.GetSummary() };
+    }
+
+    public static HostReport RedactHostReport(HostReport host, bool includeSensitive, bool redactIdentityAnchors = true)
+    {
+        if (includeSensitive || !redactIdentityAnchors)
+        {
+            return host;
+        }
+
+        return host with
+        {
+            IdentityAnchors = host.IdentityAnchors
+                .Select(anchor => anchor.Sensitivity == IdentityAnchorSensitivity.Sensitive
+                    ? anchor with { Value = RedactedValue }
+                    : anchor)
+                .ToArray()
+        };
+    }
+
     private static HashSet<string> GetSensitiveSummaryKeys(IReadOnlyList<ProbeResult> rawResults)
         => rawResults
             .SelectMany(result => result.Evidence)

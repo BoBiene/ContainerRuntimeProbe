@@ -1,3 +1,4 @@
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -42,5 +43,33 @@ public sealed class RuntimeApiProbeMetadataTests
         var evidence = RuntimeApiProbe.ExtractPodmanInfoEvidence("runtime-api", json);
 
         Assert.Empty(evidence);
+    }
+
+    [Fact]
+    public void ExtractFromInspectJson_ExtractsComposeStackAndPortainerLabels()
+    {
+        const string json = """
+            {
+              "Id": "0123456789abcdef",
+              "Config": {
+                "Labels": {
+                  "com.docker.compose.project": "edge-stack",
+                  "com.docker.stack.namespace": "edge-stack-swarm",
+                  "io.portainer.stack.name": "portainer-edge",
+                  "io.portainer.endpoint.id": "5",
+                  "unrelated.label": "ignored"
+                }
+              }
+            }
+            """;
+
+        var evidence = ComposeLabels.ExtractFromInspectJson("runtime-api", json).ToArray();
+
+        Assert.Contains(evidence, item => item.Key == "container.id" && item.Value == "0123456789abcdef");
+        Assert.Contains(evidence, item => item.Key == "compose.label.com.docker.compose.project" && item.Value == "edge-stack");
+        Assert.Contains(evidence, item => item.Key == "compose.label.com.docker.stack.namespace" && item.Value == "edge-stack-swarm");
+        Assert.Contains(evidence, item => item.Key == "compose.label.io.portainer.stack.name" && item.Value == "portainer-edge");
+        Assert.Contains(evidence, item => item.Key == "compose.label.io.portainer.endpoint.id" && item.Value == "5");
+        Assert.DoesNotContain(evidence, item => item.Key == "compose.label.unrelated.label");
     }
 }

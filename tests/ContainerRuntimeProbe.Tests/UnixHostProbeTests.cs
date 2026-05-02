@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Runtime.InteropServices;
+using System.Text;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
@@ -124,6 +125,91 @@ public sealed class UnixHostProbeTests
     }
 
     [Fact]
+    public async Task UnixHostProbe_MachineId_RemainsSensitive()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/etc/machine-id"] = "87c4bc1848a84471997203ee530d2fda\n"
+        };
+
+        var probe = new UnixHostProbe(
+            values.Keys.ToArray(),
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "machine.id" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "machine.id" && item.Value == "87c4bc1848a84471997203ee530d2fda" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
+    public async Task UnixHostProbe_ExtractsSensitiveHardwareIdentitySignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/sys/class/dmi/id/product_uuid"] = "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A\n",
+            ["/sys/class/dmi/id/product_serial"] = "SN-123456\n",
+            ["/sys/class/dmi/id/board_serial"] = "BOARD-42\n",
+            ["/sys/class/dmi/id/chassis_serial"] = "CHASSIS-99\n",
+            ["/proc/device-tree/serial-number"] = "ABC123XYZ\0",
+            ["/sys/devices/soc0/serial_number"] = "SOC-0001\n"
+        };
+
+        var probe = new UnixHostProbe(values.Keys.ToArray(), (path, _, _) =>
+            Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.product_uuid" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.product_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.board_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "dmi.chassis_serial" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "device_tree.serial_number" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "soc.serial_number" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.product_uuid" && item.Value == "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.product_serial" && item.Value == "SN-123456" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.board_serial" && item.Value == "BOARD-42" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "dmi.chassis_serial" && item.Value == "CHASSIS-99" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "device_tree.serial_number" && item.Value == "ABC123XYZ" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "soc.serial_number" && item.Value == "SOC-0001" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
+    public async Task UnixHostProbe_ExtractsKubernetesWorkloadTokens_FromCgroupSignals()
+    {
+        var values = new Dictionary<string, string>
+        {
+            ["/proc/self/cgroup"] = "0::/kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod550e8400_e29b_41d4_a716_446655440000.slice/cri-containerd-0123456789abcdef.scope\n"
+        };
+
+        var probe = new UnixHostProbe(
+            values.Keys.ToArray(),
+            (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
+                ? (ProbeOutcome.Success, (string?)value, (string?)null)
+                : (ProbeOutcome.Unavailable, (string?)null, (string?)null)));
+
+        var redactedContext = new ProbeContext(TimeSpan.FromSeconds(1), false, null, null, null, null, null, null, CancellationToken.None);
+        var redactedResult = await probe.ExecuteAsync(redactedContext);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "kubernetes.cgroup.pod_uid" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(redactedResult.Evidence, item => item.Key == "kubernetes.cgroup.container_token" && item.Value == "redacted" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+
+        var sensitiveContext = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var sensitiveResult = await probe.ExecuteAsync(sensitiveContext);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "kubernetes.cgroup.pod_uid" && item.Value == "550e8400-e29b-41d4-a716-446655440000" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+        Assert.Contains(sensitiveResult.Evidence, item => item.Key == "kubernetes.cgroup.container_token" && item.Value == "0123456789abcdef" && item.Sensitivity == EvidenceSensitivity.Sensitive);
+    }
+
+    [Fact]
     public async Task UnixHostProbe_ExtractsExtendedDmiAndDeviceTreeSignals()
     {
         var values = new Dictionary<string, string>
@@ -187,7 +273,7 @@ public sealed class UnixHostProbeTests
             (path, _, _) => Task.FromResult(values.TryGetValue(path, out var value)
                 ? (ProbeOutcome.Success, (string?)value, (string?)null)
                 : (ProbeOutcome.Unavailable, (string?)null, (string?)null)),
-            enumerateFiles: path => path == "/proc/sys/kernel" ? [] : [],
+            enumerateFiles: _ => [],
             enumerateEntries: path => path == "/sys/bus/platform/devices"
                 ? ["/sys/bus/platform/devices/wsysinit_init", "/sys/bus/platform/devices/10050000.sram"]
                 : []);
@@ -242,6 +328,26 @@ public sealed class UnixHostProbeTests
         Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpm0");
         Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/vtpmx");
         Assert.DoesNotContain(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpmrm0");
+    }
+
+    [Fact]
+    public async Task UnixHostProbe_ReportsVisibleTpmPublicMaterialDigest()
+    {
+        var probe = new UnixHostProbe(
+            [],
+            (_, _, _) => Task.FromResult((ProbeOutcome.Unavailable, (string?)null, (string?)null)),
+            enumerateEntries: path => path == "/sys/class/tpm" ? ["/sys/class/tpm/tpm0"] : [],
+            pathExists: path => path == "/dev/tpm0",
+            readFileBytesAsync: (path, _, _) => Task.FromResult(path == "/sys/class/tpm/tpm0/device/pubek"
+                ? (ProbeOutcome.Success, Encoding.ASCII.GetBytes("PUBEK-DATA"), (string?)null)
+                : (ProbeOutcome.Unavailable, (byte[]?)null, (string?)null)));
+
+        var context = new ProbeContext(TimeSpan.FromSeconds(1), true, null, null, null, null, null, null, CancellationToken.None);
+        var result = await probe.ExecuteAsync(context);
+
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.path" && item.Value == "/dev/tpm0");
+        Assert.Contains(result.Evidence, item => item.Key == "device.tpm.pubek.sha256" && item.Value is not null && item.Value.StartsWith("sha256:", StringComparison.Ordinal));
+        Assert.DoesNotContain(result.Evidence, item => item.Key == "device.tpm.pubek.sha256" && item.Value is not null && item.Value.Contains("PUBEK-DATA", StringComparison.Ordinal));
     }
 
     private static string NormalizeArchitectureRaw(Architecture architecture)

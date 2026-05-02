@@ -407,10 +407,22 @@ public sealed record ContainerRuntimeReport(
     ReportClassification Classification,
     HostReport Host,
     IReadOnlyList<PlatformEvidenceSummary>? PlatformEvidence = null,
-    IReadOnlyList<TrustedPlatformSummary>? TrustedPlatforms = null);
+    IReadOnlyList<TrustedPlatformSummary>? TrustedPlatforms = null,
+    ReportSummary? Summary = null);
 
 /// <summary>Source-generation context for JSON serialization.</summary>
 [JsonSerializable(typeof(ContainerRuntimeReport))]
+[JsonSerializable(typeof(ReportSummary))]
+[JsonSerializable(typeof(EnvironmentSummary))]
+[JsonSerializable(typeof(IdentitySummary))]
+[JsonSerializable(typeof(EnvironmentSummarySection))]
+[JsonSerializable(typeof(IdentitySummarySection))]
+[JsonSerializable(typeof(SummaryFact))]
+[JsonSerializable(typeof(SummaryScope))]
+[JsonSerializable(typeof(SummaryUsageKind))]
+[JsonSerializable(typeof(EnvironmentSummarySectionKind))]
+[JsonSerializable(typeof(IdentitySummarySectionKind))]
+[JsonSerializable(typeof(SummaryVariantKind))]
 [JsonSerializable(typeof(ClassificationResult<ContainerizationKind>))]
 [JsonSerializable(typeof(ClassificationResult<ContainerRuntimeKind>))]
 [JsonSerializable(typeof(ClassificationResult<VirtualizationClassificationKind>))]
@@ -433,6 +445,9 @@ public sealed record ContainerRuntimeReport(
 [JsonSerializable(typeof(TrustedPlatformClaimScope))]
 [JsonSerializable(typeof(List<PlatformEvidenceSummary>))]
 [JsonSerializable(typeof(List<TrustedPlatformSummary>))]
+[JsonSerializable(typeof(List<EnvironmentSummarySection>))]
+[JsonSerializable(typeof(List<IdentitySummarySection>))]
+[JsonSerializable(typeof(List<SummaryFact>))]
 [JsonSerializable(typeof(string[]))]
 [JsonSourceGenerationOptions(WriteIndented = true, UseStringEnumConverter = true)]
 public partial class ReportJsonContext : JsonSerializerContext;

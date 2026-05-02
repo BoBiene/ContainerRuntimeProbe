@@ -17,8 +17,12 @@
   - public vendor kernel sysctls discovered conservatively under `/proc/sys/kernel/` for suffixes `*_hw_version`, `*_hw_revision`, `*_install_flag`
   - `/proc/cpuinfo`, `/sys/devices/system/cpu/{online,possible,present}`
   - `/sys/class/dmi/id/{sys_vendor,product_name,product_family,product_version,board_vendor,board_name,chassis_vendor,bios_vendor,modalias}`
+  - sensitive host-ID candidates from `/sys/class/dmi/id/{product_uuid,product_serial,board_serial,chassis_serial}` when readable; they remain redacted unless sensitive output is enabled
   - `/proc/device-tree/{model,compatible}` and `/sys/firmware/devicetree/base/{model,compatible}` when publicly readable
+  - sensitive device-tree serial candidates from `/proc/device-tree/serial-number` and `/sys/firmware/devicetree/base/serial-number` when readable; they remain redacted unless sensitive output is enabled
   - `/sys/devices/soc0/{machine,family,soc_id,revision}` when publicly readable
+  - sensitive SoC serial candidates from `/sys/devices/soc0/serial_number` when readable; they remain redacted unless sensitive output is enabled
+  - sensitive TPM public-material digests from `/sys/class/tpm/*/device/{ek_cert,pubek}` when readable; the probe stores only a SHA-256 digest of the observed public material and keeps it redacted unless sensitive output is enabled
   - `/sys/bus/platform/devices/*/{modalias,uevent}` for non-addressed platform devices; extracts `MODALIAS` and `OF_COMPATIBLE_*` lines
   - `/proc/meminfo`, `/sys/fs/cgroup/memory*`, `/sys/fs/cgroup/cpu*`
   - `/proc/self/ns/*`
@@ -40,6 +44,15 @@
 - General env, hostname, DNS, mount, and cgroup string hits stay heuristic and can contribute to `PlatformEvidence`, but they never become trusted claims on their own.
 - Current trusted scope remains intentionally narrow: `siemens-ied-runtime`, conservative `windows-host-tpm`, and observational `container-tpm-visible`. There is still no trusted `siemens-iem`, no license/entitlement claim, and no TPM quote or hardware attestation flow in this step.
 
+## Identity Anchor Notes
+- `IdentityAnchors` are separate from `TrustedPlatforms` and are built from explicit observed IDs rather than heuristic strings.
+- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `CloudEnvironmentIdentity` from visible AWS account, Azure subscription, GCP project, or OCI compartment metadata, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, `KubernetesEnvironmentIdentity` from the visible service-account CA bundle digest, `DeploymentEnvironmentIdentity` from visible Compose or Portainer deployment metadata labels, `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched, `HypervisorIdentity` from guest-visible VM UUIDs under classified virtualization, `TpmPublicKeyDigest` from visible TPM public material digests, host-only `MachineIdDigest` anchors from local Windows `MachineGuid` or Linux `machine-id` values as conservative correlation anchors, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs, Kubernetes pod/container workload tokens, or the namespace-tuple fallback.
+- When multiple levels are visible for the same scope, the report now keeps the stronger anchor and the weaker fallback(s) together instead of suppressing the weaker candidate.
+- Weak generic signals such as hostname, DNS labels, mount paths, cgroup strings, or visible TPM device nodes do not become license-binding anchors on their own.
+- Anchor values are stored as digests and are redacted in the default host report.
+- Future TPM or machine-certificate anchors must stay read-only and digest-based; the package must not create TPM keys or provision certificates.
+
 ## Orchestrator / Cloud
-- `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`
-- `cloud-metadata`: ECS metadata, AWS IMDSv2 safe identity document, Azure IMDS safe compute metadata, GCP machine-type/zone, OCI instance metadata, cloud env markers
+- `kubernetes`: service account + API probes, service-account CA bundle digest, optional pod lookup including `metadata.uid`, optional node lookup for `status.nodeInfo`, `metadata.uid`, and `spec.providerID`
+- `runtime-api`: container runtime socket probing, safe runtime metadata extraction, explicit container inspect ID, Compose project labels, Docker stack namespace, and visible Portainer metadata labels from inspect JSON when a socket-backed inspect succeeds
+- `cloud-metadata`: ECS metadata, AWS IMDSv2 safe identity document including account ID, Azure IMDS safe compute metadata including subscription ID, GCP machine-type/zone/instance-id plus project path extraction, OCI instance metadata including compartment ID, cloud env markers

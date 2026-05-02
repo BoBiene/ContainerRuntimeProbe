@@ -138,6 +138,109 @@ public enum FingerprintStability
     ContainerOnly
 }
 
+/// <summary>Intended purpose of a diagnostic fingerprint.</summary>
+public enum DiagnosticFingerprintPurpose
+{
+    EnvironmentCorrelation,
+    HostProfile,
+    RuntimeProfile
+}
+
+/// <summary>Expected update tolerance of a diagnostic fingerprint.</summary>
+public enum DiagnosticFingerprintStabilityLevel
+{
+    Ephemeral,
+    UpdateSensitive,
+    ProfileStable,
+    PlatformAnchored
+}
+
+/// <summary>Expected distinctiveness of a diagnostic fingerprint.</summary>
+public enum DiagnosticFingerprintUniquenessLevel
+{
+    Unknown,
+    Low,
+    Medium,
+    High
+}
+
+/// <summary>How broadly a diagnostic fingerprint is corroborated by independent sources.</summary>
+public enum DiagnosticFingerprintCorroborationLevel
+{
+    Unknown,
+    SingleSource,
+    CrossSource,
+    TrustedPlatformCorroborated
+}
+
+/// <summary>Normalized source class contributing to a diagnostic fingerprint.</summary>
+public enum DiagnosticFingerprintSourceClass
+{
+    Unknown,
+    KernelSignal,
+    RuntimeApi,
+    CloudMetadata,
+    HardwareProfile,
+    KubernetesMetadata
+}
+
+/// <summary>Observed identity anchor kind.</summary>
+public enum IdentityAnchorKind
+{
+    Unknown,
+    TpmPublicKeyDigest,
+    MachineCertificateDigest,
+    MachineIdDigest,
+    HardwareIdentity,
+    HostProfileIdentity,
+    HypervisorIdentity,
+    KubernetesEnvironmentIdentity,
+    DeploymentEnvironmentIdentity,
+    CloudInstanceIdentity,
+    KubernetesNodeIdentity,
+    VendorRuntimeIdentity,
+    ContainerRuntimeIdentity,
+    CloudEnvironmentIdentity,
+    ContainerDeviceAnchor
+}
+
+/// <summary>Scope described by an identity anchor.</summary>
+public enum IdentityAnchorScope
+{
+    Unknown,
+    Host,
+    Hypervisor,
+    Platform,
+    ContainerRuntime,
+    Workload,
+    ApplicationHost
+}
+
+/// <summary>Supported usage class for an identity anchor.</summary>
+public enum BindingSuitability
+{
+    DiagnosticsOnly,
+    Correlation,
+    LicenseBinding,
+    ExternalAttestation
+}
+
+/// <summary>Relative strength of an identity anchor.</summary>
+public enum IdentityAnchorStrength
+{
+    Unknown,
+    Weak,
+    Medium,
+    Strong
+}
+
+/// <summary>Sensitivity classification for identity anchor values.</summary>
+public enum IdentityAnchorSensitivity
+{
+    Public,
+    Sensitive
+}
+
 /// <summary>Normalized container image OS details.</summary>
 public sealed record ContainerImageOsInfo(
     OperatingSystemFamily Family,
@@ -259,21 +362,40 @@ public sealed record HostHardwareInfo(
     HostDeviceTreeInfo DeviceTree,
     string? CloudMachineType);
 
-/// <summary>Single host fingerprint component.</summary>
-public sealed record HostFingerprintComponent(
+/// <summary>Single diagnostic fingerprint component.</summary>
+public sealed record DiagnosticFingerprintComponent(
     string Name,
     bool Included,
     string RawValueRedacted);
 
-/// <summary>Privacy-aware host fingerprint for correlation and diagnostics.</summary>
-public sealed record HostFingerprint(
+/// <summary>Privacy-aware diagnostic fingerprint for correlation and profiling.</summary>
+public sealed record DiagnosticFingerprint(
+    DiagnosticFingerprintPurpose Purpose,
     string Algorithm,
     string Value,
     FingerprintStability Stability,
+    DiagnosticFingerprintStabilityLevel StabilityLevel,
+    DiagnosticFingerprintUniquenessLevel UniquenessLevel,
+    DiagnosticFingerprintCorroborationLevel CorroborationLevel,
     int IncludedSignalCount,
     int ExcludedSensitiveSignalCount,
-    IReadOnlyList<HostFingerprintComponent> Components,
-    IReadOnlyList<string> Warnings);
+    IReadOnlyList<DiagnosticFingerprintSourceClass> SourceClasses,
+    IReadOnlyList<DiagnosticFingerprintComponent> Components,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Reasons);
+
+/// <summary>Observed identity anchor suitable for correlation or binding scenarios.</summary>
+public sealed record IdentityAnchor(
+    IdentityAnchorKind Kind,
+    string Algorithm,
+    string Value,
+    IdentityAnchorScope Scope,
+    BindingSuitability BindingSuitability,
+    IdentityAnchorStrength Strength,
+    IdentityAnchorSensitivity Sensitivity,
+    IReadOnlyList<string> EvidenceReferences,
+    IReadOnlyList<string> Warnings,
+    IReadOnlyList<string> Reasons);
 
 /// <summary>Structured host report attached to the container runtime report.</summary>
 public sealed record HostReport(
@@ -283,6 +405,7 @@ public sealed record HostReport(
     VirtualizationInfo Virtualization,
     UnderlyingHostOsInfo UnderlyingHostOs,
     HostHardwareInfo Hardware,
-    HostFingerprint? Fingerprint);
+    IReadOnlyList<DiagnosticFingerprint> DiagnosticFingerprints,
+    IReadOnlyList<IdentityAnchor> IdentityAnchors);
 
 #pragma warning restore CS1591
