@@ -64,20 +64,25 @@ public sealed class EngineAndRendererTests
         var text = ReportRenderer.ToText(report);
         var json = ReportRenderer.ToJson(report);
 
-        Assert.Contains("## Key Findings", markdown);
-        Assert.Contains("### Trust Signals", markdown);
-        Assert.Contains("### Identity Signals", markdown);
-        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", markdown);
-        Assert.Contains("Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", markdown);
-        Assert.Contains("Findings", text);
-        Assert.Contains("Trust Signals", text);
-        Assert.Contains("Identity Signals", text);
-        Assert.Contains("Trusted platform siemens-ied-runtime is verified via local-runtime-tls-binding at verification level 4.", text);
-        Assert.Contains("Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", text);
+        Assert.Contains("## Summary", markdown);
+        Assert.Contains("### Environment", markdown);
+        Assert.Contains("### Identity", markdown);
+        Assert.Contains("#### Trust", markdown);
+        Assert.Contains("| siemens-ied-runtime | Verified, Level 4 |", markdown);
+        Assert.Contains("| Cloud Host ID | <redacted> | L3 | BindingCandidate |", markdown);
+        Assert.Contains("Summary", text);
+        Assert.Contains("Environment", text);
+        Assert.Contains("Identity", text);
+        Assert.Contains("Trust", text);
+        Assert.Contains("siemens-ied-runtime", text);
+        Assert.Contains("Cloud Host ID", text);
         Assert.Contains("## Platform Evidence", markdown);
         Assert.Contains("## Trusted Platforms", markdown);
         Assert.Contains("PlatformEvidence : siemens-industrial-edge", text);
         Assert.Contains("TrustedPlatform  : siemens-ied-runtime", text);
+        Assert.Contains("\"Summary\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Environment\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Identity\":", json, StringComparison.Ordinal);
         Assert.Contains("\"PlatformEvidence\":", json, StringComparison.Ordinal);
         Assert.Contains("\"TrustedPlatforms\":", json, StringComparison.Ordinal);
     }

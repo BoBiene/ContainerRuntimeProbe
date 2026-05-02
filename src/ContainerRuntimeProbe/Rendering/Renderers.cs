@@ -10,14 +10,6 @@ namespace ContainerRuntimeProbe.Rendering;
 /// <summary>Renders <see cref="ContainerRuntimeReport"/> into JSON, Markdown, or compact text formats.</summary>
 public static class ReportRenderer
 {
-    private static readonly (string Title, ReportFindingKind[] Kinds)[] KeyFindingGroups =
-    [
-        ("Execution Context", [ReportFindingKind.Containerization, ReportFindingKind.Environment, ReportFindingKind.Orchestrator]),
-        ("Host Platform", [ReportFindingKind.HostOs, ReportFindingKind.Virtualization, ReportFindingKind.PlatformVendor, ReportFindingKind.Hardware]),
-        ("Trust Signals", [ReportFindingKind.TrustedPlatform, ReportFindingKind.PlatformEvidence]),
-        ("Identity Signals", [ReportFindingKind.IdentityAnchor])
-    ];
-
     private static string ValueOrUnknownString(string? value) => string.IsNullOrWhiteSpace(value) ? KnownValues.Unknown : value;
 
     private static string ValueOrUnknownEnum<T>(T value) where T : struct, Enum
@@ -49,7 +41,10 @@ public static class ReportRenderer
     }
 
     /// <summary>Renders report to JSON using source-generated metadata.</summary>
-    public static string ToJson(ContainerRuntimeReport report) => JsonSerializer.Serialize(report, ReportJsonContext.Default.ContainerRuntimeReport);
+    public static string ToJson(ContainerRuntimeReport report)
+        => JsonSerializer.Serialize(
+            report.Summary is null ? report with { Summary = report.GetSummary() } : report,
+            ReportJsonContext.Default.ContainerRuntimeReport);
 
     /// <summary>Renders report as Markdown for support and diagnostics workflows.</summary>
     public static string ToMarkdown(ContainerRuntimeReport report)
@@ -66,7 +61,7 @@ public static class ReportRenderer
             sb.AppendLine();
         }
         
-        AppendKeyFindingsMarkdown(sb, report);
+        AppendSummaryMarkdown(sb, report);
         sb.AppendLine();
         AppendHostMarkdown(sb, report);
         sb.AppendLine("## Security and Limitations");
@@ -147,7 +142,7 @@ public static class ReportRenderer
             sb.AppendLine(new string('-', header.Length));
         }
 
-        AppendKeyFindingsText(sb, report);
+        AppendSummaryText(sb, report);
         sb.AppendLine("Details");
         sb.AppendLine("-------");
         foreach (var (key, value, conf) in fields)
@@ -164,22 +159,31 @@ public static class ReportRenderer
         return sb.ToString().TrimEnd();
     }
 
-    private static void AppendKeyFindingsMarkdown(StringBuilder sb, ContainerRuntimeReport report)
+    private static void AppendSummaryMarkdown(StringBuilder sb, ContainerRuntimeReport report)
     {
-        sb.AppendLine("## Key Findings");
-        var findings = report.GetRelevantFindings();
-        if (findings.Count == 0)
+        sb.AppendLine("## Summary");
+        var summary = report.Summary ?? report.GetSummary();
+        if (summary.Environment.Sections.Count == 0 && summary.Identity.Sections.Count == 0)
         {
-            sb.AppendLine("- No conclusive findings yet. Inspect the detailed sections below.");
+            sb.AppendLine("- No summary facts available. Inspect the detailed sections below.");
             return;
         }
 
-        foreach (var (title, groupFindings) in GroupKeyFindings(findings))
+        if (summary.Environment.Sections.Count > 0)
         {
-            sb.AppendLine($"### {title}");
-            foreach (var finding in groupFindings)
+            sb.AppendLine("### Environment");
+            foreach (var section in summary.Environment.Sections)
             {
-                sb.AppendLine($"- {finding.Summary}");
+                AppendEnvironmentSectionMarkdown(sb, section);
+            }
+        }
+
+        if (summary.Identity.Sections.Count > 0)
+        {
+            sb.AppendLine("### Identity");
+            foreach (var section in summary.Identity.Sections)
+            {
+                AppendIdentitySectionMarkdown(sb, section);
             }
         }
     }
@@ -360,58 +364,86 @@ public static class ReportRenderer
         return $"{kernel.Name} {kernel.Release}";
     }
 
-    private static void AppendKeyFindingsText(StringBuilder sb, ContainerRuntimeReport report)
+    private static void AppendSummaryText(StringBuilder sb, ContainerRuntimeReport report)
     {
-        sb.AppendLine("Findings");
+        sb.AppendLine("Summary");
         sb.AppendLine("--------");
 
-        var findings = report.GetRelevantFindings();
-        if (findings.Count == 0)
+        var summary = report.Summary ?? report.GetSummary();
+        if (summary.Environment.Sections.Count == 0 && summary.Identity.Sections.Count == 0)
         {
-            sb.AppendLine("- No conclusive findings yet. Inspect the details below.");
+            sb.AppendLine("- No summary facts available. Inspect the details below.");
             sb.AppendLine();
             return;
         }
 
-        foreach (var (title, groupFindings) in GroupKeyFindings(findings))
+        if (summary.Environment.Sections.Count > 0)
         {
-            sb.AppendLine(title);
-            foreach (var finding in groupFindings)
+            sb.AppendLine("Environment");
+            foreach (var section in summary.Environment.Sections)
             {
-                sb.AppendLine($"- {finding.Summary}");
+                AppendEnvironmentSectionText(sb, section);
+            }
+            sb.AppendLine();
+        }
+
+        if (summary.Identity.Sections.Count > 0)
+        {
+            sb.AppendLine("Identity");
+            foreach (var section in summary.Identity.Sections)
+            {
+                AppendIdentitySectionText(sb, section);
             }
 
             sb.AppendLine();
         }
     }
 
-    private static IReadOnlyList<(string Title, IReadOnlyList<ReportFinding> Findings)> GroupKeyFindings(IReadOnlyList<ReportFinding> findings)
+    private static void AppendEnvironmentSectionMarkdown(StringBuilder sb, EnvironmentSummarySection section)
     {
-        var grouped = new List<(string Title, IReadOnlyList<ReportFinding> Findings)>();
-
-        foreach (var (title, kinds) in KeyFindingGroups)
+        sb.AppendLine($"#### {section.Title}");
+        sb.AppendLine("| Label | Value |");
+        sb.AppendLine("| --- | --- |");
+        foreach (var fact in section.Facts)
         {
-            var groupFindings = findings
-                .Where(finding => kinds.Contains(finding.Kind))
-                .ToArray();
-
-            if (groupFindings.Length > 0)
-            {
-                grouped.Add((title, groupFindings));
-            }
+            sb.AppendLine($"| {EscapeMarkdownTableCell(fact.Label)} | {EscapeMarkdownTableCell(fact.Value)} |");
         }
-
-        var remaining = findings
-            .Where(finding => !KeyFindingGroups.Any(group => group.Kinds.Contains(finding.Kind)))
-            .ToArray();
-
-        if (remaining.Length > 0)
-        {
-            grouped.Add(("Additional Signals", remaining));
-        }
-
-        return grouped;
     }
+
+    private static void AppendIdentitySectionMarkdown(StringBuilder sb, IdentitySummarySection section)
+    {
+        sb.AppendLine($"#### {section.Title}");
+        sb.AppendLine("| Label | Value | Level | Usage |");
+        sb.AppendLine("| --- | --- | --- | --- |");
+        foreach (var fact in section.Facts)
+        {
+            sb.AppendLine($"| {EscapeMarkdownTableCell(fact.Label)} | {EscapeMarkdownTableCell(fact.Value)} | {FormatLevel(fact.Level)} | {fact.Usage} |");
+        }
+    }
+
+    private static void AppendEnvironmentSectionText(StringBuilder sb, EnvironmentSummarySection section)
+    {
+        sb.AppendLine(section.Title);
+        foreach (var fact in section.Facts)
+        {
+            sb.AppendLine($"  {fact.Label.PadRight(14)} : {fact.Value}");
+        }
+    }
+
+    private static void AppendIdentitySectionText(StringBuilder sb, IdentitySummarySection section)
+    {
+        sb.AppendLine(section.Title);
+        foreach (var fact in section.Facts)
+        {
+            sb.AppendLine($"  {fact.Label.PadRight(22)} : {fact.Value}  [{FormatLevel(fact.Level)}] [{fact.Usage}]");
+        }
+    }
+
+    private static string EscapeMarkdownTableCell(string value)
+        => value.Replace("|", "\\|", StringComparison.Ordinal);
+
+    private static string FormatLevel(int? level)
+        => level is null || level <= 0 ? "-" : $"L{level}";
 
     private static void AppendPlatformEvidenceMarkdown(StringBuilder sb, IReadOnlyList<PlatformEvidenceSummary>? platformEvidence)
     {

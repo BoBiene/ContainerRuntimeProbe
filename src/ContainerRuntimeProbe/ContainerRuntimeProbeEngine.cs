@@ -104,6 +104,7 @@ public sealed class ContainerRuntimeProbeEngine
         var trustedPlatforms = Redaction.RedactTrustedPlatforms(rawTrustedPlatforms, rawResults, includeSensitive);
         var probeToolInfo = VersionInfo.GetProbeToolMetadata();
         sw.Stop();
-        return new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
+        var report = new ContainerRuntimeReport(DateTimeOffset.UtcNow, sw.Elapsed, probeToolInfo, results, warnings, classification, host, platformEvidence, trustedPlatforms);
+        return report with { Summary = report.GetSummary() };
     }
 }

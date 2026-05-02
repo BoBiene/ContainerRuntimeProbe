@@ -101,7 +101,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist 
 
 ### Phase 3: Rendering and structure
 
-- [ ] **28. Summary in JSON, Markdown und Text integrieren**
+- [x] **28. Summary in JSON, Markdown und Text integrieren**
   - `ContainerRuntimeReport` liefert die neue Summary strukturiert in JSON; Markdown und Text rendern oben kompakte Facts/Rows und lassen die bisherigen Detailsektionen darunter vollstaendig stehen.
 - [ ] **29. Summary- und Renderer-Helfer bei Bedarf aufsplitten**
   - Wenn `Renderers.cs`, `ContainerRuntimeReportExtensions.cs` oder Modellfiles durch den Ausbau zu komplex werden, werden Hilfslogik und Modelle in dedizierte Files verschoben statt mehrere grosse Klassen in einem File zu sammeln.

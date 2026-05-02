@@ -528,11 +528,12 @@ public sealed class HostParsingAndReportingTests
         var json = ReportRenderer.ToJson(report);
         var text = ReportRenderer.ToText(report);
 
-        Assert.Contains("## Key Findings", markdown);
-        Assert.Contains("### Host Platform", markdown);
-        Assert.Contains("### Identity Signals", markdown);
-        Assert.Contains("- Runtime-reported host OS: Ubuntu 24.04 (High).", markdown);
-        Assert.Contains("- Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", markdown);
+        Assert.Contains("## Summary", markdown);
+        Assert.Contains("### Environment", markdown);
+        Assert.Contains("### Identity", markdown);
+        Assert.Contains("#### Host", markdown);
+        Assert.Contains("| Host OS | Ubuntu 24.04 |", markdown);
+        Assert.Contains("| Cloud Host ID | <redacted> | L3 | BindingCandidate |", markdown);
         Assert.Contains("## Host OS / Node", markdown);
         Assert.Contains("## Probe Tool Information", markdown);
         Assert.Contains("- Git Commit: abcdef1", markdown);
@@ -550,16 +551,17 @@ public sealed class HostParsingAndReportingTests
         Assert.Contains("\"Dmi\":", json, StringComparison.Ordinal);
         Assert.Contains("\"DeviceTree\":", json, StringComparison.Ordinal);
         Assert.Contains("\"IdentityAnchors\":", json, StringComparison.Ordinal);
+        Assert.Contains("\"Summary\":", json, StringComparison.Ordinal);
         Assert.Contains("\"Family\": \"Debian\"", json, StringComparison.Ordinal);
         Assert.Contains("HardwareVendor", text);
         Assert.Contains("Architecture", text);
         Assert.Contains("DeviceTreeModel", text);
         Assert.Contains("IdentityAnchors", text);
-        Assert.Contains("Host Platform", text);
-        Assert.Contains("Identity Signals", text);
+        Assert.Contains("Environment", text);
+        Assert.Contains("Identity", text);
         Assert.Contains("abcdef1", text);
-        Assert.Contains("Runtime-reported host OS: Ubuntu 24.04 (High).", text);
-        Assert.Contains("Identity anchor available: CloudInstanceIdentity (Host, LicenseBinding, Strong).", text);
+        Assert.Contains("Host OS", text);
+        Assert.Contains("Cloud Host ID", text);
         Assert.Matches(@"DiagnosticFingerprint\s+:\s+sha256:", text);
     }
 
