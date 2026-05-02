@@ -70,6 +70,7 @@ internal sealed record ParsedRuntimeHostInfo(
 internal sealed record ParsedCloudHostInfo(
     string? MachineType,
     string? InstanceId,
+    string? EnvironmentId,
     string? Region,
     string? Zone,
     string? OsType,
@@ -414,6 +415,7 @@ internal static class HostParsing
         return new ParsedCloudHostInfo(
             GetString(doc.RootElement, "instanceType"),
             GetString(doc.RootElement, "instanceId"),
+            GetString(doc.RootElement, "accountId"),
             GetString(doc.RootElement, "region"),
             GetString(doc.RootElement, "availabilityZone"),
             null,
@@ -439,6 +441,7 @@ internal static class HostParsing
         return new ParsedCloudHostInfo(
             GetString(compute.Value, "vmSize"),
             GetString(compute.Value, "vmId"),
+            GetString(compute.Value, "subscriptionId"),
             GetString(compute.Value, "location"),
             GetString(compute.Value, "zone"),
             GetString(compute.Value, "osType"),
@@ -458,6 +461,7 @@ internal static class HostParsing
         return new ParsedCloudHostInfo(
             GetString(doc.RootElement, "shape"),
             GetString(doc.RootElement, "id"),
+            GetString(doc.RootElement, "compartmentId"),
             GetString(doc.RootElement, "region"),
             GetString(doc.RootElement, "availabilityDomain"),
             null,

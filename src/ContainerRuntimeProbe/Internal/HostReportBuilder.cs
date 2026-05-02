@@ -325,7 +325,7 @@ internal static class HostReportBuilder
         AddExcludedIfPresent(evidence, excluded, "hostname", "/etc/hostname", "/proc/sys/kernel/hostname", "kernel.hostname", "HOSTNAME");
         AddExcludedIfPresent(evidence, excluded, "cpu.serial", "cpu.serial");
         AddExcludedIfPresent(evidence, excluded, "container.inspect", "container.inspect.status", "container.inspect.outcome");
-        AddExcludedIfPresent(evidence, excluded, "cloud.project", "gcp.project_id");
+        AddExcludedIfPresent(evidence, excluded, "cloud.environment", "aws.account_id", "azure.subscription_id", "gcp.project_id", "oci.compartment_id");
         AddExcludedIfPresent(evidence, excluded, "cloud.instance_id", "aws.instance_id", "azure.vm_id", "oci.instance_id");
 
         var components = included
@@ -378,6 +378,7 @@ internal static class HostReportBuilder
     {
         var anchors = new List<IdentityAnchor>();
         anchors.AddRange(BuildCloudInstanceIdentityAnchors(evidence));
+        anchors.AddRange(BuildCloudEnvironmentIdentityAnchors(evidence));
 
         var kubernetesNodeAnchor = BuildKubernetesNodeIdentityAnchor(evidence);
         if (kubernetesNodeAnchor is not null)
@@ -446,6 +447,16 @@ internal static class HostReportBuilder
         return anchors;
     }
 
+    private static IReadOnlyList<IdentityAnchor> BuildCloudEnvironmentIdentityAnchors(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var anchors = new List<IdentityAnchor>();
+        AddCloudEnvironmentIdentityAnchor(anchors, evidence, "aws.account_id", "aws");
+        AddCloudEnvironmentIdentityAnchor(anchors, evidence, "azure.subscription_id", "azure");
+        AddCloudEnvironmentIdentityAnchor(anchors, evidence, "gcp.project_id", "gcp");
+        AddCloudEnvironmentIdentityAnchor(anchors, evidence, "oci.compartment_id", "oci");
+        return anchors;
+    }
+
     private static void AddCloudInstanceIdentityAnchor(List<IdentityAnchor> anchors, IReadOnlyList<EvidenceItem> evidence, string key, string provider)
     {
         var instanceId = GetValue(evidence, key);
@@ -465,6 +476,27 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, key, "cloud.source"),
             [],
             [$"Digest derived from observed {provider} instance identity metadata."]));
+    }
+
+    private static void AddCloudEnvironmentIdentityAnchor(List<IdentityAnchor> anchors, IReadOnlyList<EvidenceItem> evidence, string key, string provider)
+    {
+        var environmentId = GetValue(evidence, key);
+        if (string.IsNullOrWhiteSpace(environmentId) || string.Equals(environmentId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        anchors.Add(new IdentityAnchor(
+            IdentityAnchorKind.CloudEnvironmentIdentity,
+            "CRP-CLOUD-ENVIRONMENT-v1",
+            ComputeIdentityAnchorDigest($"cloud-environment:{provider}", environmentId),
+            IdentityAnchorScope.Platform,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, key, "cloud.source", "cloud.region", "cloud.zone"),
+            [$"Cloud environment identifiers may change when workloads move across {provider} accounts, subscriptions, projects, or compartments."],
+            [$"Digest derived from observed {provider} environment metadata."]));
     }
 
     private static IdentityAnchor? BuildKubernetesNodeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)

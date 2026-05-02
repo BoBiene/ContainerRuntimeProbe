@@ -649,7 +649,9 @@ internal sealed class CloudMetadataProbe : IProbe
         evidence.Add(new EvidenceItem(Id, "gcp.metadata.machine_type.outcome", machineType.outcome.ToString()));
         if (machineType.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(machineType.body))
         {
-            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineType.body!.Trim().Split('/').LastOrDefault());
+            var machineTypeValue = machineType.body!.Trim();
+            AddEvidenceIfPresent(evidence, "cloud.machine_type", machineTypeValue.Split('/').LastOrDefault());
+            AddEvidenceIfPresent(evidence, "gcp.project_id", TryExtractGcpProjectId(machineTypeValue), EvidenceSensitivity.Sensitive);
             evidence.Add(new EvidenceItem(Id, "cloud.source", RuntimeReportedHostSource.GcpMetadata.ToString()));
         }
 
@@ -665,7 +667,9 @@ internal sealed class CloudMetadataProbe : IProbe
         evidence.Add(new EvidenceItem(Id, "gcp.metadata.zone.outcome", zone.outcome.ToString()));
         if (zone.outcome == ProbeOutcome.Success && !string.IsNullOrWhiteSpace(zone.body))
         {
-            var zoneValue = zone.body!.Trim().Split('/').LastOrDefault() ?? zone.body.Trim();
+            var zonePath = zone.body!.Trim();
+            AddEvidenceIfPresent(evidence, "gcp.project_id", TryExtractGcpProjectId(zonePath), EvidenceSensitivity.Sensitive);
+            var zoneValue = zonePath.Split('/').LastOrDefault() ?? zonePath;
             AddEvidenceIfPresent(evidence, "cloud.zone", zoneValue);
             var lastDash = zoneValue.LastIndexOf('-');
             AddEvidenceIfPresent(evidence, "cloud.region", lastDash > 0 ? zoneValue[..lastDash] : zoneValue);
@@ -700,6 +704,7 @@ internal sealed class CloudMetadataProbe : IProbe
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
         AddEvidenceIfPresent(evidence, "aws.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "aws.account_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.architecture", parsed.RawArchitecture);
@@ -716,6 +721,7 @@ internal sealed class CloudMetadataProbe : IProbe
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
         AddEvidenceIfPresent(evidence, "azure.vm_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "azure.subscription_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         AddEvidenceIfPresent(evidence, "cloud.os_type", parsed.OsType);
@@ -732,9 +738,26 @@ internal sealed class CloudMetadataProbe : IProbe
 
         AddEvidenceIfPresent(evidence, "cloud.machine_type", parsed.MachineType);
         AddEvidenceIfPresent(evidence, "oci.instance_id", parsed.InstanceId, EvidenceSensitivity.Sensitive);
+        AddEvidenceIfPresent(evidence, "oci.compartment_id", parsed.EnvironmentId, EvidenceSensitivity.Sensitive);
         AddEvidenceIfPresent(evidence, "cloud.region", parsed.Region);
         AddEvidenceIfPresent(evidence, "cloud.zone", parsed.Zone);
         evidence.Add(new EvidenceItem(Id, "cloud.source", parsed.Source.ToString()));
+    }
+
+    private static string? TryExtractGcpProjectId(string metadataPath)
+    {
+        if (string.IsNullOrWhiteSpace(metadataPath))
+        {
+            return null;
+        }
+
+        var segments = metadataPath.Trim().Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (segments.Length >= 2 && string.Equals(segments[0], "projects", StringComparison.OrdinalIgnoreCase))
+        {
+            return segments[1];
+        }
+
+        return null;
     }
 
     private void AddEvidenceIfPresent(List<EvidenceItem> evidence, string key, string? value, EvidenceSensitivity sensitivity = EvidenceSensitivity.Public)

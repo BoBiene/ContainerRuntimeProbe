@@ -144,12 +144,16 @@ public sealed class FakeEndpointIntegrationTests
             Assert.True(stopwatch.Elapsed < TimeSpan.FromMilliseconds(1200), $"Expected concurrent fan-out, got {stopwatch.Elapsed}.");
             Assert.Contains(result.Evidence, e => e.Key == "aws.imds.identity.outcome" && e.Value == "Success");
             Assert.Contains(result.Evidence, e => e.Key == "aws.instance_id" && e.Value == "i-0abc123def4567890");
+            Assert.Contains(result.Evidence, e => e.Key == "aws.account_id" && e.Value == "123456789012");
             Assert.Contains(result.Evidence, e => e.Key == "azure.imds.outcome" && e.Value == "Success");
             Assert.Contains(result.Evidence, e => e.Key == "azure.vm_id" && e.Value == "5d77f1f6-4e57-4d8c-9f9e-9fd8e67f21d2");
+            Assert.Contains(result.Evidence, e => e.Key == "azure.subscription_id" && e.Value == "00000000-1111-2222-3333-444444444444");
             Assert.Contains(result.Evidence, e => e.Key == "gcp.metadata.outcome" && e.Value == "Success");
             Assert.Contains(result.Evidence, e => e.Key == "gcp.instance_id" && e.Value == "9876543210123456789");
+            Assert.Contains(result.Evidence, e => e.Key == "gcp.project_id" && e.Value == "123456");
             Assert.Contains(result.Evidence, e => e.Key == "oci.metadata.outcome" && e.Value == "Success");
             Assert.Contains(result.Evidence, e => e.Key == "oci.instance_id" && e.Value == "ocid1.instance.oc1.eu-frankfurt-1.exampleuniqueid");
+            Assert.Contains(result.Evidence, e => e.Key == "oci.compartment_id" && e.Value == "ocid1.compartment.oc1..exampleuniqueid");
         }
         finally
         {
@@ -616,16 +620,16 @@ public sealed class FakeEndpointIntegrationTests
         {
             "/latest/api/token" when string.Equals(request.HttpMethod, "PUT", StringComparison.OrdinalIgnoreCase) => "fake-token",
             "/latest/dynamic/instance-identity/document" => """
-                {"instanceId":"i-0abc123def4567890","instanceType":"c7g.large","region":"eu-central-1","availabilityZone":"eu-central-1a","architecture":"arm64"}
+                {"instanceId":"i-0abc123def4567890","accountId":"123456789012","instanceType":"c7g.large","region":"eu-central-1","availabilityZone":"eu-central-1a","architecture":"arm64"}
                 """,
             "/metadata/instance" => """
-                {"compute":{"vmId":"5d77f1f6-4e57-4d8c-9f9e-9fd8e67f21d2","vmSize":"Standard_D4s_v5","location":"westeurope","zone":"2","osType":"Linux"}}
+                {"compute":{"vmId":"5d77f1f6-4e57-4d8c-9f9e-9fd8e67f21d2","subscriptionId":"00000000-1111-2222-3333-444444444444","vmSize":"Standard_D4s_v5","location":"westeurope","zone":"2","osType":"Linux"}}
                 """,
             "/computeMetadata/v1/instance/id" => "9876543210123456789",
             "/computeMetadata/v1/instance/machine-type" => "projects/123456/machineTypes/e2-standard-4",
             "/computeMetadata/v1/instance/zone" => "projects/123456/zones/europe-west3-b",
             "/opc/v2/instance/" => """
-                {"id":"ocid1.instance.oc1.eu-frankfurt-1.exampleuniqueid","shape":"VM.Standard.E4.Flex","region":"eu-frankfurt-1","availabilityDomain":"Uocm:EU-FRANKFURT-1-AD-1"}
+                {"id":"ocid1.instance.oc1.eu-frankfurt-1.exampleuniqueid","compartmentId":"ocid1.compartment.oc1..exampleuniqueid","shape":"VM.Standard.E4.Flex","region":"eu-frankfurt-1","availabilityDomain":"Uocm:EU-FRANKFURT-1-AD-1"}
                 """,
             _ => "{}"
         };

@@ -187,6 +187,27 @@ public sealed class IdentitySummaryTests
         Assert.Equal("DeploymentEnvironmentIdentity", fact.SourceKind);
     }
 
+    [Fact]
+    public void GetIdentitySummary_MapsCloudEnvironmentIdentity_ToEnvironmentId()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Host = baseReport.Host with
+            {
+                IdentityAnchors =
+                [
+                    new IdentityAnchor(IdentityAnchorKind.CloudEnvironmentIdentity, "CRP-CLOUD-ENVIRONMENT-v1", "sha256:cloud-environment", IdentityAnchorScope.Platform, BindingSuitability.Correlation, IdentityAnchorStrength.Medium, IdentityAnchorSensitivity.Sensitive, ["cloud-metadata:aws.account_id"], [], [])
+                ]
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        var nodePlatformSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.NodePlatformIdentity));
+        Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Environment ID" && fact.Value == "sha256:cloud-environment" && fact.Level == 2 && fact.Scope == SummaryScope.Platform);
+    }
+
     [Theory]
     [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
     [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]

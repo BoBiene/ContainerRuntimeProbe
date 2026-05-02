@@ -199,6 +199,7 @@ public enum IdentityAnchorKind
     KubernetesNodeIdentity,
     VendorRuntimeIdentity,
     ContainerRuntimeIdentity,
+    CloudEnvironmentIdentity,
     ContainerDeviceAnchor
 }
 

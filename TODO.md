@@ -36,7 +36,7 @@ Arbeitsregeln fuer diese Runde:
   - Sichtbare Compose-/Portainer-Metadaten aus Socket-Inspect werden als staerkerer Deployment-/Environment-Kandidat genutzt.
 - [x] **43. Kubernetes workload candidate sources erweitern**
   - Sichtbare Pod-/Container-Korrelation aus CGroup- oder Mount-Signalen wird ausgewertet, wenn kein Runtime-Inspect moeglich ist.
-- [ ] **44. Cloud Environment-L2 einfuehren**
+- [x] **44. Cloud Environment-L2 einfuehren**
   - Mandanten-, Projekt- oder Subscription-nahe Cloud-Metadaten werden als Environment-Kandidaten modelliert, wenn sie sichtbar und sicher nutzbar sind.
 - [ ] **45. TPM public-material identity path einfuehren**
   - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.

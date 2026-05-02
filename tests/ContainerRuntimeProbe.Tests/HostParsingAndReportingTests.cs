@@ -418,6 +418,29 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsCloudEnvironmentIdentity_FromProviderBoundaryMetadata()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("cloud-metadata", "aws.account_id", "123456789012", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+            new EvidenceItem("cloud-metadata", "cloud.region", "eu-central-1")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.CloudEnvironmentIdentity));
+
+        Assert.Equal("CRP-CLOUD-ENVIRONMENT-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("123456789012", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "cloud-metadata:aws.account_id");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("aws accounts", StringComparison.Ordinal));
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("aws environment metadata", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsDeploymentEnvironmentIdentity_FromComposeAndPortainerLabels()
     {
         var report = BuildHostReport([

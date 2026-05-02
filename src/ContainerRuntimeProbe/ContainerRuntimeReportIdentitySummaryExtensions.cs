@@ -107,6 +107,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
 
     private static bool IsNodeOrPlatformAnchor(IdentityAnchor anchor)
         => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity
+           || anchor.Kind == IdentityAnchorKind.CloudEnvironmentIdentity
            || anchor.Kind == IdentityAnchorKind.KubernetesEnvironmentIdentity
            || anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity
            || (anchor.Scope == IdentityAnchorScope.Platform && !IsDeploymentAnchor(anchor));
@@ -120,6 +121,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.ContainerRuntimeIdentity => "Container ID",
             IdentityAnchorKind.ContainerDeviceAnchor => "Runtime ID",
             IdentityAnchorKind.KubernetesNodeIdentity => "Node ID",
+            IdentityAnchorKind.CloudEnvironmentIdentity => "Environment ID",
             IdentityAnchorKind.KubernetesEnvironmentIdentity => "Environment ID",
             IdentityAnchorKind.VendorRuntimeIdentity => "Platform ID",
             IdentityAnchorKind.CloudInstanceIdentity => "Cloud Host ID",
@@ -134,6 +136,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.ContainerRuntimeIdentity => SummaryScope.Workload,
             IdentityAnchorKind.ContainerDeviceAnchor => SummaryScope.Runtime,
             IdentityAnchorKind.KubernetesNodeIdentity => SummaryScope.Node,
+            IdentityAnchorKind.CloudEnvironmentIdentity => SummaryScope.Platform,
             IdentityAnchorKind.KubernetesEnvironmentIdentity => SummaryScope.Platform,
             IdentityAnchorKind.VendorRuntimeIdentity => SummaryScope.Platform,
             IdentityAnchorKind.CloudInstanceIdentity => SummaryScope.Host,
