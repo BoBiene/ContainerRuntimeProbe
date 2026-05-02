@@ -2,6 +2,7 @@ using ContainerRuntimeProbe.Rendering;
 using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Model;
 using System.Threading;
+using System.Text.Json;
 using ContainerRuntimeProbe.Internal;
 
 namespace ContainerRuntimeProbe.Tests;
@@ -210,6 +211,49 @@ public sealed class EngineAndRendererTests
 
         Assert.Equal(Redaction.RedactedValue, redactedAnchor.Value);
         Assert.StartsWith("sha256:", sensitiveAnchor.Value, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task ReportProjection_LeavesIdentityVisible_ForMarkdownAndText_ButRedactsJsonByDefault()
+    {
+        var engine = new ContainerRuntimeProbeEngine(
+            [
+                new FixedProbe("cloud-metadata",
+                [
+                    new EvidenceItem("cloud-metadata", "cloud.source", RuntimeReportedHostSource.AwsMetadata.ToString()),
+                    new EvidenceItem("cloud-metadata", "aws.instance_id", "i-0abc123def4567890", EvidenceSensitivity.Sensitive)
+                ])
+            ]);
+
+        var rawReport = await engine.RunAsync(TimeSpan.FromMilliseconds(50), includeSensitive: true);
+        var humanReport = Redaction.RedactReport(rawReport, includeSensitive: false, redactIdentityAnchors: false);
+        var jsonReport = Redaction.RedactReport(rawReport, includeSensitive: false, redactIdentityAnchors: true);
+
+        var markdown = ReportRenderer.ToMarkdown(humanReport);
+        var text = ReportRenderer.ToText(humanReport);
+        var json = ReportRenderer.ToJson(jsonReport);
+
+        Assert.Contains("| Cloud Host ID | sha256:", markdown, StringComparison.Ordinal);
+        Assert.Contains("- Value: sha256:", markdown, StringComparison.Ordinal);
+        Assert.Contains("Cloud Host ID", text, StringComparison.Ordinal);
+        Assert.Contains("sha256:", text, StringComparison.Ordinal);
+
+        using var document = JsonDocument.Parse(json);
+        var hostAnchorValue = document.RootElement
+            .GetProperty("Host")
+            .GetProperty("IdentityAnchors")[0]
+            .GetProperty("Value")
+            .GetString();
+        var summaryHostIdentityValue = document.RootElement
+            .GetProperty("Summary")
+            .GetProperty("Identity")
+            .GetProperty("Sections")[0]
+            .GetProperty("Facts")[0]
+            .GetProperty("Value")
+            .GetString();
+
+        Assert.Equal(Redaction.RedactedValue, hostAnchorValue);
+        Assert.Equal(Redaction.RedactedValue, summaryHostIdentityValue);
     }
 
     private sealed class FixedProbe(string id, IReadOnlyList<EvidenceItem> evidence) : IProbe

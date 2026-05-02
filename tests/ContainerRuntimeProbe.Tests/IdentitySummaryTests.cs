@@ -81,7 +81,30 @@ public sealed class IdentitySummaryTests
         var summary = report.GetIdentitySummary();
 
         var deploymentSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.DeploymentIdentity));
-        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment Fingerprint" && fact.Level == 2 && fact.Scope == SummaryScope.Deployment);
+        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment ID" && fact.Level == 1 && fact.Scope == SummaryScope.Deployment);
+    }
+
+    [Fact]
+    public void GetIdentitySummary_KubernetesVariant_UsesEnvironmentId_ForWeakDeploymentCorrelation()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Classification = baseReport.Classification with
+            {
+                Orchestrator = new ClassificationResult<OrchestratorKind>(OrchestratorKind.Kubernetes, Confidence.High, []),
+                PlatformVendor = new ClassificationResult<PlatformVendorKind>(PlatformVendorKind.Unknown, Confidence.Unknown, [])
+            },
+            Host = baseReport.Host with
+            {
+                IdentityAnchors = []
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        var deploymentSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.DeploymentIdentity));
+        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Environment ID" && fact.Level == 1 && fact.Scope == SummaryScope.Platform);
     }
 
     [Fact]

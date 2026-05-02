@@ -26,13 +26,15 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             return;
         }
 
+        var label = GetDeploymentLabel(report.GetSummaryVariant());
+        var scope = GetDeploymentScope(report.GetSummaryVariant());
         var facts = report.Host.DiagnosticFingerprints
             .Where(fingerprint => fingerprint.Purpose is DiagnosticFingerprintPurpose.EnvironmentCorrelation or DiagnosticFingerprintPurpose.RuntimeProfile)
             .Select(fingerprint => new SummaryFact(
-                GetDeploymentLabel(fingerprint),
+                label,
                 fingerprint.Value,
-                SummaryScope.Deployment,
-                Level: GetFingerprintLevel(fingerprint),
+                scope,
+                Level: 1,
                 Confidence: MapFingerprintConfidence(fingerprint.UniquenessLevel),
                 SourceKind: fingerprint.Algorithm,
                 Usage: SummaryUsageKind.Correlation,
@@ -169,11 +171,18 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             _ => SummaryUsageKind.Informational
         };
 
-    private static string GetDeploymentLabel(DiagnosticFingerprint fingerprint)
-        => fingerprint.Purpose switch
+    private static string GetDeploymentLabel(SummaryVariantKind variant)
+        => variant switch
         {
-            DiagnosticFingerprintPurpose.RuntimeProfile => "Runtime Fingerprint",
-            _ => "Deployment Fingerprint"
+            SummaryVariantKind.KubernetesWorkload or SummaryVariantKind.IndustrialContainer => "Environment ID",
+            _ => "Deployment ID"
+        };
+
+    private static SummaryScope GetDeploymentScope(SummaryVariantKind variant)
+        => variant switch
+        {
+            SummaryVariantKind.KubernetesWorkload or SummaryVariantKind.IndustrialContainer => SummaryScope.Platform,
+            _ => SummaryScope.Deployment
         };
 
     private static int GetFingerprintLevel(DiagnosticFingerprint fingerprint)

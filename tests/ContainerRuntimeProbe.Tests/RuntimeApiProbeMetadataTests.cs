@@ -1,3 +1,4 @@
+using ContainerRuntimeProbe.Abstractions;
 using ContainerRuntimeProbe.Probes;
 
 namespace ContainerRuntimeProbe.Tests;

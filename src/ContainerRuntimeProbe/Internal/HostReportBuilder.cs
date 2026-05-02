@@ -572,22 +572,42 @@ internal static class HostReportBuilder
         }
 
         var containerId = GetValue(evidence, "container.id");
-        if (string.IsNullOrWhiteSpace(containerId) || string.Equals(containerId, Redaction.RedactedValue, StringComparison.Ordinal))
+        if (!string.IsNullOrWhiteSpace(containerId) && !string.Equals(containerId, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return new IdentityAnchor(
+                IdentityAnchorKind.ContainerRuntimeIdentity,
+                "CRP-CONTAINER-INSTANCE-v1",
+                ComputeIdentityAnchorDigest("container-runtime:id", containerId),
+                IdentityAnchorScope.Workload,
+                BindingSuitability.Correlation,
+                IdentityAnchorStrength.Medium,
+                IdentityAnchorSensitivity.Sensitive,
+                GetEvidenceReferencesForKeys(evidence, "container.id", "container.inspect.outcome"),
+                ["Container IDs are runtime-scoped and change whenever the container instance is recreated."],
+                ["Digest derived from observed runtime inspect container ID."]);
+        }
+
+        var pidNamespace = GetValue(evidence, "ns.pid");
+        var mountNamespace = GetValue(evidence, "ns.mnt");
+        var networkNamespace = GetValue(evidence, "ns.net");
+        if (string.IsNullOrWhiteSpace(pidNamespace)
+            || string.IsNullOrWhiteSpace(mountNamespace)
+            || string.IsNullOrWhiteSpace(networkNamespace))
         {
             return null;
         }
 
         return new IdentityAnchor(
             IdentityAnchorKind.ContainerRuntimeIdentity,
-            "CRP-CONTAINER-INSTANCE-v1",
-            ComputeIdentityAnchorDigest("container-runtime:id", containerId),
+            "CRP-CONTAINER-NS-v1",
+            ComputeIdentityAnchorDigest("container-runtime:namespaces", $"{pidNamespace}\n{mountNamespace}\n{networkNamespace}"),
             IdentityAnchorScope.Workload,
             BindingSuitability.Correlation,
-            IdentityAnchorStrength.Medium,
+            IdentityAnchorStrength.Weak,
             IdentityAnchorSensitivity.Sensitive,
-            GetEvidenceReferencesForKeys(evidence, "container.id", "container.inspect.outcome"),
-            ["Container IDs are runtime-scoped and change whenever the container instance is recreated."],
-            ["Digest derived from observed runtime inspect container ID."]);
+            GetEvidenceReferencesForKeys(evidence, "ns.pid", "ns.mnt", "ns.net"),
+            ["Namespace tuples are workload-instance scoped and typically change whenever the container or pod is recreated."],
+            ["Digest derived from visible PID, mount, and network namespace tuple because no runtime inspect container ID was visible."]);
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

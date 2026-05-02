@@ -374,6 +374,28 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsWeakContainerRuntimeIdentity_FromNamespaceTuple_WhenInspectIdIsUnavailable()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532964]"),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532961]"),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026532890]")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+
+        Assert.Equal("CRP-CONTAINER-NS-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Weak, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("4026532964", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:ns.pid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("workload-instance scoped", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_DoesNotBuildContainerRuntimeIdentity_ForNonContainerizedEnvironment()
     {
         var report = BuildHostReport([
