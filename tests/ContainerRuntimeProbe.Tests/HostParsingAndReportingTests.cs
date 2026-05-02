@@ -418,6 +418,28 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsDeploymentEnvironmentIdentity_FromComposeAndPortainerLabels()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "compose.label.com.docker.compose.project", "edge-stack"),
+            new EvidenceItem("runtime-api", "compose.label.com.docker.stack.namespace", "edge-stack-swarm"),
+            new EvidenceItem("runtime-api", "compose.label.io.portainer.stack.name", "portainer-edge")
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.DeploymentEnvironmentIdentity));
+
+        Assert.Equal("CRP-DEPLOYMENT-METADATA-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.ApplicationHost, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("edge-stack", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "runtime-api:compose.label.com.docker.compose.project");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("Compose or Portainer", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
     {
         var report = BuildHostReport([

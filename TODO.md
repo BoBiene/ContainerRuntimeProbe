@@ -32,7 +32,7 @@ Arbeitsregeln fuer diese Runde:
   - Wenn keine explizite Host-ID sichtbar ist, wird ein rein korrelationsgeeigneter Host-Profil-Digest als `L1` abgebildet.
 - [x] **41. Kubernetes Environment-L2 ohne RBAC einfuehren**
   - Ein Cluster-/Environment-Digest wird aus bereits sichtbarem Service-Account-CA- oder API-Zertifikatsmaterial abgeleitet, ohne neue Rechte zu erwarten.
-- [ ] **42. Compose- und Portainer-Deployment-Identity erweitern**
+- [x] **42. Compose- und Portainer-Deployment-Identity erweitern**
   - Sichtbare Compose-/Portainer-Metadaten aus Socket-Inspect werden als staerkerer Deployment-/Environment-Kandidat genutzt.
 - [ ] **43. Kubernetes workload candidate sources erweitern**
   - Sichtbare Pod-/Container-Korrelation aus CGroup- oder Mount-Signalen wird ausgewertet, wenn kein Runtime-Inspect moeglich ist.

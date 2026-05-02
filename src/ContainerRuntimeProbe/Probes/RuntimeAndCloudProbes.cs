@@ -57,7 +57,13 @@ internal static class ComposeLabels
         "com.docker.compose.version",
         "com.docker.compose.container-number",
         "com.docker.compose.project.working_dir",
-        "com.docker.compose.project.config_files"
+        "com.docker.compose.project.config_files",
+        "com.docker.stack.namespace"
+    ];
+
+    internal static readonly string[] KnownLabelPrefixes =
+    [
+        "io.portainer."
     ];
 
     /// <summary>
@@ -88,7 +94,12 @@ internal static class ComposeLabels
             foreach (var prop in labels.EnumerateObject())
             {
                 // Only emit the well-known Compose labels to keep output bounded
-                if (Array.IndexOf(KnownLabels, prop.Name) < 0) continue;
+                if (Array.IndexOf(KnownLabels, prop.Name) < 0
+                    && !KnownLabelPrefixes.Any(prefix => prop.Name.StartsWith(prefix, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
                 var rawValue = prop.Value.GetString() ?? string.Empty;
                 // Truncate path values (working_dir, config_files) to avoid excessively long output
                 var value = rawValue.Length > 256 ? rawValue[..256] : rawValue;

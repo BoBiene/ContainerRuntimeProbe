@@ -21,13 +21,34 @@ public static partial class ContainerRuntimeReportSummaryExtensions
 
     private static void AddDeploymentIdentitySection(List<IdentitySummarySection> sections, ContainerRuntimeReport report)
     {
-        if (report.GetSummaryVariant() is not (SummaryVariantKind.StandaloneContainer or SummaryVariantKind.IndustrialContainer or SummaryVariantKind.KubernetesWorkload))
+        var variant = report.GetSummaryVariant();
+        if (variant is not (SummaryVariantKind.StandaloneContainer or SummaryVariantKind.IndustrialContainer or SummaryVariantKind.KubernetesWorkload))
         {
             return;
         }
 
-        var label = GetDeploymentLabel(report.GetSummaryVariant());
-        var scope = GetDeploymentScope(report.GetSummaryVariant());
+        var label = GetDeploymentLabel(variant);
+        var scope = GetDeploymentScope(variant);
+        var anchorFacts = report.Host.IdentityAnchors
+            .Where(IsDeploymentAnchor)
+            .OrderByDescending(anchor => GetIdentityLevel(report, anchor))
+            .Select(anchor => new SummaryFact(
+                label,
+                anchor.Value,
+                scope,
+                Level: GetIdentityLevel(report, anchor),
+                Confidence: MapAnchorConfidence(anchor.Strength),
+                SourceKind: anchor.Kind.ToString(),
+                Usage: MapUsage(anchor.BindingSuitability),
+                EvidenceKeys: anchor.EvidenceReferences))
+            .ToArray();
+
+        if (anchorFacts.Length > 0)
+        {
+            sections.Add(new IdentitySummarySection(IdentitySummarySectionKind.DeploymentIdentity, "Deployment Identity", anchorFacts));
+            return;
+        }
+
         var facts = report.Host.DiagnosticFingerprints
             .Where(fingerprint => fingerprint.Purpose is DiagnosticFingerprintPurpose.EnvironmentCorrelation or DiagnosticFingerprintPurpose.RuntimeProfile)
             .Select(fingerprint => new SummaryFact(
@@ -81,13 +102,17 @@ public static partial class ContainerRuntimeReportSummaryExtensions
            || anchor.Scope == IdentityAnchorScope.Workload
            || anchor.Scope == IdentityAnchorScope.ContainerRuntime;
 
+    private static bool IsDeploymentAnchor(IdentityAnchor anchor)
+        => anchor.Kind == IdentityAnchorKind.DeploymentEnvironmentIdentity;
+
     private static bool IsNodeOrPlatformAnchor(IdentityAnchor anchor)
         => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity
+           || anchor.Kind == IdentityAnchorKind.KubernetesEnvironmentIdentity
            || anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity
-           || anchor.Scope == IdentityAnchorScope.Platform;
+           || (anchor.Scope == IdentityAnchorScope.Platform && !IsDeploymentAnchor(anchor));
 
     private static bool IsHostAnchor(IdentityAnchor anchor)
-        => !IsWorkloadAnchor(anchor) && !IsNodeOrPlatformAnchor(anchor);
+        => !IsWorkloadAnchor(anchor) && !IsNodeOrPlatformAnchor(anchor) && !IsDeploymentAnchor(anchor);
 
     private static string GetIdentityLabel(IdentityAnchor anchor)
         => anchor.Kind switch

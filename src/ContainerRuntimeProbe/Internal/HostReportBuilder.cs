@@ -391,6 +391,12 @@ internal static class HostReportBuilder
             anchors.Add(kubernetesEnvironmentAnchor);
         }
 
+        var deploymentEnvironmentAnchor = BuildDeploymentEnvironmentIdentityAnchor(evidence);
+        if (deploymentEnvironmentAnchor is not null)
+        {
+            anchors.Add(deploymentEnvironmentAnchor);
+        }
+
         var windowsMachineIdAnchor = BuildWindowsMachineIdAnchor(evidence, classification);
         if (windowsMachineIdAnchor is not null)
         {
@@ -517,6 +523,45 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, "serviceaccount.ca.sha256", "env.KUBERNETES_SERVICE_HOST", "api.version.outcome"),
             ["Cluster CA digests may change during control-plane certificate rotation or cluster recreation."],
             ["Digest derived from the visible Kubernetes service-account CA bundle without requiring RBAC."]);
+    }
+
+    private static IdentityAnchor? BuildDeploymentEnvironmentIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        static bool IsDeploymentMetadataKey(string key)
+            => key == "compose.label.com.docker.compose.project"
+               || key == "compose.label.com.docker.stack.namespace"
+               || (key.StartsWith("compose.label.io.portainer.", StringComparison.Ordinal)
+                   && (key.Contains("stack", StringComparison.OrdinalIgnoreCase)
+                       || key.Contains("project", StringComparison.OrdinalIgnoreCase)
+                       || key.EndsWith(".name", StringComparison.OrdinalIgnoreCase)
+                       || key.EndsWith(".namespace", StringComparison.OrdinalIgnoreCase)));
+
+        var components = evidence
+            .Where(item => IsDeploymentMetadataKey(item.Key)
+                && !string.IsNullOrWhiteSpace(item.Value)
+                && !string.Equals(item.Value, Redaction.RedactedValue, StringComparison.Ordinal))
+            .Select(item => (item.Key, Value: item.Value!.Trim()))
+            .Distinct()
+            .OrderBy(item => item.Key, StringComparer.Ordinal)
+            .ToArray();
+
+        if (components.Length == 0)
+        {
+            return null;
+        }
+
+        var digestSeed = string.Join("\n", components.Select(component => $"{component.Key}:{component.Value}"));
+        return new IdentityAnchor(
+            IdentityAnchorKind.DeploymentEnvironmentIdentity,
+            "CRP-DEPLOYMENT-METADATA-v1",
+            ComputeIdentityAnchorDigest("deployment-metadata", digestSeed),
+            IdentityAnchorScope.ApplicationHost,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Public,
+            GetEvidenceReferencesForKeys(evidence, components.Select(component => component.Key).ToArray()),
+            ["Deployment metadata digests may change when a Compose or Portainer project is renamed, restacked, or redeployed under a different namespace."],
+            ["Digest derived from visible Compose or Portainer deployment metadata labels."]);
     }
 
     private static IdentityAnchor? BuildSiemensIedRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)

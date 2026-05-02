@@ -194,6 +194,7 @@ public enum IdentityAnchorKind
     HardwareIdentity,
     HostProfileIdentity,
     KubernetesEnvironmentIdentity,
+    DeploymentEnvironmentIdentity,
     CloudInstanceIdentity,
     KubernetesNodeIdentity,
     VendorRuntimeIdentity,

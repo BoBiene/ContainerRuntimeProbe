@@ -161,6 +161,32 @@ public sealed class IdentitySummaryTests
         Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Environment ID" && fact.Value == "sha256:cluster" && fact.Level == 2 && fact.Scope == SummaryScope.Platform);
     }
 
+    [Fact]
+    public void GetIdentitySummary_UsesExplicitDeploymentAnchor_InsteadOfFingerprintFallback()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Host = baseReport.Host with
+            {
+                IdentityAnchors =
+                [
+                    new IdentityAnchor(IdentityAnchorKind.DeploymentEnvironmentIdentity, "CRP-DEPLOYMENT-METADATA-v1", "sha256:deployment", IdentityAnchorScope.ApplicationHost, BindingSuitability.Correlation, IdentityAnchorStrength.Medium, IdentityAnchorSensitivity.Public, ["runtime-api:compose.label.com.docker.compose.project"], [], [])
+                ]
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        var deploymentSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.DeploymentIdentity));
+        var fact = Assert.Single(deploymentSection.Facts);
+        Assert.Equal("Deployment ID", fact.Label);
+        Assert.Equal("sha256:deployment", fact.Value);
+        Assert.Equal(2, fact.Level);
+        Assert.Equal(SummaryScope.Deployment, fact.Scope);
+        Assert.Equal("DeploymentEnvironmentIdentity", fact.SourceKind);
+    }
+
     [Theory]
     [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
     [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]
