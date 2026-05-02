@@ -23,6 +23,9 @@ public enum SummaryScope
     /// <summary>The scope describes a platform runtime or appliance environment.</summary>
     Platform,
 
+    /// <summary>The scope describes a guest-visible hypervisor or VM substrate instance.</summary>
+    Hypervisor,
+
     /// <summary>The scope describes the underlying host machine or instance.</summary>
     Host
 }

@@ -193,6 +193,7 @@ public enum IdentityAnchorKind
     MachineIdDigest,
     HardwareIdentity,
     HostProfileIdentity,
+    HypervisorIdentity,
     KubernetesEnvironmentIdentity,
     DeploymentEnvironmentIdentity,
     CloudInstanceIdentity,
@@ -208,6 +209,7 @@ public enum IdentityAnchorScope
 {
     Unknown,
     Host,
+    Hypervisor,
     Platform,
     ContainerRuntime,
     Workload,

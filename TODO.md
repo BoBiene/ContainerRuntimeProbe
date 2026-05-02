@@ -40,7 +40,7 @@ Arbeitsregeln fuer diese Runde:
   - Mandanten-, Projekt- oder Subscription-nahe Cloud-Metadaten werden als Environment-Kandidaten modelliert, wenn sie sichtbar und sicher nutzbar sind.
 - [x] **45. TPM public-material identity path einfuehren**
   - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.
-- [ ] **46. Hypervisor identity path einfuehren**
+- [x] **46. Hypervisor identity path einfuehren**
   - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
 - [ ] **47. Identities "Stacked" ausgeben
   - Bei L2 auch die L1 Idenentity mit ausgeben im report (Bei L3 entsprechend L2&L1 und so weiter)

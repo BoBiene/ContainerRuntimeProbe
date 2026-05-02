@@ -411,6 +411,12 @@ internal static class HostReportBuilder
             anchors.Add(linuxMachineIdAnchor);
         }
 
+        var hypervisorIdentityAnchor = BuildHypervisorIdentityAnchor(evidence, virtualization);
+        if (hypervisorIdentityAnchor is not null)
+        {
+            anchors.Add(hypervisorIdentityAnchor);
+        }
+
         var tpmPublicKeyAnchor = BuildTpmPublicKeyAnchor(evidence);
         if (tpmPublicKeyAnchor is not null)
         {
@@ -728,6 +734,32 @@ internal static class HostReportBuilder
             GetEvidenceReferencesForKeys(evidence, evidenceKeys),
             ["Hardware identifiers may change after board replacement, firmware reset, or vendor-specific re-provisioning."],
             ["Digest derived from explicit host-visible hardware identifier signals."]);
+    }
+
+    private static IdentityAnchor? BuildHypervisorIdentityAnchor(IReadOnlyList<EvidenceItem> evidence, VirtualizationInfo virtualization)
+    {
+        if (virtualization.Kind == VirtualizationKind.Unknown)
+        {
+            return null;
+        }
+
+        var productUuid = GetValue(evidence, "dmi.product_uuid");
+        if (string.IsNullOrWhiteSpace(productUuid) || string.Equals(productUuid, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.HypervisorIdentity,
+            "CRP-HYPERVISOR-INSTANCE-v1",
+            ComputeIdentityAnchorDigest("hypervisor-instance", productUuid),
+            IdentityAnchorScope.Hypervisor,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Sensitive,
+            GetEvidenceReferencesForKeys(evidence, "dmi.product_uuid", "cpu.flag.hypervisor", "sys.hypervisor.type", "dmi.sys_vendor", "dmi.product_name"),
+            ["Guest-visible VM UUIDs identify the virtual guest or substrate instance, not the physical hypervisor host."],
+            [$"Digest derived from a guest-visible VM UUID under {virtualization.Kind} virtualization."]);
     }
 
     private static IdentityAnchor? BuildTpmPublicKeyAnchor(IReadOnlyList<EvidenceItem> evidence)

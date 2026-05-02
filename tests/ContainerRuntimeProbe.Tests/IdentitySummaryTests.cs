@@ -208,6 +208,27 @@ public sealed class IdentitySummaryTests
         Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Environment ID" && fact.Value == "sha256:cloud-environment" && fact.Level == 2 && fact.Scope == SummaryScope.Platform);
     }
 
+    [Fact]
+    public void GetIdentitySummary_MapsHypervisorIdentity_ToHypervisorId()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Host = baseReport.Host with
+            {
+                IdentityAnchors =
+                [
+                    new IdentityAnchor(IdentityAnchorKind.HypervisorIdentity, "CRP-HYPERVISOR-INSTANCE-v1", "sha256:hypervisor", IdentityAnchorScope.Hypervisor, BindingSuitability.Correlation, IdentityAnchorStrength.Medium, IdentityAnchorSensitivity.Sensitive, ["proc-files:dmi.product_uuid"], [], [])
+                ]
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        var nodePlatformSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.NodePlatformIdentity));
+        Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Hypervisor ID" && fact.Value == "sha256:hypervisor" && fact.Level == 2 && fact.Scope == SummaryScope.Hypervisor);
+    }
+
     [Theory]
     [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
     [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]

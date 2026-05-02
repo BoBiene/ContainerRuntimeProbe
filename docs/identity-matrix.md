@@ -48,7 +48,7 @@ Current summary mapping is:
 | Environment | Cloud account / subscription / project / compartment metadata | `cloud-metadata`: `aws.account_id`, `azure.subscription_id`, `gcp.project_id`, `oci.compartment_id` | Platform | L2 | Implemented | Conservative cloud-environment identity for the provider boundary, separate from the individual host instance ID. |
 | Environment | Siemens IED TLS-bound runtime identity | `siemens-ied-runtime`: `trust.ied.certsips.cert_chain_sha256` + `trust.ied.endpoint.tls.binding=matched` | Platform | L3 | Implemented | Current strongest non-cloud environment/platform identity. |
 | Environment | Siemens IED trusted verification | `TrustedPlatforms[siemens-ied-runtime]` | Platform | L4 | Implemented | Raises the summary level when the local trust path is corroborated. |
-| Hypervisor | Explicit hypervisor identity | none | Hypervisor | none | Not implemented | Current code classifies hypervisor/vendor presence, but does not emit a hypervisor ID anchor. |
+| Hypervisor | Guest-visible VM UUID | `proc-files`: `dmi.product_uuid` when virtualization is classified | Hypervisor | L2 | Implemented | Conservative hypervisor or guest-substrate identity derived from guest-visible VM UUIDs under an observed virtualized runtime. |
 
 ## Candidate source matrix
 
@@ -65,7 +65,7 @@ These are the realistic next candidates if the goal is at least one `Host` L1 ev
 | Kubernetes control-plane CA bundle digest or API server SPKI digest | Kubernetes, including no-RBAC service-account cases | service-account CA material today; API certificate material later if needed | Environment | L2 | L3 with API identity corroboration | The service-account CA digest is now promoted; API certificate material remains a future corroboration path. |
 | Cloud tenant / project / subscription digest | Cloud-managed environments | cloud metadata normalization where visible | Environment | L2 | L2 or L3 depending on provider certainty | Now promoted from visible AWS/Azure/GCP/OCI provider-boundary metadata. |
 | TPM public material digest such as EK pubkey or persistent public key digest | Windows hosts, Linux with visible TPM, some appliance systems | read-only Linux TPM sysfs public material today; broader TPM retrieval later if needed | Host or Platform | L3 | L4 with trusted verification | Linux TPM public material is now promoted when visible; stronger corroboration and broader platform coverage remain future work. |
-| VM UUID / generation ID / guest-visible hypervisor instance UUID | Hyper-V, VMware, Xen, KVM guests | new hypervisor-specific read-only probes | Hypervisor | L2 | L3 with corroboration | The best path to a hypervisor or substrate ID. Note that this identifies the guest/substrate instance, not necessarily the physical hypervisor host. |
+| VM UUID / generation ID / guest-visible hypervisor instance UUID | Hyper-V, VMware, Xen, KVM guests | guest-visible VM UUID from DMI today; more explicit generation-ID probes later if needed | Hypervisor | L2 | L3 with corroboration | Guest-visible VM UUIDs are now promoted when virtualization is classified; explicit generation-ID sources remain a future refinement. |
 
 ## System-by-system matrix
 
@@ -114,4 +114,4 @@ For TPM-backed host identity, the current read-only path is a digest over visibl
 
 For cloud-managed environments with reachable provider metadata, the current conservative environment path is a digest over the visible provider boundary identifier such as AWS account, Azure subscription, GCP project, or OCI compartment metadata.
 
-For hypervisors, current signals are enough to classify vendor and presence, but not enough to identify a unique substrate instance. A future hypervisor ID should therefore be based on guest-visible VM UUID or generation-ID style sources, not on generic `hypervisor present` flags.
+For hypervisors, the current conservative path is a digest over a guest-visible VM UUID when virtualization is already classified. Future refinement should add more explicit generation-ID style sources where they are available.

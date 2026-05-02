@@ -375,6 +375,39 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsHypervisorIdentity_FromVirtualizedGuestUuid()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "cpu.flag.hypervisor", bool.TrueString),
+            new EvidenceItem("proc-files", "dmi.sys_vendor", "QEMU"),
+            new EvidenceItem("proc-files", "dmi.product_name", "Standard PC (Q35 + ICH9, 2009)"),
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.HypervisorIdentity));
+
+        Assert.Equal("CRP-HYPERVISOR-INSTANCE-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Hypervisor, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:dmi.product_uuid");
+        Assert.Contains(anchor.Warnings, warning => warning.Contains("virtual guest or substrate instance", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void IdentityAnchors_DoesNotBuildHypervisorIdentity_WithoutVirtualizationSignals()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("proc-files", "dmi.product_uuid", "7A9C2D19-4FA1-4F91-93EA-0D4D7D1F5B1A", EvidenceSensitivity.Sensitive)
+        ]);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HypervisorIdentity);
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsHardwareIdentity_FromCpuAndSocSerialSignals()
     {
         var report = BuildHostReport([

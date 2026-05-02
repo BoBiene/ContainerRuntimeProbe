@@ -107,10 +107,11 @@ public static partial class ContainerRuntimeReportSummaryExtensions
 
     private static bool IsNodeOrPlatformAnchor(IdentityAnchor anchor)
         => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity
+           || anchor.Kind == IdentityAnchorKind.HypervisorIdentity
            || anchor.Kind == IdentityAnchorKind.CloudEnvironmentIdentity
            || anchor.Kind == IdentityAnchorKind.KubernetesEnvironmentIdentity
            || anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity
-           || (anchor.Scope == IdentityAnchorScope.Platform && !IsDeploymentAnchor(anchor));
+           || ((anchor.Scope == IdentityAnchorScope.Platform || anchor.Scope == IdentityAnchorScope.Hypervisor) && !IsDeploymentAnchor(anchor));
 
     private static bool IsHostAnchor(IdentityAnchor anchor)
         => !IsWorkloadAnchor(anchor) && !IsNodeOrPlatformAnchor(anchor) && !IsDeploymentAnchor(anchor);
@@ -121,6 +122,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.ContainerRuntimeIdentity => "Container ID",
             IdentityAnchorKind.ContainerDeviceAnchor => "Runtime ID",
             IdentityAnchorKind.KubernetesNodeIdentity => "Node ID",
+            IdentityAnchorKind.HypervisorIdentity => "Hypervisor ID",
             IdentityAnchorKind.CloudEnvironmentIdentity => "Environment ID",
             IdentityAnchorKind.KubernetesEnvironmentIdentity => "Environment ID",
             IdentityAnchorKind.VendorRuntimeIdentity => "Platform ID",
@@ -136,6 +138,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             IdentityAnchorKind.ContainerRuntimeIdentity => SummaryScope.Workload,
             IdentityAnchorKind.ContainerDeviceAnchor => SummaryScope.Runtime,
             IdentityAnchorKind.KubernetesNodeIdentity => SummaryScope.Node,
+            IdentityAnchorKind.HypervisorIdentity => SummaryScope.Hypervisor,
             IdentityAnchorKind.CloudEnvironmentIdentity => SummaryScope.Platform,
             IdentityAnchorKind.KubernetesEnvironmentIdentity => SummaryScope.Platform,
             IdentityAnchorKind.VendorRuntimeIdentity => SummaryScope.Platform,
@@ -146,6 +149,7 @@ public static partial class ContainerRuntimeReportSummaryExtensions
             {
                 IdentityAnchorScope.ContainerRuntime => SummaryScope.Runtime,
                 IdentityAnchorScope.Workload => SummaryScope.Workload,
+                IdentityAnchorScope.Hypervisor => SummaryScope.Hypervisor,
                 IdentityAnchorScope.Platform => SummaryScope.Platform,
                 IdentityAnchorScope.Host => SummaryScope.Host,
                 _ => SummaryScope.Unknown
