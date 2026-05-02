@@ -1,0 +1,144 @@
+using ContainerRuntimeProbe.Abstractions;
+using ContainerRuntimeProbe.Model;
+
+namespace ContainerRuntimeProbe;
+
+/// <summary>Builds scope-oriented identity summary facts for a normalized report.</summary>
+public static partial class ContainerRuntimeReportSummaryExtensions
+{
+    /// <summary>Returns the compact identity summary for a normalized report.</summary>
+    public static IdentitySummary GetIdentitySummary(this ContainerRuntimeReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+
+        var sections = new List<IdentitySummarySection>();
+        AddIdentitySection(sections, report, IdentitySummarySectionKind.WorkloadIdentity, "Workload Identity", IsWorkloadAnchor);
+        AddIdentitySection(sections, report, IdentitySummarySectionKind.NodePlatformIdentity, "Node/Platform Identity", IsNodeOrPlatformAnchor);
+        AddIdentitySection(sections, report, IdentitySummarySectionKind.HostIdentity, "Host Identity", IsHostAnchor);
+        return new IdentitySummary(sections);
+    }
+
+    private static void AddIdentitySection(
+        List<IdentitySummarySection> sections,
+        ContainerRuntimeReport report,
+        IdentitySummarySectionKind kind,
+        string title,
+        Func<IdentityAnchor, bool> predicate)
+    {
+        var facts = report.Host.IdentityAnchors
+            .Where(predicate)
+            .OrderByDescending(anchor => GetIdentityLevel(report, anchor))
+            .ThenBy(anchor => GetIdentityLabel(anchor), StringComparer.Ordinal)
+            .Select(anchor => new SummaryFact(
+                GetIdentityLabel(anchor),
+                anchor.Value,
+                GetSummaryScope(anchor),
+                Level: GetIdentityLevel(report, anchor),
+                Confidence: MapAnchorConfidence(anchor.Strength),
+                SourceKind: anchor.Kind.ToString(),
+                Usage: MapUsage(anchor.BindingSuitability),
+                EvidenceKeys: anchor.EvidenceReferences))
+            .ToArray();
+
+        if (facts.Length > 0)
+        {
+            sections.Add(new IdentitySummarySection(kind, title, facts));
+        }
+    }
+
+    private static bool IsWorkloadAnchor(IdentityAnchor anchor)
+        => anchor.Kind == IdentityAnchorKind.ContainerRuntimeIdentity
+           || anchor.Kind == IdentityAnchorKind.ContainerDeviceAnchor
+           || anchor.Scope == IdentityAnchorScope.Workload
+           || anchor.Scope == IdentityAnchorScope.ContainerRuntime;
+
+    private static bool IsNodeOrPlatformAnchor(IdentityAnchor anchor)
+        => anchor.Kind == IdentityAnchorKind.KubernetesNodeIdentity
+           || anchor.Kind == IdentityAnchorKind.VendorRuntimeIdentity
+           || anchor.Scope == IdentityAnchorScope.Platform;
+
+    private static bool IsHostAnchor(IdentityAnchor anchor)
+        => !IsWorkloadAnchor(anchor) && !IsNodeOrPlatformAnchor(anchor);
+
+    private static string GetIdentityLabel(IdentityAnchor anchor)
+        => anchor.Kind switch
+        {
+            IdentityAnchorKind.ContainerRuntimeIdentity => "Container ID",
+            IdentityAnchorKind.ContainerDeviceAnchor => "Runtime ID",
+            IdentityAnchorKind.KubernetesNodeIdentity => "Node ID",
+            IdentityAnchorKind.VendorRuntimeIdentity => "Platform ID",
+            IdentityAnchorKind.CloudInstanceIdentity => "Cloud Host ID",
+            _ => "Host ID"
+        };
+
+    private static SummaryScope GetSummaryScope(IdentityAnchor anchor)
+        => anchor.Kind switch
+        {
+            IdentityAnchorKind.ContainerRuntimeIdentity => SummaryScope.Workload,
+            IdentityAnchorKind.ContainerDeviceAnchor => SummaryScope.Runtime,
+            IdentityAnchorKind.KubernetesNodeIdentity => SummaryScope.Node,
+            IdentityAnchorKind.VendorRuntimeIdentity => SummaryScope.Platform,
+            IdentityAnchorKind.CloudInstanceIdentity => SummaryScope.Host,
+            _ => anchor.Scope switch
+            {
+                IdentityAnchorScope.ContainerRuntime => SummaryScope.Runtime,
+                IdentityAnchorScope.Workload => SummaryScope.Workload,
+                IdentityAnchorScope.Platform => SummaryScope.Platform,
+                IdentityAnchorScope.Host => SummaryScope.Host,
+                _ => SummaryScope.Unknown
+            }
+        };
+
+    private static int GetIdentityLevel(ContainerRuntimeReport report, IdentityAnchor anchor)
+    {
+        var baseLevel = anchor.Strength switch
+        {
+            IdentityAnchorStrength.Strong => 3,
+            IdentityAnchorStrength.Medium => 2,
+            IdentityAnchorStrength.Weak => 1,
+            _ => 0
+        };
+
+        return Math.Max(baseLevel, GetCorroboratingLevel(report, anchor));
+    }
+
+    private static int GetCorroboratingLevel(ContainerRuntimeReport report, IdentityAnchor anchor)
+    {
+        var platformKey = anchor.Kind switch
+        {
+            IdentityAnchorKind.VendorRuntimeIdentity => "siemens-ied-runtime",
+            IdentityAnchorKind.TpmPublicKeyDigest => "windows-host-tpm",
+            IdentityAnchorKind.ContainerDeviceAnchor => "container-tpm-visible",
+            _ => null
+        };
+
+        if (platformKey is null || report.TrustedPlatforms is null)
+        {
+            return 0;
+        }
+
+        return report.TrustedPlatforms
+            .Where(summary => string.Equals(summary.PlatformKey, platformKey, StringComparison.Ordinal))
+            .Select(summary => summary.VerificationLevel)
+            .DefaultIfEmpty(0)
+            .Max();
+    }
+
+    private static Confidence MapAnchorConfidence(IdentityAnchorStrength strength)
+        => strength switch
+        {
+            IdentityAnchorStrength.Strong => Confidence.High,
+            IdentityAnchorStrength.Medium => Confidence.Medium,
+            IdentityAnchorStrength.Weak => Confidence.Low,
+            _ => Confidence.Unknown
+        };
+
+    private static SummaryUsageKind MapUsage(BindingSuitability suitability)
+        => suitability switch
+        {
+            BindingSuitability.Correlation => SummaryUsageKind.Correlation,
+            BindingSuitability.LicenseBinding => SummaryUsageKind.BindingCandidate,
+            BindingSuitability.ExternalAttestation => SummaryUsageKind.BindingCandidate,
+            _ => SummaryUsageKind.Informational
+        };
+}
