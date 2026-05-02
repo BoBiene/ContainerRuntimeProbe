@@ -42,7 +42,7 @@ Arbeitsregeln fuer diese Runde:
   - Read-only TPM-Public-Material wird fuer Host-/Platform-Anchors genutzt und mit bestehender Trust-Korroboration verbunden.
 - [x] **46. Hypervisor identity path einfuehren**
   - Guest-sichtbare VM-UUID-/Generation-ID-Quellen werden fuer eine dedizierte Hypervisor-Identity ausgewertet.
-- [ ] **47. Identities "Stacked" ausgeben
+- [x] **47. Identities "Stacked" ausgeben
   - Bei L2 auch die L1 Idenentity mit ausgeben im report (Bei L3 entsprechend L2&L1 und so weiter)
 - [ ] **48. Abschlussvalidierung, Doku und Nachlauf**
   - Jede neue Quelle braucht passende Tests, Renderer-/Summary-Abdeckung, Doku-Updates und eine Abschlusspruefung der offenen Risiken.

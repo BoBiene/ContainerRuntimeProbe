@@ -380,12 +380,7 @@ internal static class HostReportBuilder
         var anchors = new List<IdentityAnchor>();
         anchors.AddRange(BuildCloudInstanceIdentityAnchors(evidence));
         anchors.AddRange(BuildCloudEnvironmentIdentityAnchors(evidence));
-
-        var kubernetesNodeAnchor = BuildKubernetesNodeIdentityAnchor(evidence);
-        if (kubernetesNodeAnchor is not null)
-        {
-            anchors.Add(kubernetesNodeAnchor);
-        }
+        anchors.AddRange(BuildKubernetesNodeIdentityAnchors(evidence));
 
         var kubernetesEnvironmentAnchor = BuildKubernetesEnvironmentIdentityAnchor(evidence);
         if (kubernetesEnvironmentAnchor is not null)
@@ -429,17 +424,13 @@ internal static class HostReportBuilder
             anchors.Add(hardwareIdentityAnchor);
         }
 
-        var weakHostProfileAnchor = BuildWeakHostProfileIdentityAnchor(evidence, runtimeHostOs, visibleKernel, virtualization, hardware, anchors);
+        var weakHostProfileAnchor = BuildWeakHostProfileIdentityAnchor(evidence, runtimeHostOs, visibleKernel, virtualization, hardware);
         if (weakHostProfileAnchor is not null)
         {
             anchors.Add(weakHostProfileAnchor);
         }
 
-        var containerRuntimeAnchor = BuildContainerRuntimeIdentityAnchor(evidence, classification);
-        if (containerRuntimeAnchor is not null)
-        {
-            anchors.Add(containerRuntimeAnchor);
-        }
+        anchors.AddRange(BuildContainerRuntimeIdentityAnchors(evidence, classification));
 
         var siemensIedRuntimeAnchor = BuildSiemensIedRuntimeIdentityAnchor(evidence);
         if (siemensIedRuntimeAnchor is not null)
@@ -512,12 +503,14 @@ internal static class HostReportBuilder
             [$"Digest derived from observed {provider} environment metadata."]));
     }
 
-    private static IdentityAnchor? BuildKubernetesNodeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    private static IReadOnlyList<IdentityAnchor> BuildKubernetesNodeIdentityAnchors(IReadOnlyList<EvidenceItem> evidence)
     {
+        var anchors = new List<IdentityAnchor>();
+
         var nodeUid = GetValue(evidence, "kubernetes.node.uid");
         if (!string.IsNullOrWhiteSpace(nodeUid) && !string.Equals(nodeUid, Redaction.RedactedValue, StringComparison.Ordinal))
         {
-            return new IdentityAnchor(
+            anchors.Add(new IdentityAnchor(
                 IdentityAnchorKind.KubernetesNodeIdentity,
                 "CRP-KUBERNETES-NODE-v1",
                 ComputeIdentityAnchorDigest("kubernetes-node:uid", nodeUid),
@@ -527,13 +520,13 @@ internal static class HostReportBuilder
                 IdentityAnchorSensitivity.Sensitive,
                 GetEvidenceReferencesForKeys(evidence, "kubernetes.node.uid", "kubernetes.node.name", "kubernetes.node.provider_id"),
                 [],
-                ["Digest derived from Kubernetes node metadata UID."]);
+                ["Digest derived from Kubernetes node metadata UID."]));
         }
 
         var providerId = GetValue(evidence, "kubernetes.node.provider_id");
         if (!string.IsNullOrWhiteSpace(providerId) && !string.Equals(providerId, Redaction.RedactedValue, StringComparison.Ordinal))
         {
-            return new IdentityAnchor(
+            anchors.Add(new IdentityAnchor(
                 IdentityAnchorKind.KubernetesNodeIdentity,
                 "CRP-KUBERNETES-NODE-v1",
                 ComputeIdentityAnchorDigest("kubernetes-node:provider-id", providerId),
@@ -543,10 +536,10 @@ internal static class HostReportBuilder
                 IdentityAnchorSensitivity.Sensitive,
                 GetEvidenceReferencesForKeys(evidence, "kubernetes.node.provider_id", "kubernetes.node.name"),
                 [],
-                ["Digest derived from Kubernetes node provider ID because no node UID was visible."]);
+                ["Digest derived from Kubernetes node provider ID as a weaker fallback node identity."]));
         }
 
-        return null;
+            return anchors;
     }
 
     private static IdentityAnchor? BuildKubernetesEnvironmentIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
@@ -794,14 +787,8 @@ internal static class HostReportBuilder
         RuntimeReportedHostOsInfo runtimeHostOs,
         VisibleKernelInfo visibleKernel,
         VirtualizationInfo virtualization,
-        HostHardwareInfo hardware,
-        IReadOnlyCollection<IdentityAnchor> existingAnchors)
+        HostHardwareInfo hardware)
     {
-        if (existingAnchors.Any(anchor => anchor.Scope == IdentityAnchorScope.Host))
-        {
-            return null;
-        }
-
         var included = new Dictionary<string, string>(StringComparer.Ordinal);
         AddHostProfileComponent(included, "runtime.host.os.normalized", runtimeHostOs.Family != OperatingSystemFamily.Unknown ? runtimeHostOs.Family.ToString() : null);
         AddHostProfileComponent(included, KernelReleaseKey, visibleKernel.Release);
@@ -922,17 +909,19 @@ internal static class HostReportBuilder
         return NormalizeHostProfileToken(firstCompatible);
     }
 
-    private static IdentityAnchor? BuildContainerRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
+    private static IReadOnlyList<IdentityAnchor> BuildContainerRuntimeIdentityAnchors(IReadOnlyList<EvidenceItem> evidence, ReportClassification classification)
     {
         if (classification.IsContainerized.Value != ContainerizationKind.@True)
         {
-            return null;
+            return [];
         }
+
+        var anchors = new List<IdentityAnchor>();
 
         var containerId = GetValue(evidence, "container.id");
         if (!string.IsNullOrWhiteSpace(containerId) && !string.Equals(containerId, Redaction.RedactedValue, StringComparison.Ordinal))
         {
-            return new IdentityAnchor(
+            anchors.Add(new IdentityAnchor(
                 IdentityAnchorKind.ContainerRuntimeIdentity,
                 "CRP-CONTAINER-INSTANCE-v1",
                 ComputeIdentityAnchorDigest("container-runtime:id", containerId),
@@ -942,7 +931,7 @@ internal static class HostReportBuilder
                 IdentityAnchorSensitivity.Sensitive,
                 GetEvidenceReferencesForKeys(evidence, "container.id", "container.inspect.outcome"),
                 ["Container IDs are runtime-scoped and change whenever the container instance is recreated."],
-                ["Digest derived from observed runtime inspect container ID."]);
+                ["Digest derived from observed runtime inspect container ID."]));
         }
 
         var kubernetesPodUid = new[]
@@ -959,7 +948,7 @@ internal static class HostReportBuilder
                 ? kubernetesContainerToken
                 : $"{kubernetesPodUid}\n{kubernetesContainerToken}";
 
-            return new IdentityAnchor(
+            anchors.Add(new IdentityAnchor(
                 IdentityAnchorKind.ContainerRuntimeIdentity,
                 "CRP-KUBERNETES-WORKLOAD-v1",
                 ComputeIdentityAnchorDigest("kubernetes-workload:container-token", anchorSeed),
@@ -969,12 +958,12 @@ internal static class HostReportBuilder
                 IdentityAnchorSensitivity.Sensitive,
                 GetEvidenceReferencesForKeys(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid", "kubernetes.cgroup.container_token"),
                 ["Kubernetes workload tokens are pod or container-instance scoped and change whenever the pod is recreated or the container is restarted."],
-                ["Digest derived from Kubernetes pod metadata and cgroup-derived container token because no runtime inspect container ID was visible."]);
+                ["Digest derived from Kubernetes pod metadata and cgroup-derived container token as a workload-scoped fallback identity."]));
         }
 
         if (!string.IsNullOrWhiteSpace(kubernetesPodUid))
         {
-            return new IdentityAnchor(
+            anchors.Add(new IdentityAnchor(
                 IdentityAnchorKind.ContainerRuntimeIdentity,
                 "CRP-KUBERNETES-WORKLOAD-v1",
                 ComputeIdentityAnchorDigest("kubernetes-workload:pod-uid", kubernetesPodUid),
@@ -984,7 +973,7 @@ internal static class HostReportBuilder
                 IdentityAnchorSensitivity.Sensitive,
                 GetEvidenceReferencesForKeys(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid"),
                 ["Pod UIDs are pod-scoped and may not distinguish multiple containers within the same pod."],
-                ["Digest derived from Kubernetes pod UID because no per-container runtime ID was visible."]);
+                ["Digest derived from Kubernetes pod UID as a weaker workload fallback identity."]));
         }
 
         var pidNamespace = GetValue(evidence, "ns.pid");
@@ -994,10 +983,10 @@ internal static class HostReportBuilder
             || string.IsNullOrWhiteSpace(mountNamespace)
             || string.IsNullOrWhiteSpace(networkNamespace))
         {
-            return null;
+            return anchors;
         }
 
-        return new IdentityAnchor(
+        anchors.Add(new IdentityAnchor(
             IdentityAnchorKind.ContainerRuntimeIdentity,
             "CRP-CONTAINER-NS-v1",
             ComputeIdentityAnchorDigest("container-runtime:namespaces", $"{pidNamespace}\n{mountNamespace}\n{networkNamespace}"),
@@ -1007,7 +996,9 @@ internal static class HostReportBuilder
             IdentityAnchorSensitivity.Sensitive,
             GetEvidenceReferencesForKeys(evidence, "ns.pid", "ns.mnt", "ns.net"),
             ["Namespace tuples are workload-instance scoped and typically change whenever the container or pod is recreated."],
-            ["Digest derived from visible PID, mount, and network namespace tuple because no runtime inspect container ID was visible."]);
+            ["Digest derived from visible PID, mount, and network namespace tuple as a weaker workload fallback identity."]));
+
+        return anchors;
     }
 
     private static ParsedRuntimeHostInfo? BuildRuntimeHostFromEvidence(

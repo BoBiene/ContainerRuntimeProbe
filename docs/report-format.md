@@ -7,6 +7,7 @@
   - top-level structured summary composed of `Environment` and `Identity`
   - `Environment.Sections[]` uses `EnvironmentSummarySection(Kind, Title, Facts)`
   - `Identity.Sections[]` uses `IdentitySummarySection(Kind, Title, Facts)`
+  - stronger identity facts may appear together with weaker fallback facts for the same scope when both are visible
   - each `SummaryFact` carries `Label`, `Value`, `Scope`, optional `Level`, `Confidence`, optional `SourceKind`, `Usage`, and optional `EvidenceKeys[]`
 - `Probes[]` with `ProbeId`, `Outcome`, `Evidence[]`, optional `Message`
 - `SecurityWarnings[]`
@@ -72,6 +73,7 @@
   - explicit read-only anchor candidates for stronger host or workload binding scenarios
   - each entry carries `Kind`, `Algorithm`, `Value`, `Scope`, `BindingSuitability`, `Strength`, `Sensitivity`, `EvidenceReferences[]`, `Warnings[]`, and `Reasons[]`
   - current built-in sources are cloud instance identity metadata, cloud provider-boundary environment metadata, Kubernetes node identity metadata, Kubernetes service-account CA digests, Compose or Portainer deployment metadata labels, Siemens IED runtime certificate-chain identity, guest-visible hypervisor VM UUID digests, TPM public-material digests, host machine-id style digests, explicit hardware identifier digests, weak host-profile digests, explicit runtime inspect container IDs, and Kubernetes pod/container workload tokens
+  - weaker fallback anchors such as host-profile, namespace-tuple, or node-provider-ID candidates remain present even when a stronger same-scope identity is also visible
   - `Value` is a digest, not the raw observed instance ID or node ID
   - anchor generation is intentionally conservative; empty lists are valid and expected where no strong read-only source is visible
 

@@ -26,6 +26,7 @@ Current summary mapping is:
 - `IdentityAnchorStrength.Medium` -> `L2`
 - `IdentityAnchorStrength.Strong` -> `L3`
 - trusted-platform corroboration may raise selected platform anchors to `L4`
+- visible weaker fallback identities are now kept alongside stronger anchors in the report instead of being suppressed
 
 ## Current shipped matrix
 

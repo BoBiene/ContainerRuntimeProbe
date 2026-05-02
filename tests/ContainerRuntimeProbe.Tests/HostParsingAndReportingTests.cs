@@ -503,7 +503,9 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "kubernetes.cgroup.container_token", "0123456789abcdef", EvidenceSensitivity.Sensitive)
         ], ContainerizationKind.@True);
 
-        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity));
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity).ToArray();
+        var anchor = Assert.Single(anchors.Where(item => item.Strength == IdentityAnchorStrength.Medium));
+        Assert.Contains(anchors, item => item.Strength == IdentityAnchorStrength.Weak);
 
         Assert.Equal("CRP-KUBERNETES-WORKLOAD-v1", anchor.Algorithm);
         Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
@@ -628,7 +630,7 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
-    public void IdentityAnchors_DoesNotBuildWeakHostProfileIdentity_WhenExplicitHostIdentityExists()
+    public void IdentityAnchors_StacksWeakHostProfileIdentity_WhenExplicitHostIdentityExists()
     {
         var report = BuildHostReport([
             new EvidenceItem("proc-files", "kernel.release", "6.8.0-59-generic"),
@@ -639,7 +641,37 @@ public sealed class HostParsingAndReportingTests
         ], ContainerizationKind.@True);
 
         Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HardwareIdentity);
-        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HostProfileIdentity);
+        Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.HostProfileIdentity && anchor.Strength == IdentityAnchorStrength.Weak);
+    }
+
+    [Fact]
+    public void IdentityAnchors_StacksNamespaceFallback_WhenRuntimeInspectIdentityExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532964]", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532954]", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026533104]", EvidenceSensitivity.Sensitive)
+        ], ContainerizationKind.@True);
+
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity).ToArray();
+
+        Assert.Contains(anchors, anchor => anchor.Algorithm == "CRP-CONTAINER-INSTANCE-v1" && anchor.Strength == IdentityAnchorStrength.Medium);
+        Assert.Contains(anchors, anchor => anchor.Algorithm == "CRP-CONTAINER-NS-v1" && anchor.Strength == IdentityAnchorStrength.Weak);
+    }
+
+    [Fact]
+    public void IdentityAnchors_StacksKubernetesNodeProviderId_WhenNodeUidExists()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "kubernetes.node.uid", "8e5fd1d0-6245-4ff8-b22f-7a3e1b10d111", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("kubernetes", "kubernetes.node.provider_id", "azure:///subscriptions/demo/resourceGroups/rg/providers/Microsoft.Compute/virtualMachines/aks-worker-a", EvidenceSensitivity.Sensitive)
+        ]);
+
+        var anchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.KubernetesNodeIdentity).ToArray();
+
+        Assert.Contains(anchors, anchor => anchor.Strength == IdentityAnchorStrength.Strong);
+        Assert.Contains(anchors, anchor => anchor.Strength == IdentityAnchorStrength.Medium);
     }
 
     [Fact]

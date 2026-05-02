@@ -162,7 +162,7 @@ public sealed class IdentitySummaryTests
     }
 
     [Fact]
-    public void GetIdentitySummary_UsesExplicitDeploymentAnchor_InsteadOfFingerprintFallback()
+    public void GetIdentitySummary_StacksExplicitDeploymentAnchor_AndFingerprintFallback()
     {
         var baseReport = TestReportFactory.CreateSampleReport();
         var report = baseReport with
@@ -179,12 +179,8 @@ public sealed class IdentitySummaryTests
         var summary = report.GetIdentitySummary();
 
         var deploymentSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.DeploymentIdentity));
-        var fact = Assert.Single(deploymentSection.Facts);
-        Assert.Equal("Deployment ID", fact.Label);
-        Assert.Equal("sha256:deployment", fact.Value);
-        Assert.Equal(2, fact.Level);
-        Assert.Equal(SummaryScope.Deployment, fact.Scope);
-        Assert.Equal("DeploymentEnvironmentIdentity", fact.SourceKind);
+        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment ID" && fact.Value == "sha256:deployment" && fact.Level == 2 && fact.Scope == SummaryScope.Deployment && fact.SourceKind == "DeploymentEnvironmentIdentity");
+        Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment ID" && fact.Level == 1 && fact.Scope == SummaryScope.Deployment);
     }
 
     [Fact]

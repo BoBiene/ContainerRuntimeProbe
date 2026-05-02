@@ -43,12 +43,6 @@ public static partial class ContainerRuntimeReportSummaryExtensions
                 EvidenceKeys: anchor.EvidenceReferences))
             .ToArray();
 
-        if (anchorFacts.Length > 0)
-        {
-            sections.Add(new IdentitySummarySection(IdentitySummarySectionKind.DeploymentIdentity, "Deployment Identity", anchorFacts));
-            return;
-        }
-
         var facts = report.Host.DiagnosticFingerprints
             .Where(fingerprint => fingerprint.Purpose is DiagnosticFingerprintPurpose.EnvironmentCorrelation or DiagnosticFingerprintPurpose.RuntimeProfile)
             .Select(fingerprint => new SummaryFact(
@@ -62,9 +56,10 @@ public static partial class ContainerRuntimeReportSummaryExtensions
                 EvidenceKeys: fingerprint.Components.Where(component => component.Included).Select(component => component.Name).ToArray()))
             .ToArray();
 
-        if (facts.Length > 0)
+        var combinedFacts = anchorFacts.Concat(facts).ToArray();
+        if (combinedFacts.Length > 0)
         {
-            sections.Add(new IdentitySummarySection(IdentitySummarySectionKind.DeploymentIdentity, "Deployment Identity", facts));
+            sections.Add(new IdentitySummarySection(IdentitySummarySectionKind.DeploymentIdentity, "Deployment Identity", combinedFacts));
         }
     }
 
