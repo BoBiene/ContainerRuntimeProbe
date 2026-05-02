@@ -84,6 +84,35 @@ public sealed class IdentitySummaryTests
         Assert.Contains(deploymentSection.Facts, fact => fact.Label == "Deployment Fingerprint" && fact.Level == 2 && fact.Scope == SummaryScope.Deployment);
     }
 
+    [Fact]
+    public void GetIdentitySummary_KubernetesVariant_CarriesWorkloadNodeAndHostTracks()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Classification = baseReport.Classification with
+            {
+                Orchestrator = new ClassificationResult<OrchestratorKind>(OrchestratorKind.Kubernetes, Confidence.High, []),
+                PlatformVendor = new ClassificationResult<PlatformVendorKind>(PlatformVendorKind.Unknown, Confidence.Unknown, [])
+            },
+            Host = baseReport.Host with
+            {
+                IdentityAnchors =
+                [
+                    new IdentityAnchor(IdentityAnchorKind.ContainerRuntimeIdentity, "CRP-CONTAINER-INSTANCE-v1", "sha256:container", IdentityAnchorScope.Workload, BindingSuitability.Correlation, IdentityAnchorStrength.Medium, IdentityAnchorSensitivity.Sensitive, ["container.id"], [], []),
+                    new IdentityAnchor(IdentityAnchorKind.KubernetesNodeIdentity, "CRP-K8S-NODE-v1", "sha256:node", IdentityAnchorScope.Host, BindingSuitability.LicenseBinding, IdentityAnchorStrength.Strong, IdentityAnchorSensitivity.Sensitive, ["kubernetes.node.uid"], [], []),
+                    new IdentityAnchor(IdentityAnchorKind.CloudInstanceIdentity, "CRP-CLOUD-INSTANCE-v1", "sha256:host", IdentityAnchorScope.Host, BindingSuitability.LicenseBinding, IdentityAnchorStrength.Strong, IdentityAnchorSensitivity.Sensitive, ["cloud.instance"], [], [])
+                ]
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        Assert.Contains(summary.Sections, section => section.Kind == IdentitySummarySectionKind.WorkloadIdentity && section.Facts.Any(fact => fact.Label == "Container ID"));
+        Assert.Contains(summary.Sections, section => section.Kind == IdentitySummarySectionKind.NodePlatformIdentity && section.Facts.Any(fact => fact.Label == "Node ID"));
+        Assert.Contains(summary.Sections, section => section.Kind == IdentitySummarySectionKind.HostIdentity && section.Facts.Any(fact => fact.Label == "Cloud Host ID"));
+    }
+
     [Theory]
     [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
     [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]

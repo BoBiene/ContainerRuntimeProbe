@@ -108,7 +108,7 @@ Statusbasis: naechster Ausbau nach dem abgeschlossenen Anchor-Rollout. Ziel ist 
 
 ### Phase 4: Validation and follow-up
 
-- [ ] **30. Summary-Testmatrix und Golden-Coverage nachziehen**
+- [x] **30. Summary-Testmatrix und Golden-Coverage nachziehen**
   - Unit- und Renderer-Tests muessen `EnvironmentSummary`, `IdentitySummary`, Scope-Trennung, K8s-Mehrfachspuren und fehlende Unknowns absichern.
 - [ ] **31. Report-/API-Doku und Beispielprofile aktualisieren**
   - `report-format.md`, `dotnet-api.md` und passende Beispielreports dokumentieren die neue Summary und die Scope-Regeln fuer die Zielvarianten.
