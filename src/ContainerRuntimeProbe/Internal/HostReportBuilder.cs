@@ -385,6 +385,12 @@ internal static class HostReportBuilder
             anchors.Add(kubernetesNodeAnchor);
         }
 
+        var kubernetesEnvironmentAnchor = BuildKubernetesEnvironmentIdentityAnchor(evidence);
+        if (kubernetesEnvironmentAnchor is not null)
+        {
+            anchors.Add(kubernetesEnvironmentAnchor);
+        }
+
         var windowsMachineIdAnchor = BuildWindowsMachineIdAnchor(evidence, classification);
         if (windowsMachineIdAnchor is not null)
         {
@@ -490,6 +496,27 @@ internal static class HostReportBuilder
         }
 
         return null;
+    }
+
+    private static IdentityAnchor? BuildKubernetesEnvironmentIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
+    {
+        var serviceAccountCaDigest = GetValue(evidence, "serviceaccount.ca.sha256");
+        if (string.IsNullOrWhiteSpace(serviceAccountCaDigest) || string.Equals(serviceAccountCaDigest, Redaction.RedactedValue, StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        return new IdentityAnchor(
+            IdentityAnchorKind.KubernetesEnvironmentIdentity,
+            "CRP-KUBERNETES-CLUSTER-CA-v1",
+            ComputeIdentityAnchorDigest("kubernetes-cluster:ca", serviceAccountCaDigest),
+            IdentityAnchorScope.Platform,
+            BindingSuitability.Correlation,
+            IdentityAnchorStrength.Medium,
+            IdentityAnchorSensitivity.Public,
+            GetEvidenceReferencesForKeys(evidence, "serviceaccount.ca.sha256", "env.KUBERNETES_SERVICE_HOST", "api.version.outcome"),
+            ["Cluster CA digests may change during control-plane certificate rotation or cluster recreation."],
+            ["Digest derived from the visible Kubernetes service-account CA bundle without requiring RBAC."]);
     }
 
     private static IdentityAnchor? BuildSiemensIedRuntimeIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)

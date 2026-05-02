@@ -235,8 +235,10 @@ public sealed class FakeEndpointIntegrationTests
         Directory.CreateDirectory(tmpDir);
         var tokenFile = Path.Combine(tmpDir, "token");
         var nsFile = Path.Combine(tmpDir, "namespace");
+        var caFile = Path.Combine(tmpDir, "ca.crt");
         await File.WriteAllTextAsync(tokenFile, "fake-bearer-token");
         await File.WriteAllTextAsync(nsFile, "test-namespace");
+        await File.WriteAllTextAsync(caFile, "-----BEGIN CERTIFICATE-----\nZmFrZS1jbHVzdGVyLWNh\n-----END CERTIFICATE-----\n");
 
         // Start a fake HTTP server that returns a synthetic /version response
         using var listener = new HttpListener();
@@ -288,7 +290,8 @@ public sealed class FakeEndpointIntegrationTests
             var probe = new KubernetesProbe(
                 tokenPaths: [tokenFile],
                 namespacePaths: [nsFile],
-                serviceHostOverride: "127.0.0.1");
+                serviceHostOverride: "127.0.0.1",
+                caPaths: [caFile]);
 
             var probeCtx = new ProbeContext(
                 Timeout: TimeSpan.FromSeconds(5),
@@ -306,6 +309,7 @@ public sealed class FakeEndpointIntegrationTests
             // ServiceAccount files found
             Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.token" && e.Value == "present");
             Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.namespace" && e.Value == "test-namespace");
+            Assert.Contains(result.Evidence, e => e.Key == "serviceaccount.ca.sha256" && e.Value!.StartsWith("sha256:", StringComparison.Ordinal));
 
             // /version succeeded
             Assert.Contains(result.Evidence, e => e.Key == "api.version.outcome" && e.Value == "Success");

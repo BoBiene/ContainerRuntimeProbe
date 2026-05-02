@@ -136,6 +136,31 @@ public sealed class IdentitySummaryTests
         Assert.Contains(summary.Sections, section => section.Kind == IdentitySummarySectionKind.HostIdentity && section.Facts.Any(fact => fact.Label == "Cloud Host ID"));
     }
 
+    [Fact]
+    public void GetIdentitySummary_KubernetesEnvironmentAnchor_UsesEnvironmentLabelAndLevel2()
+    {
+        var baseReport = TestReportFactory.CreateSampleReport();
+        var report = baseReport with
+        {
+            Classification = baseReport.Classification with
+            {
+                Orchestrator = new ClassificationResult<OrchestratorKind>(OrchestratorKind.Kubernetes, Confidence.High, [])
+            },
+            Host = baseReport.Host with
+            {
+                IdentityAnchors =
+                [
+                    new IdentityAnchor(IdentityAnchorKind.KubernetesEnvironmentIdentity, "CRP-KUBERNETES-CLUSTER-CA-v1", "sha256:cluster", IdentityAnchorScope.Platform, BindingSuitability.Correlation, IdentityAnchorStrength.Medium, IdentityAnchorSensitivity.Public, ["kubernetes:serviceaccount.ca.sha256"], [], [])
+                ]
+            }
+        };
+
+        var summary = report.GetIdentitySummary();
+
+        var nodePlatformSection = Assert.Single(summary.Sections.Where(section => section.Kind == IdentitySummarySectionKind.NodePlatformIdentity));
+        Assert.Contains(nodePlatformSection.Facts, fact => fact.Label == "Environment ID" && fact.Value == "sha256:cluster" && fact.Level == 2 && fact.Scope == SummaryScope.Platform);
+    }
+
     [Theory]
     [InlineData(ContainerizationKind.False, OrchestratorKind.Unknown, OperatingSystemFamily.Windows, PlatformVendorKind.Unknown, SummaryVariantKind.WindowsBare)]
     [InlineData(ContainerizationKind.True, OrchestratorKind.Unknown, OperatingSystemFamily.Unknown, PlatformVendorKind.Unknown, SummaryVariantKind.StandaloneContainer)]

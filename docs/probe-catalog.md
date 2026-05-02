@@ -45,11 +45,11 @@
 
 ## Identity Anchor Notes
 - `IdentityAnchors` are separate from `TrustedPlatforms` and are built from explicit observed IDs rather than heuristic strings.
-- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched, host-only `MachineIdDigest` anchors from local Windows `MachineGuid` or Linux `machine-id` values as conservative correlation anchors, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs.
+- Current built-in anchors are `CloudInstanceIdentity` from AWS/Azure/GCP/OCI instance metadata IDs, `KubernetesNodeIdentity` from Kubernetes node UID or provider ID, `KubernetesEnvironmentIdentity` from the visible service-account CA bundle digest, `VendorRuntimeIdentity` from Siemens IED certificate-chain evidence when the documented local TLS binding is matched, host-only `MachineIdDigest` anchors from local Windows `MachineGuid` or Linux `machine-id` values as conservative correlation anchors, and workload-scoped `ContainerRuntimeIdentity` anchors from explicit runtime inspect container IDs.
 - Weak generic signals such as hostname, DNS labels, mount paths, cgroup strings, or visible TPM device nodes do not become license-binding anchors on their own.
 - Anchor values are stored as digests and are redacted in the default host report.
 - Future TPM or machine-certificate anchors must stay read-only and digest-based; the package must not create TPM keys or provision certificates.
 
 ## Orchestrator / Cloud
-- `kubernetes`: service account + API probes, optional pod lookup, optional node lookup for `status.nodeInfo`, `metadata.uid`, and `spec.providerID`
+- `kubernetes`: service account + API probes, service-account CA bundle digest, optional pod lookup, optional node lookup for `status.nodeInfo`, `metadata.uid`, and `spec.providerID`
 - `cloud-metadata`: ECS metadata, AWS IMDSv2 safe identity document, Azure IMDS safe compute metadata, GCP machine-type/zone/instance-id, OCI instance metadata, cloud env markers

@@ -396,6 +396,28 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_BuildsKubernetesEnvironmentIdentity_FromServiceAccountCaDigest()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("kubernetes", "serviceaccount.ca.sha256", "sha256:9a0ef8f0e6fa0f6f3eb9c3d7cc6ed1111111111111111111111111111111111"),
+            new EvidenceItem("kubernetes", "env.KUBERNETES_SERVICE_HOST", "10.96.0.1"),
+            new EvidenceItem("kubernetes", "api.version.outcome", ProbeOutcome.Success.ToString())
+        ], ContainerizationKind.@True);
+
+        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.KubernetesEnvironmentIdentity));
+
+        Assert.Equal("CRP-KUBERNETES-CLUSTER-CA-v1", anchor.Algorithm);
+        Assert.Equal(IdentityAnchorScope.Platform, anchor.Scope);
+        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
+        Assert.Equal(IdentityAnchorStrength.Medium, anchor.Strength);
+        Assert.Equal(IdentityAnchorSensitivity.Public, anchor.Sensitivity);
+        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
+        Assert.DoesNotContain("9a0ef8f0e6fa0f6f3eb9c3d7cc6ed1111111111111111111111111111111111", anchor.Value, StringComparison.Ordinal);
+        Assert.Contains(anchor.EvidenceReferences, reference => reference == "kubernetes:serviceaccount.ca.sha256");
+        Assert.Contains(anchor.Reasons, reason => reason.Contains("without requiring RBAC", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsContainerRuntimeIdentity_ForContainerizedEnvironment()
     {
         var report = BuildHostReport([

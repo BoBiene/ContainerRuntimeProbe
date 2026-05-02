@@ -30,7 +30,7 @@ Arbeitsregeln fuer diese Runde:
   - Sichtbare SMBIOS-, CPU- oder SoC-Identifier werden mit klaren Staerke- und Container-Grenzen in konservative Host-Anchors umgesetzt.
 - [x] **40. Schwachen universellen Host-L1-Fallback einfuehren**
   - Wenn keine explizite Host-ID sichtbar ist, wird ein rein korrelationsgeeigneter Host-Profil-Digest als `L1` abgebildet.
-- [ ] **41. Kubernetes Environment-L2 ohne RBAC einfuehren**
+- [x] **41. Kubernetes Environment-L2 ohne RBAC einfuehren**
   - Ein Cluster-/Environment-Digest wird aus bereits sichtbarem Service-Account-CA- oder API-Zertifikatsmaterial abgeleitet, ohne neue Rechte zu erwarten.
 - [ ] **42. Compose- und Portainer-Deployment-Identity erweitern**
   - Sichtbare Compose-/Portainer-Metadaten aus Socket-Inspect werden als staerkerer Deployment-/Environment-Kandidat genutzt.

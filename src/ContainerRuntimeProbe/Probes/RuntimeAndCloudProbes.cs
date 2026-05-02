@@ -307,21 +307,25 @@ internal sealed class KubernetesProbe : IProbe
 
     private readonly IReadOnlyList<string> _tokenPaths;
     private readonly IReadOnlyList<string> _namespacePaths;
+    private readonly IReadOnlyList<string> _caPaths;
     private readonly string? _serviceHostOverride;
 
     private static readonly string[] DefaultTokenPaths =
         ["/run/secrets/kubernetes.io/serviceaccount/token", "/var/run/secrets/kubernetes.io/serviceaccount/token"];
     private static readonly string[] DefaultNamespacePaths =
         ["/run/secrets/kubernetes.io/serviceaccount/namespace", "/var/run/secrets/kubernetes.io/serviceaccount/namespace"];
+    private static readonly string[] DefaultCaPaths =
+        ["/run/secrets/kubernetes.io/serviceaccount/ca.crt", "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"];
 
     /// <summary>Production constructor using standard Kubernetes service-account mount paths.</summary>
-    public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null) { }
+    public KubernetesProbe() : this(DefaultTokenPaths, DefaultNamespacePaths, null, DefaultCaPaths) { }
 
     /// <summary>Test constructor allowing injection of custom paths and a service-host override.</summary>
-    internal KubernetesProbe(IReadOnlyList<string> tokenPaths, IReadOnlyList<string> namespacePaths, string? serviceHostOverride)
+    internal KubernetesProbe(IReadOnlyList<string> tokenPaths, IReadOnlyList<string> namespacePaths, string? serviceHostOverride, IReadOnlyList<string>? caPaths = null)
     {
         _tokenPaths = tokenPaths;
         _namespacePaths = namespacePaths;
+        _caPaths = caPaths ?? DefaultCaPaths;
         _serviceHostOverride = serviceHostOverride;
     }
 
@@ -335,8 +339,17 @@ internal sealed class KubernetesProbe : IProbe
 
         var tokenPath = _tokenPaths.FirstOrDefault(File.Exists);
         var nsPath = _namespacePaths.FirstOrDefault(File.Exists);
+        var caPath = _caPaths.FirstOrDefault(File.Exists);
         if (tokenPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.token", "present", EvidenceSensitivity.Sensitive));
         if (nsPath is not null) evidence.Add(new EvidenceItem(Id, "serviceaccount.namespace", (await File.ReadAllTextAsync(nsPath, context.CancellationToken).ConfigureAwait(false)).Trim()));
+        if (caPath is not null)
+        {
+            var caBundle = (await File.ReadAllTextAsync(caPath, context.CancellationToken).ConfigureAwait(false)).Replace("\r\n", "\n", StringComparison.Ordinal).Trim();
+            if (!string.IsNullOrWhiteSpace(caBundle))
+            {
+                evidence.Add(new EvidenceItem(Id, "serviceaccount.ca.sha256", $"sha256:{HostParsing.ComputeSha256Hex(caBundle)}"));
+            }
+        }
 
         if (string.IsNullOrWhiteSpace(host) || tokenPath is null)
         {
