@@ -308,6 +308,19 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_WorkloadProfileIdentity_DoesNotBuild_FromEphemeralDockerHostnameAndNamespacesOnly()
+    {
+        var report = BuildHostReport([
+            new EvidenceItem("environment", "HOSTNAME", "70c7f56c9119", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532841]"),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532838]"),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026532777]")
+        ]);
+
+        Assert.DoesNotContain(report.Host.IdentityAnchors, item => item.Kind == IdentityAnchorKind.WorkloadProfileIdentity);
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsCloudAndKubernetesDigests_FromExplicitStableSources()
     {
         var report = BuildHostReport([
@@ -611,7 +624,7 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
-    public void IdentityAnchors_BuildsWeakWorkloadProfileIdentity_FromNamespaceTuple_WhenInspectIdIsUnavailable()
+    public void IdentityAnchors_DoesNotBuildWorkloadProfileIdentity_FromNamespaceTupleAlone_WhenInspectIdIsUnavailable()
     {
         var report = BuildHostReport([
             new EvidenceItem("proc-files", "ns.pid", "pid:[4026532964]"),
@@ -619,17 +632,7 @@ public sealed class HostParsingAndReportingTests
             new EvidenceItem("proc-files", "ns.net", "net:[4026532890]")
         ], ContainerizationKind.@True);
 
-        var anchor = Assert.Single(report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.WorkloadProfileIdentity));
-
-        Assert.Equal("CRP-WORKLOAD-PROFILE-v1", anchor.Algorithm);
-        Assert.Equal(IdentityAnchorScope.Workload, anchor.Scope);
-        Assert.Equal(BindingSuitability.Correlation, anchor.BindingSuitability);
-        Assert.Equal(IdentityAnchorStrength.Weak, anchor.Strength);
-        Assert.Equal(IdentityAnchorSensitivity.Sensitive, anchor.Sensitivity);
-        Assert.StartsWith("sha256:", anchor.Value, StringComparison.Ordinal);
-        Assert.DoesNotContain("4026532964", anchor.Value, StringComparison.Ordinal);
-        Assert.Contains(anchor.EvidenceReferences, reference => reference == "proc-files:ns.pid");
-        Assert.Contains(anchor.Warnings, warning => warning.Contains("correlation-only", StringComparison.Ordinal));
+        Assert.DoesNotContain(report.Host.IdentityAnchors, item => item.Kind == IdentityAnchorKind.WorkloadProfileIdentity);
     }
 
     [Fact]
@@ -721,7 +724,7 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
-    public void IdentityAnchors_StacksNamespaceFallback_WhenRuntimeInspectIdentityExists()
+    public void IdentityAnchors_DoesNotStackNamespaceOnlyWorkloadFallback_WhenRuntimeInspectIdentityExists()
     {
         var report = BuildHostReport([
             new EvidenceItem("runtime-api", "container.id", "f54f4f0f068f4d4b9c8cf6c16c9f111111111111111111111111111111111111", EvidenceSensitivity.Sensitive),
@@ -733,7 +736,7 @@ public sealed class HostParsingAndReportingTests
         var runtimeAnchors = report.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.ContainerRuntimeIdentity).ToArray();
 
         Assert.Contains(runtimeAnchors, anchor => anchor.Algorithm == "CRP-CONTAINER-INSTANCE-v1" && anchor.Strength == IdentityAnchorStrength.Medium);
-        Assert.Contains(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.WorkloadProfileIdentity && anchor.Strength == IdentityAnchorStrength.Weak);
+        Assert.DoesNotContain(report.Host.IdentityAnchors, anchor => anchor.Kind == IdentityAnchorKind.WorkloadProfileIdentity);
     }
 
     [Fact]

@@ -918,15 +918,36 @@ internal static class HostReportBuilder
 
     private static IdentityAnchor? BuildWorkloadProfileIdentityAnchor(IReadOnlyList<EvidenceItem> evidence)
     {
+        var workloadHostname = GetVisibleWorkloadHostname(evidence);
+        var kubernetesPodUid = NormalizeWorkloadProfileToken(GetFirstVisibleValue(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid"));
+        var kubernetesContainerToken = NormalizeWorkloadProfileToken(GetValue(evidence, "kubernetes.cgroup.container_token"));
+        var composeProject = NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.compose.project"));
+        var composeStackNamespace = NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.stack.namespace"));
+
+        var hasOrchestratorOrComposeContext = !string.IsNullOrWhiteSpace(kubernetesPodUid)
+            || !string.IsNullOrWhiteSpace(kubernetesContainerToken)
+            || !string.IsNullOrWhiteSpace(composeProject)
+            || !string.IsNullOrWhiteSpace(composeStackNamespace);
+
+        if (!hasOrchestratorOrComposeContext && IsLikelyEphemeralWorkloadHostname(workloadHostname))
+        {
+            workloadHostname = null;
+        }
+
         var included = new Dictionary<string, string>(StringComparer.Ordinal);
-        AddWorkloadProfileComponent(included, "workload.hostname", GetVisibleWorkloadHostname(evidence));
-        AddWorkloadProfileComponent(included, "kubernetes.pod.uid", NormalizeWorkloadProfileToken(GetFirstVisibleValue(evidence, "kubernetes.pod.uid", "kubernetes.cgroup.pod_uid")));
-        AddWorkloadProfileComponent(included, "kubernetes.container.token", NormalizeWorkloadProfileToken(GetValue(evidence, "kubernetes.cgroup.container_token")));
-        AddWorkloadProfileComponent(included, "namespace.pid", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.pid")));
-        AddWorkloadProfileComponent(included, "namespace.mnt", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.mnt")));
-        AddWorkloadProfileComponent(included, "namespace.net", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.net")));
-        AddWorkloadProfileComponent(included, "compose.project", NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.compose.project")));
-        AddWorkloadProfileComponent(included, "compose.stack.namespace", NormalizeWorkloadProfileToken(GetValue(evidence, "compose.label.com.docker.stack.namespace")));
+        AddWorkloadProfileComponent(included, "workload.hostname", workloadHostname);
+        AddWorkloadProfileComponent(included, "kubernetes.pod.uid", kubernetesPodUid);
+        AddWorkloadProfileComponent(included, "kubernetes.container.token", kubernetesContainerToken);
+        AddWorkloadProfileComponent(included, "compose.project", composeProject);
+        AddWorkloadProfileComponent(included, "compose.stack.namespace", composeStackNamespace);
+
+        // Namespace inode signals are weakly workload-scoped only when anchored by stable workload context.
+        if (hasOrchestratorOrComposeContext || !string.IsNullOrWhiteSpace(workloadHostname))
+        {
+            AddWorkloadProfileComponent(included, "namespace.pid", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.pid")));
+            AddWorkloadProfileComponent(included, "namespace.mnt", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.mnt")));
+            AddWorkloadProfileComponent(included, "namespace.net", NormalizeWorkloadProfileToken(GetValue(evidence, "ns.net")));
+        }
 
         if (included.Count == 0)
         {
@@ -1013,6 +1034,18 @@ internal static class HostReportBuilder
         }
 
         return normalized;
+    }
+
+    private static bool IsLikelyEphemeralWorkloadHostname(string? normalizedHostname)
+    {
+        if (string.IsNullOrWhiteSpace(normalizedHostname))
+        {
+            return false;
+        }
+
+        var value = normalizedHostname.Trim();
+        return (value.Length == 12 || value.Length == 64)
+            && value.All(static character => char.IsAsciiHexDigit(character));
     }
 
     private static string? NormalizeWorkloadProfileToken(string? value)
