@@ -18,7 +18,7 @@ public sealed class RendererGoldenTests
         Assert.Contains("Runtime", text);
         Assert.Contains("Mode", text);
         Assert.Contains("Containerized", text);
-        Assert.Contains("Deployment Identity", text);
+        Assert.Contains("Deployment / Environment Identity", text);
         Assert.Contains("Details", text);
         Assert.Matches(@"Runtime\s+:\s+Docker", text);
         Assert.Matches(@"HostOS\s+:\s+Ubuntu", text);          // runtime-reported host, not container OS
