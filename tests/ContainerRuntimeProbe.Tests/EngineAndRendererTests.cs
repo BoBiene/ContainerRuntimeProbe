@@ -247,8 +247,10 @@ public sealed class EngineAndRendererTests
         var summaryHostIdentityValue = document.RootElement
             .GetProperty("Summary")
             .GetProperty("Identity")
-            .GetProperty("Sections")[0]
-            .GetProperty("Facts")[0]
+            .GetProperty("Sections")
+            .EnumerateArray()
+            .SelectMany(section => section.GetProperty("Facts").EnumerateArray())
+            .First(fact => fact.GetProperty("Label").GetString() == "Cloud Host ID")
             .GetProperty("Value")
             .GetString();
 
