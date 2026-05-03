@@ -321,6 +321,32 @@ public sealed class HostParsingAndReportingTests
     }
 
     [Fact]
+    public void IdentityAnchors_WorkloadProfileIdentity_DropsEphemeralHostname_EvenWithComposeContext()
+    {
+        // Compose/Swarm sets HOSTNAME to the container ID by default — this must not be included in the digest.
+        var baseline = BuildHostReport([
+            new EvidenceItem("environment", "HOSTNAME", "70c7f56c9119", EvidenceSensitivity.Sensitive),
+            new EvidenceItem("runtime-api", "compose.label.com.docker.compose.project", "my-stack"),
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532841]"),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532838]"),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026532777]")
+        ]);
+
+        var restarted = BuildHostReport([
+            new EvidenceItem("environment", "HOSTNAME", "aabbccddeeff", EvidenceSensitivity.Sensitive), // different container ID after restart
+            new EvidenceItem("runtime-api", "compose.label.com.docker.compose.project", "my-stack"),
+            new EvidenceItem("proc-files", "ns.pid", "pid:[4026532841]"),
+            new EvidenceItem("proc-files", "ns.mnt", "mnt:[4026532838]"),
+            new EvidenceItem("proc-files", "ns.net", "net:[4026532777]")
+        ]);
+
+        var baselineAnchor = Assert.Single(baseline.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.WorkloadProfileIdentity));
+        var restartedAnchor = Assert.Single(restarted.Host.IdentityAnchors.Where(item => item.Kind == IdentityAnchorKind.WorkloadProfileIdentity));
+
+        Assert.Equal(baselineAnchor.Value, restartedAnchor.Value);
+    }
+
+    [Fact]
     public void IdentityAnchors_BuildsCloudAndKubernetesDigests_FromExplicitStableSources()
     {
         var report = BuildHostReport([

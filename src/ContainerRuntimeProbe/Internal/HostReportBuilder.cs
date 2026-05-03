@@ -929,7 +929,9 @@ internal static class HostReportBuilder
             || !string.IsNullOrWhiteSpace(composeProject)
             || !string.IsNullOrWhiteSpace(composeStackNamespace);
 
-        if (!hasOrchestratorOrComposeContext && IsLikelyEphemeralWorkloadHostname(workloadHostname))
+        // Always drop ephemeral container-ID-style hostnames regardless of context:
+        // in Compose/Swarm HOSTNAME defaults to the container ID which changes every restart.
+        if (IsLikelyEphemeralWorkloadHostname(workloadHostname))
         {
             workloadHostname = null;
         }
